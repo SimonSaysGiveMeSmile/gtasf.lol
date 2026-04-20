@@ -19,17 +19,17 @@ export default function Player() {
 
   const [, getKeys] = useKeyboardControls()
 
+  // Player sphere physics body — mass 1 means gravity pulls it down
+  // It will fall from y=3 to rest on the ground at y=PLAYER_CONFIG.radius
   const [, physApi] = useSphere(() => ({
     mass: 1,
     position: [0, 3, 0],
     args: [PLAYER_CONFIG.radius],
     fixedRotation: true,
-    linearDamping: 0.9,
+    linearDamping: 0.5,
     angularDamping: 1,
-    onCollide: (e) => {
-      const impactSpeed = Math.sqrt(
-        e.contact.impactVelocity ** 2
-      )
+    onCollide: (e: any) => {
+      const impactSpeed = Math.abs(e.contact.impactVelocity)
       if (impactSpeed > 5) {
         const dmg = Math.floor(impactSpeed * 1.5)
         takeDamage(dmg)
@@ -41,7 +41,7 @@ export default function Player() {
   const position = useRef<[number, number, number]>([0, 3, 0])
   const cameraAngle = useRef({ theta: 0, phi: 0.3 })
   const isMouseDown = useRef(false)
-  const peakHeight = useRef(0)
+  const peakHeight = useRef(3)
   const prevVelocityY = useRef(0)
 
   useEffect(() => {
@@ -113,7 +113,6 @@ export default function Player() {
       dir[2] -= Math.sin(angle) * speed
     }
 
-    // Normalize diagonal movement
     const len = Math.sqrt(dir[0] ** 2 + dir[2] ** 2)
     if (len > speed) {
       dir[0] = (dir[0] / len) * speed
@@ -122,7 +121,7 @@ export default function Player() {
 
     physApi.velocity.set(dir[0], velocity.current[1], dir[2])
 
-    // Jump
+    // Jump — only when grounded
     if (jump && Math.abs(velocity.current[1]) < 0.5) {
       physApi.velocity.set(dir[0], PLAYER_CONFIG.jumpForce, dir[2])
     }
@@ -131,16 +130,15 @@ export default function Player() {
     const currentY = position.current[1]
     const currentVelY = velocity.current[1]
 
-    // Track if player is in the air (rising or falling)
+    // Track peak height while airborne
     if (currentVelY > 0.5 || currentVelY < -0.5) {
       setIsFalling(true)
-      // Track peak height while in the air
       if (currentY > peakHeight.current) {
         peakHeight.current = currentY
       }
     }
 
-    // Detect landing: velocity changed from negative to near-zero
+    // Detect landing
     const wasFalling = prevVelocityY.current < 0
     const isLanding = wasFalling && Math.abs(currentVelY) < 0.5
 
@@ -150,7 +148,6 @@ export default function Player() {
         const damage = Math.max(10, Math.floor(fallDistance * 5))
         takeDamage(damage)
       }
-      // Reset peak height on landing
       peakHeight.current = currentY
       setIsFalling(false)
     }
@@ -167,7 +164,7 @@ export default function Player() {
 
     camera.position.lerp(
       new THREE.Vector3(targetCamX, targetCamY, targetCamZ),
-      0.1
+      0.12
     )
     camera.lookAt(px, py + 1, pz)
 
@@ -203,8 +200,8 @@ export default function Player() {
           opacity={0.6}
         />
       </mesh>
-      {/* Point light on player */}
-      <pointLight color="#00e5ff" intensity={0.5} distance={5} position={[0, 1.5, 0]} />
+      {/* Player light */}
+      <pointLight color="#00e5ff" intensity={1.5} distance={8} position={[0, 1.5, 0]} />
     </group>
   )
 }

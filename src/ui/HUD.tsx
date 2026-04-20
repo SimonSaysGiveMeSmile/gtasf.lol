@@ -1,6 +1,5 @@
 import { useGameStore } from '../game/store'
-import { CITIES } from '../game/constants'
-import { BUILDING_LAYOUT } from '../world/buildings'
+import { CITIES, VEHICLES } from '../game/constants'
 import type { CityId } from '../game/types'
 import './HUD.css'
 
@@ -17,8 +16,10 @@ export default function HUD() {
   const timeOfDay = useGameStore((s) => s.timeOfDay)
   const setTimeOfDay = useGameStore((s) => s.setTimeOfDay)
   const vehicleSpeed = useGameStore((s) => s.vehicleSpeed)
-  const speedPercent = Math.min(100, (vehicleSpeed / 200) * 100)
   const isFalling = useGameStore((s) => s.isFalling)
+  const npcs = useGameStore((s) => s.npcs)
+
+  const speedPercent = Math.min(100, (vehicleSpeed / 200) * 100)
 
   const healthColor =
     health > 50 ? 'var(--color-green)' : health > 25 ? 'var(--color-amber)' : 'var(--color-magenta)'
@@ -65,7 +66,7 @@ export default function HUD() {
         <div className="minimap-header">
           <span className="minimap-title">RADAR</span>
         </div>
-        <Minimap />
+        <Minimap playerPosition={coords} npcs={npcs} />
         <div className="minimap-corners" />
       </div>
 
@@ -90,18 +91,16 @@ export default function HUD() {
         </div>
       </div>
 
-      {/* Vehicle indicator */}
+      {/* Vehicle indicator + speedometer */}
       {inVehicle && (
         <div className="vehicle-indicator">
           <div className="vehicle-name-row">
-            <span className="vehicle-name">VEHICLE</span>
+            <span className="vehicle-name">{VEHICLES.find(v => v.type === 'cybertruck')?.name || 'VEHICLE'}</span>
           </div>
           <div className="speedometer">
             <div className="speed-gauge-track">
-              <div
-                className="speed-gauge-fill"
-                style={{ width: speedPercent + '%' }}
-            />
+              <div className="speed-gauge-fill" style={{ width: `${speedPercent}%` }} />
+            </div>
             <div className="speed-readout">
               <span className="speed-value">{Math.round(vehicleSpeed)}</span>
               <span className="speed-unit">km/h</span>
@@ -161,87 +160,40 @@ export default function HUD() {
   )
 }
 
-function Minimap() {
-  const playerPosition = useGameStore((s) => s.playerPosition)
-  const npcs = useGameStore((s) => s.npcs)
+interface MinimapProps {
+  playerPosition: [number, number, number]
+  npcs: any[]
+}
 
+function Minimap({ playerPosition, npcs }: MinimapProps) {
   const RANGE = 100
   const SIZE = 180
   const CENTER = SIZE / 2
 
-  // Water shapes at map edges (static blue areas)
-  const WATER_SHAPES = [
-    // Top-left water
-    { path: `M 0 0 L ${SIZE * 0.35} 0 L ${SIZE * 0.35} ${SIZE * 0.25} L 0 ${SIZE * 0.3} Z`, opacity: 0.5 },
-    // Top-right water
-    { path: `M ${SIZE * 0.65} 0 L ${SIZE} 0 L ${SIZE} ${SIZE * 0.3} L ${SIZE * 0.65} ${SIZE * 0.25} Z`, opacity: 0.5 },
-    // Bottom-left bay
-    { path: `M 0 ${SIZE * 0.7} Q ${SIZE * 0.2} ${SIZE * 0.6} ${SIZE * 0.35} ${SIZE * 0.85} Q ${SIZE * 0.4} ${SIZE} 0 ${SIZE} Z`, opacity: 0.6 },
-    // Bottom-right bay
-    { path: `M ${SIZE * 0.65} ${SIZE} Q ${SIZE * 0.8} ${SIZE * 0.9} ${SIZE} ${SIZE * 0.65} L ${SIZE} ${SIZE} Z`, opacity: 0.6 },
-  ]
-
   return (
     <div className="minimap-view">
       <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
-        {/* Background grid */}
+        {/* Background grid rings */}
         {[0, 1, 2, 3, 4].map((i) => (
           <circle key={`grid-${i}`} cx={CENTER} cy={CENTER} r={(i / 5) * (SIZE / 2)} fill="none" stroke="var(--color-border)" strokeWidth={0.5} />
         ))}
-        {[0, 1, 2, 3, 4].map((i) => (
-          <line key={`line-${i}`} x1={CENTER} y1={i * SIZE / 4} x2={SIZE} y2={CENTER} stroke="var(--color-border)" strokeWidth={0.3} />
-        ))}
+        {/* Cardinal lines */}
+        <line x1={CENTER} y1={0} x2={CENTER} y2={SIZE} stroke="var(--color-border)" strokeWidth={0.3} />
+        <line x1={0} y1={CENTER} x2={SIZE} y2={CENTER} stroke="var(--color-border)" strokeWidth={0.3} />
 
-        {/* Water areas at map edges */}
-        {WATER_SHAPES.map((w, i) => (
-          <path key={`water-${i}`} d={w.path} fill="rgba(0, 30, 80, 0.7)" opacity={w.opacity} />
-        ))}
-
-        {/* Buildings from BUILDING_LAYOUT */}
-        {BUILDING_LAYOUT.map((building, i) => {
-          // Transform world coords to minimap coords (relative to player)
-          const dx = (building.x - playerPosition[0]) / RANGE * (SIZE / 2)
-          const dy = (building.z - playerPosition[2]) / RANGE * (SIZE / 2)
-          const sx = CENTER - dx
-          const sy = CENTER - dy
-
-          // Skip buildings outside minimap bounds (with a small margin)
-          if (sx < -10 || sx > SIZE + 10 || sy < -10 || sy > SIZE + 10) return null
-
-          // Scale building dimensions to minimap
-          const bw = Math.max(2, building.width / RANGE * (SIZE / 2) * 0.8)
-          const bh = Math.max(2, building.depth / RANGE * (SIZE / 2) * 0.8)
-
-          return (
-            <rect
-              key={`bld-${i}`}
-              x={sx - bw / 2}
-              y={sy - bh / 2}
-              width={bw}
-              height={bh}
-              fill="var(--color-surface-alt)"
-              stroke="var(--color-border)"
-              strokeWidth={0.5}
-            />
-          )
-        })}
-
-        {/* NPCs with actual positions from store */}
-        {npcs.map((npc) => {
+        {/* NPCs as small white dots */}
+        {npcs.slice(0, 20).map((npc) => {
           const dx = (npc.position[0] - playerPosition[0]) / RANGE * (SIZE / 2)
           const dy = (npc.position[2] - playerPosition[2]) / RANGE * (SIZE / 2)
           const sx = CENTER - dx
           const sy = CENTER - dy
           if (Math.abs(sx - CENTER) > CENTER || Math.abs(sy - CENTER) > CENTER) return null
-          return (
-            <circle key={npc.id} cx={sx} cy={sy} r={1.5} fill="var(--color-muted)" opacity={0.7} />
-          )
+          return <circle key={npc.id} cx={sx} cy={sy} r={1.5} fill="rgba(255,255,255,0.4)" />
         })}
 
-        {/* Player */}
-        <circle cx={CENTER} cy={CENTER} r={4} fill="var(--color-cyan)" className="player-blip" />
-        <circle cx={CENTER} cy={CENTER} r={7} fill="none" stroke="var(--color-cyan)" strokeWidth={1} opacity={0.5} className="player-ping" />
-        <circle cx={CENTER} cy={CENTER} r={1} fill="white" />
+        {/* Player dot */}
+        <circle cx={CENTER} cy={CENTER} r={4} fill="var(--color-cyan)" />
+        <circle cx={CENTER} cy={CENTER} r={8} fill="none" stroke="var(--color-cyan)" strokeWidth={1} opacity={0.4} />
       </svg>
       <div className="minimap-scale">
         <span>100m</span>
