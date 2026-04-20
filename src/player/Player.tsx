@@ -15,6 +15,7 @@ export default function Player() {
   const isDead = useGameStore((s) => s.isDead)
   const setPlayerPosition = useGameStore((s) => s.setPlayerPosition)
   const takeDamage = useGameStore((s) => s.takeDamage)
+  const setIsFalling = useGameStore((s) => s.setIsFalling)
 
   const [, getKeys] = useKeyboardControls()
 
@@ -40,6 +41,8 @@ export default function Player() {
   const position = useRef<[number, number, number]>([0, 3, 0])
   const cameraAngle = useRef({ theta: 0, phi: 0.3 })
   const isMouseDown = useRef(false)
+  const peakHeight = useRef(0)
+  const prevVelocityY = useRef(0)
 
   useEffect(() => {
     const unsub = physApi.velocity.subscribe((v) => {
@@ -123,6 +126,36 @@ export default function Player() {
     if (jump && Math.abs(velocity.current[1]) < 0.5) {
       physApi.velocity.set(dir[0], PLAYER_CONFIG.jumpForce, dir[2])
     }
+
+    // Fall damage tracking
+    const currentY = position.current[1]
+    const currentVelY = velocity.current[1]
+
+    // Track if player is in the air (rising or falling)
+    if (currentVelY > 0.5 || currentVelY < -0.5) {
+      setIsFalling(true)
+      // Track peak height while in the air
+      if (currentY > peakHeight.current) {
+        peakHeight.current = currentY
+      }
+    }
+
+    // Detect landing: velocity changed from negative to near-zero
+    const wasFalling = prevVelocityY.current < 0
+    const isLanding = wasFalling && Math.abs(currentVelY) < 0.5
+
+    if (isLanding) {
+      const fallDistance = peakHeight.current - currentY
+      if (fallDistance > 2) {
+        const damage = Math.max(10, Math.floor(fallDistance * 5))
+        takeDamage(damage)
+      }
+      // Reset peak height on landing
+      peakHeight.current = currentY
+      setIsFalling(false)
+    }
+
+    prevVelocityY.current = currentVelY
 
     // Camera follow
     const [px, py, pz] = position.current
