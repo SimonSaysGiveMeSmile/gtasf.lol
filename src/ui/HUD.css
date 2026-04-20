@@ -1,0 +1,417 @@
+/* === HUD LAYER === */
+.hud-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: linear-gradient(to bottom, rgba(10, 10, 31, 0.95), transparent);
+  z-index: 100;
+  animation: slideInUp 0.4s ease-out;
+}
+
+.hud-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.hud-city-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.city-select {
+  background: rgba(18, 18, 42, 0.8);
+  border: 1px solid var(--color-cyan-dim);
+  border-radius: var(--radius-sm);
+  color: var(--color-cyan);
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 6px 12px;
+  cursor: pointer;
+  outline: none;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+}
+
+.city-select:hover {
+  border-color: var(--color-cyan);
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
+}
+
+.city-select option {
+  background: var(--color-surface);
+  color: var(--color-white);
+}
+
+.time-toggle {
+  background: rgba(18, 18, 42, 0.8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-amber);
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 2px;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.time-toggle:hover {
+  border-color: var(--color-amber);
+  box-shadow: 0 0 8px rgba(255, 179, 0, 0.3);
+}
+
+.hud-coords {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.coord-label {
+  font-family: var(--font-display);
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: var(--color-muted);
+}
+
+.coord-value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-cyan);
+  letter-spacing: 0.5px;
+}
+
+/* === MINIMAP === */
+.minimap-container {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  width: 200px;
+  background: rgba(10, 10, 25, 0.9);
+  border: 1px solid var(--color-cyan);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 0 0 1px rgba(0, 229, 255, 0.1),
+    0 4px 30px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(0, 229, 255, 0.1);
+  z-index: 100;
+  animation: slideInLeft 0.4s ease-out;
+}
+
+.minimap-header {
+  padding: 6px 12px;
+  background: rgba(0, 229, 255, 0.08);
+  border-bottom: 1px solid rgba(0, 229, 255, 0.2);
+}
+
+.minimap-title {
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--color-cyan);
+}
+
+.minimap-view {
+  padding: 8px;
+  position: relative;
+}
+
+.minimap-view svg {
+  display: block;
+  border-radius: 4px;
+}
+
+.player-blip {
+  filter: drop-shadow(0 0 4px var(--color-cyan));
+}
+
+@keyframes blipPulse {
+  0%, 100% { opacity: 1; r: 4; }
+  50% { opacity: 0.6; r: 6; }
+}
+
+.player-ping {
+  animation: blipPulse 2s ease-in-out infinite;
+}
+
+.minimap-scale {
+  text-align: center;
+  margin-top: 4px;
+}
+
+.minimap-scale span {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--color-muted);
+}
+
+/* === HEALTH BAR === */
+.health-container {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 320px;
+  background: rgba(10, 10, 25, 0.85);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  backdrop-filter: blur(12px);
+  z-index: 100;
+  animation: slideInUp 0.4s ease-out;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+}
+
+.health-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.health-segments {
+  display: flex;
+  gap: 4px;
+}
+
+.health-segment {
+  flex: 1;
+  height: 12px;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+
+.health-segment.empty {
+  background: rgba(42, 42, 90, 0.5);
+  border: 1px solid rgba(42, 42, 90, 0.8);
+}
+
+.health-segment.filled {
+  border: 1px solid transparent;
+}
+
+/* === VEHICLE INDICATOR === */
+.vehicle-indicator {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  background: rgba(10, 10, 25, 0.85);
+  border: 1px solid var(--color-amber);
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  backdrop-filter: blur(12px);
+  z-index: 100;
+  animation: slideInUp 0.4s ease-out;
+  box-shadow: 0 0 0 1px rgba(255, 179, 0, 0.1), 0 4px 30px rgba(0, 0, 0, 0.5);
+}
+
+.vehicle-name {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--color-amber);
+  text-shadow: 0 0 10px rgba(255, 179, 0, 0.5);
+}
+
+/* === INTERACTION PROMPT === */
+.interaction-prompt {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, calc(-50% + 60px));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(10, 10, 25, 0.9);
+  border: 1px solid var(--color-cyan);
+  border-radius: var(--radius-md);
+  padding: 10px 18px;
+  backdrop-filter: blur(12px);
+  z-index: 100;
+  animation: fadeIn 0.2s ease-out;
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.2);
+}
+
+.interact-key {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-cyan);
+  color: var(--color-void);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 4px;
+  box-shadow: 0 2px 0 rgba(0, 150, 180, 0.8);
+}
+
+.interact-text {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-white);
+  letter-spacing: 0.5px;
+}
+
+/* === CROSSHAIR === */
+.crosshair {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 90;
+}
+
+.crosshair-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 4px;
+  background: var(--color-cyan);
+  border-radius: 50%;
+  box-shadow: 0 0 4px var(--color-cyan);
+  transition: all 0.15s ease;
+}
+
+.crosshair-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--color-cyan);
+  border-radius: 50%;
+  opacity: 0.5;
+  transition: all 0.15s ease;
+}
+
+.crosshair.active .crosshair-dot {
+  background: var(--color-amber);
+  box-shadow: 0 0 8px var(--color-amber);
+}
+
+.crosshair.active .crosshair-ring {
+  border-color: var(--color-amber);
+  opacity: 0.8;
+  width: 28px;
+  height: 28px;
+}
+
+/* === DAMAGE FLASH === */
+.damage-flash {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(255, 0, 50, 0.5) 100%);
+  pointer-events: none;
+  z-index: 200;
+  animation: damageFlash 0.3s ease-out forwards;
+}
+
+/* === DEATH SCREEN === */
+.death-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+}
+
+.death-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  animation: deathFadeIn 1s ease-in forwards;
+}
+
+@keyframes deathFadeIn {
+  to { background: rgba(5, 5, 16, 0.95); }
+}
+
+.death-text {
+  position: relative;
+  text-align: center;
+  animation: fadeIn 0.5s ease-out 1s both;
+}
+
+.death-killed {
+  font-family: var(--font-display);
+  font-size: 72px;
+  font-weight: 900;
+  color: var(--color-magenta);
+  letter-spacing: 8px;
+  text-shadow: 0 0 40px rgba(255, 0, 128, 0.5);
+  animation: glitch 0.3s ease-in-out;
+}
+
+.death-sub {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--color-muted);
+  margin-top: 12px;
+  letter-spacing: 2px;
+}
+
+.respawn-text {
+  position: relative;
+  text-align: center;
+}
+
+.respawn-label {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-cyan);
+  letter-spacing: 6px;
+  text-shadow: 0 0 20px rgba(0, 229, 255, 0.5);
+}
+
+.respawn-dots span {
+  display: inline-block;
+  font-size: 32px;
+  color: var(--color-cyan);
+  animation: pulse 0.6s ease-in-out infinite;
+}
+
+.respawn-dots span:nth-child(2) { animation-delay: 0.2s; }
+.respawn-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes glitch {
+  0% { transform: translate(0); }
+  20% { transform: translate(-4px, 2px); }
+  40% { transform: translate(4px, -2px); }
+  60% { transform: translate(-2px, -1px); }
+  80% { transform: translate(2px, 1px); }
+  100% { transform: translate(0); }
+}
+
+/* === SCANLINE OVERLAY === */
+.scanline-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+}
