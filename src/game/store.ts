@@ -70,7 +70,7 @@ export const useGameStore = create<GameState>((set, get) => ({
  isDead: false,
  isRespawning: false,
  currentCity: 'sf',
- timeOfDay: 'night',
+ timeOfDay: 'day',
  npcs: [],
  activeVehicles: [],
  nearbyInteractable: null,

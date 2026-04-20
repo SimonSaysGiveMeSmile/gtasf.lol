@@ -47,3 +47,9 @@ export interface RespawnPoint {
   position: [number, number, number]
   rotation: number
 }
+
+export interface CollisionEvent {
+  contact: {
+    impactVelocity: number
+  }
+}

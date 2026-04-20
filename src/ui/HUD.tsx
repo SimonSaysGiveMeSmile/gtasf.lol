@@ -162,7 +162,7 @@ export default function HUD() {
 
 interface MinimapProps {
   playerPosition: [number, number, number]
-  npcs: any[]
+  npcs: import('../game/types').NPC[]
 }
 
 function Minimap({ playerPosition, npcs }: MinimapProps) {

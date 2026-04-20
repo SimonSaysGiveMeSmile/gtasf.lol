@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react'
-import { useFrame, useThree } from '@react-three/fiber'
+import { useFrame } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
 import { useBox } from '@react-three/cannon'
 import { useGameStore } from '../game/store'

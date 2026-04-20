@@ -1,10 +1,9 @@
 import { useRef, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
-import { useSphere } from '@react-three/cannon'
 import * as THREE from 'three'
 import { useGameStore } from '../game/store'
-import { PLAYER_CONFIG } from '../game/constants'
+import { PLAYER_CONFIG, MAP_SIZE } from '../game/constants'
 
 export default function Player() {
   const meshRef = useRef<THREE.Group>(null)
@@ -19,46 +18,15 @@ export default function Player() {
 
   const [, getKeys] = useKeyboardControls()
 
-  // Player sphere physics body — mass 1 means gravity pulls it down
-  // It will fall from y=3 to rest on the ground at y=PLAYER_CONFIG.radius
-  const [, physApi] = useSphere(() => ({
-    mass: 1,
-    position: [0, 3, 0],
-    args: [PLAYER_CONFIG.radius],
-    fixedRotation: true,
-    linearDamping: 0.5,
-    angularDamping: 1,
-    onCollide: (e: any) => {
-      const impactSpeed = Math.abs(e.contact.impactVelocity)
-      if (impactSpeed > 5) {
-        const dmg = Math.floor(impactSpeed * 1.5)
-        takeDamage(dmg)
-      }
-    },
-  }))
-
-  const velocity = useRef<[number, number, number]>([0, 0, 0])
-  const position = useRef<[number, number, number]>([0, 3, 0])
+  // Simple position-based movement — no physics for player
+  const position = useRef(new THREE.Vector3(0, PLAYER_CONFIG.height / 2, 0))
+  const velocity = useRef(new THREE.Vector3(0, 0, 0))
   const cameraAngle = useRef({ theta: 0, phi: 0.3 })
   const isMouseDown = useRef(false)
-  const peakHeight = useRef(3)
-  const prevVelocityY = useRef(0)
+  const peakHeight = useRef(PLAYER_CONFIG.height / 2)
+  const isGrounded = useRef(true)
+  const playerLightRef = useRef<THREE.PointLight>(null)
 
-  useEffect(() => {
-    const unsub = physApi.velocity.subscribe((v) => {
-      velocity.current = v as [number, number, number]
-    })
-    const posSub = physApi.position.subscribe((p) => {
-      position.current = p as [number, number, number]
-      setPlayerPosition(p as [number, number, number])
-    })
-    return () => {
-      unsub()
-      posSub()
-    }
-  }, [physApi, setPlayerPosition])
-
-  // Mouse look
   useEffect(() => {
     const handleMouseDown = (e: MouseEvent) => {
       if (e.button === 0) isMouseDown.current = true
@@ -66,11 +34,8 @@ export default function Player() {
     const handleMouseUp = () => { isMouseDown.current = false }
     const handleMouseMove = (e: MouseEvent) => {
       if (!isMouseDown.current) return
-      cameraAngle.current.theta -= e.movementX * 0.003
-      cameraAngle.current.phi = Math.max(
-        0.1,
-        Math.min(1.2, cameraAngle.current.phi + e.movementY * 0.003)
-      )
+      cameraAngle.current.theta -= e.movementX * 0.004
+      cameraAngle.current.phi = Math.max(0.1, Math.min(1.2, cameraAngle.current.phi + e.movementY * 0.003))
     }
     const handleContextMenu = (e: MouseEvent) => e.preventDefault()
 
@@ -87,90 +52,95 @@ export default function Player() {
     }
   }, [])
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     if (inVehicle || isDead) return
 
+    const dt = Math.min(delta, 0.05) // cap delta to prevent huge jumps
     const { forward, backward, left, right, jump, run } = getKeys()
 
     const speed = (run || isRunning) ? PLAYER_CONFIG.runSpeed : PLAYER_CONFIG.walkSpeed
     const angle = cameraAngle.current.theta
 
-    const dir: [number, number, number] = [0, 0, 0]
-    if (forward) {
-      dir[0] -= Math.sin(angle) * speed
-      dir[2] -= Math.cos(angle) * speed
-    }
-    if (backward) {
-      dir[0] += Math.sin(angle) * speed
-      dir[2] += Math.cos(angle) * speed
-    }
-    if (left) {
-      dir[0] -= Math.cos(angle) * speed
-      dir[2] += Math.sin(angle) * speed
-    }
-    if (right) {
-      dir[0] += Math.cos(angle) * speed
-      dir[2] -= Math.sin(angle) * speed
+    // Direction relative to camera
+    let dx = 0, dz = 0
+    if (forward) { dx -= Math.sin(angle); dz -= Math.cos(angle) }
+    if (backward) { dx += Math.sin(angle); dz += Math.cos(angle) }
+    if (left) { dx -= Math.cos(angle); dz += Math.sin(angle) }
+    if (right) { dx += Math.cos(angle); dz -= Math.sin(angle) }
+
+    const len = Math.sqrt(dx * dx + dz * dz)
+    if (len > 0) { dx /= len; dz /= len }
+
+    // Apply movement
+    const targetVX = dx * speed
+    const targetVZ = dz * speed
+
+    // Smooth velocity
+    velocity.current.x += (targetVX - velocity.current.x) * 0.2
+    velocity.current.z += (targetVZ - velocity.current.z) * 0.2
+
+    // Jump
+    if (jump && isGrounded.current) {
+      velocity.current.y = PLAYER_CONFIG.jumpForce
+      isGrounded.current = false
+      peakHeight.current = position.current.y
     }
 
-    const len = Math.sqrt(dir[0] ** 2 + dir[2] ** 2)
-    if (len > speed) {
-      dir[0] = (dir[0] / len) * speed
-      dir[2] = (dir[2] / len) * speed
+    // Gravity
+    if (!isGrounded.current) {
+      velocity.current.y -= 25 * dt // gravity
     }
 
-    physApi.velocity.set(dir[0], velocity.current[1], dir[2])
+    // Move position
+    position.current.x += velocity.current.x * dt
+    position.current.z += velocity.current.z * dt
+    position.current.y += velocity.current.y * dt
 
-    // Jump — only when grounded
-    if (jump && Math.abs(velocity.current[1]) < 0.5) {
-      physApi.velocity.set(dir[0], PLAYER_CONFIG.jumpForce, dir[2])
-    }
+    // Ground collision
+    if (position.current.y <= PLAYER_CONFIG.height / 2) {
+      position.current.y = PLAYER_CONFIG.height / 2
 
-    // Fall damage tracking
-    const currentY = position.current[1]
-    const currentVelY = velocity.current[1]
+      // Fall damage
+      if (!isGrounded.current) {
+        const fallDist = peakHeight.current - position.current.y
+        if (fallDist > 2.5) {
+          takeDamage(Math.floor(fallDist * 4))
+        }
+      }
 
-    // Track peak height while airborne
-    if (currentVelY > 0.5 || currentVelY < -0.5) {
-      setIsFalling(true)
-      if (currentY > peakHeight.current) {
-        peakHeight.current = currentY
+      velocity.current.y = 0
+      isGrounded.current = true
+      peakHeight.current = position.current.y
+    } else {
+      isGrounded.current = false
+      if (position.current.y > peakHeight.current) {
+        peakHeight.current = position.current.y
       }
     }
 
-    // Detect landing
-    const wasFalling = prevVelocityY.current < 0
-    const isLanding = wasFalling && Math.abs(currentVelY) < 0.5
+    // Set falling state
+    setIsFalling(!isGrounded.current && velocity.current.y < -1)
 
-    if (isLanding) {
-      const fallDistance = peakHeight.current - currentY
-      if (fallDistance > 2) {
-        const damage = Math.max(10, Math.floor(fallDistance * 5))
-        takeDamage(damage)
-      }
-      peakHeight.current = currentY
-      setIsFalling(false)
-    }
+    // Clamp to map bounds
+    position.current.x = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, position.current.x))
+    position.current.z = Math.max(-MAP_SIZE, Math.min(MAP_SIZE, position.current.z))
 
-    prevVelocityY.current = currentVelY
+    // Update store
+    setPlayerPosition([position.current.x, position.current.y, position.current.z])
 
-    // Camera follow
-    const [px, py, pz] = position.current
+    // Camera
     const camDist = PLAYER_CONFIG.cameraDistance
     const camH = PLAYER_CONFIG.cameraHeight
-    const targetCamX = px + Math.sin(angle) * camDist
-    const targetCamY = py + camH + Math.sin(cameraAngle.current.phi) * camDist * 0.5
-    const targetCamZ = pz + Math.cos(angle) * camDist
+    const tx = position.current.x + Math.sin(angle) * camDist
+    const ty = position.current.y + camH + Math.sin(cameraAngle.current.phi) * camDist * 0.3
+    const tz = position.current.z + Math.cos(angle) * camDist
 
-    camera.position.lerp(
-      new THREE.Vector3(targetCamX, targetCamY, targetCamZ),
-      0.12
-    )
-    camera.lookAt(px, py + 1, pz)
+    camera.position.lerp(new THREE.Vector3(tx, ty, tz), 0.15)
+    camera.lookAt(position.current.x, position.current.y + 0.8, position.current.z)
 
     // Update mesh
     if (meshRef.current) {
-      meshRef.current.position.set(px, py, pz)
+      meshRef.current.position.copy(position.current)
       meshRef.current.rotation.y = angle
     }
   })
@@ -181,27 +151,21 @@ export default function Player() {
     <group ref={meshRef}>
       {/* Body */}
       <mesh castShadow position={[0, 0.6, 0]}>
-        <capsuleGeometry args={[PLAYER_CONFIG.radius, PLAYER_CONFIG.height - PLAYER_CONFIG.radius * 2, 8, 16]} />
-        <meshStandardMaterial color="#1a3a5c" metalness={0.3} roughness={0.7} />
+        <capsuleGeometry args={[PLAYER_CONFIG.radius, PLAYER_CONFIG.height - PLAYER_CONFIG.radius * 2, 6, 12]} />
+        <meshStandardMaterial color="#2255aa" metalness={0.4} roughness={0.6} />
       </mesh>
       {/* Head */}
-      <mesh castShadow position={[0, 1.45, 0]}>
-        <sphereGeometry args={[0.22, 16, 16]} />
-        <meshStandardMaterial color="#e8c4a0" roughness={0.8} />
+      <mesh castShadow position={[0, 1.42, 0]}>
+        <sphereGeometry args={[0.22, 12, 12]} />
+        <meshStandardMaterial color="#e8c090" roughness={0.7} />
       </mesh>
       {/* Backpack glow */}
       <mesh position={[0, 0.8, -0.25]}>
-        <boxGeometry args={[0.4, 0.6, 0.1]} />
-        <meshStandardMaterial
-          color="#00e5ff"
-          emissive="#00e5ff"
-          emissiveIntensity={0.8}
-          transparent
-          opacity={0.6}
-        />
+        <boxGeometry args={[0.35, 0.55, 0.08]} />
+        <meshStandardMaterial color="#00e5ff" emissive="#00e5ff" emissiveIntensity={1.5} transparent opacity={0.7} />
       </mesh>
-      {/* Player light */}
-      <pointLight color="#00e5ff" intensity={1.5} distance={8} position={[0, 1.5, 0]} />
+      {/* Player light — bright enough to see in dark */}
+      <pointLight ref={playerLightRef} color="#00e5ff" intensity={3} distance={12} position={[0, 1.5, 0]} />
     </group>
   )
 }
