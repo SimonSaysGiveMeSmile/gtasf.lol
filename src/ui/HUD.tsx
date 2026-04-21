@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useGameStore } from '../game/store'
 import { CITIES, VEHICLES } from '../game/constants'
 import type { CityId } from '../game/types'
@@ -19,7 +20,10 @@ export default function HUD() {
  const vehicleSpeed = useGameStore((s) => s.vehicleSpeed)
  const isFalling = useGameStore((s) => s.isFalling)
  const npcs = useGameStore((s) => s.npcs)
-
+ const playerRotation = useGameStore((s) => s.playerRotation)
+ const [showMenu, setShowMenu] = useState(false)
+ const [showCoords, setShowCoords] = useState(true)
+ const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
  const speedPercent = Math.min(100, (vehicleSpeed / 200) * 100)
 
  const healthColor =
@@ -34,18 +38,14 @@ export default function HUD() {
   <>
    {/* Top bar */}
    <div className="hud-topbar">
-    <div className="hud-city-selector">
-     <select
-      value={city}
-      onChange={(e) => setCity(e.target.value as CityId)}
-      className="city-select"
-     >
-      {CITIES.map((c) => (
-       <option key={c.id} value={c.id}>{c.name}</option>
-      ))}
-     </select>
-    </div>
+    {/* Left: Menu button */}
+    <button className="menu-button" onClick={() => setShowMenu(!showMenu)} aria-label="Menu">
+     <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M3 5H17M3 10H17M3 15H17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+     </svg>
+    </button>
 
+    {/* Right: Time toggle + Coords */}
     <div className="hud-right">
      <button
       className={`time-toggle ${timeOfDay}`}
@@ -53,17 +53,77 @@ export default function HUD() {
      >
       {timeOfDay === 'night' ? 'NIGHT' : 'DAY'}
      </button>
-     <div className="hud-coords">
-      <span className="coord-label">POS</span>
-      <span className="coord-value">
-       {coords[0].toFixed(1)}, {coords[1].toFixed(1)}, {coords[2].toFixed(1)}
-      </span>
-     </div>
+     {showCoords && (
+      <div className="hud-coords">
+       <span className="coord-label">POS</span>
+       <span className="coord-value">
+        {coords[0].toFixed(1)}, {coords[1].toFixed(1)}, {coords[2].toFixed(1)}
+       </span>
+      </div>
+     )}
     </div>
    </div>
 
-   {/* Health bar — top left */}
-   <div className="health-container">
+   {/* Settings menu overlay */}
+   {showMenu && (
+    <div className="settings-menu" onClick={() => setShowMenu(false)}>
+     <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="settings-header">
+       <span className="settings-title">SETTINGS</span>
+       <button className="settings-close" onClick={() => setShowMenu(false)}>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+         <path d="M1 1L13 13M13 1L1 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+       </button>
+      </div>
+      <div className="settings-section">
+       <label className="settings-label">CITY</label>
+       <select
+        value={city}
+        onChange={(e) => setCity(e.target.value as CityId)}
+        className="settings-select"
+       >
+        {CITIES.map((c) => (
+         <option key={c.id} value={c.id}>{c.name}</option>
+        ))}
+       </select>
+      </div>
+      <div className="settings-section">
+       <label className="settings-label">TIME</label>
+       <button
+        className={`settings-toggle ${timeOfDay}`}
+        onClick={() => setTimeOfDay(timeOfDay === 'night' ? 'day' : 'night')}
+       >
+        {timeOfDay === 'night' ? 'Night' : 'Day'}
+       </button>
+      </div>
+      <div className="settings-section">
+       <label className="settings-label">SHOW COORDS</label>
+       <button
+        className={`settings-toggle-btn ${showCoords ? 'active' : ''}`}
+        onClick={() => setShowCoords(!showCoords)}
+       >
+        {showCoords ? 'ON' : 'OFF'}
+       </button>
+      </div>
+      <div className="settings-divider" />
+      <div className="settings-section credits">
+       <span className="credits-text">@SimonSaysGiveMeSmile 2026</span>
+       <a
+        href="https://github.com/SimonSaysGiveMeSmile/gtasf.lol"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="credits-link"
+       >
+        github.com/SimonSaysGiveMeSmile/gtasf.lol
+       </a>
+      </div>
+     </div>
+    </div>
+   )}
+
+   {/* Health bar */}
+   <div className={`health-container ${isTouchDevice ? 'hud-topright' : ''}`}>
     <div className="health-label">
      <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, color: 'var(--color-muted)', letterSpacing: 2 }}>
       HEALTH
@@ -83,12 +143,12 @@ export default function HUD() {
     </div>
    </div>
 
-   {/* Minimap — bottom left */}
-   <div className="minimap-container">
+   {/* Minimap — top right on touch, bottom left otherwise */}
+   <div className={`minimap-container ${isTouchDevice ? 'hud-topright-minimap' : ''}`}>
     <div className="minimap-header">
      <span className="minimap-title">RADAR</span>
     </div>
-    <Minimap playerPosition={coords} npcs={npcs} />
+    <Minimap playerPosition={coords} npcs={npcs} playerRotation={playerRotation} />
     <div className="minimap-corners" />
    </div>
 
@@ -167,13 +227,17 @@ export default function HUD() {
 interface MinimapProps {
  playerPosition: [number, number, number]
  npcs: import('../game/types').NPC[]
+ playerRotation: number
 }
 
-function Minimap({ playerPosition, npcs }: MinimapProps) {
+function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
  const RANGE = 100
  const SIZE = 180
  const CENTER = SIZE / 2
  const MAP_SCALE = (SIZE / 2) / RANGE
+
+ const cosR = Math.cos(-playerRotation)
+ const sinR = Math.sin(-playerRotation)
 
  return (
   <div className="minimap-view">
@@ -190,8 +254,8 @@ function Minimap({ playerPosition, npcs }: MinimapProps) {
     {BUILDING_LAYOUT.map((b, i) => {
      const dx = (b.x - playerPosition[0]) * MAP_SCALE
      const dy = (b.z - playerPosition[2]) * MAP_SCALE
-     const sx = CENTER - dx
-     const sy = CENTER - dy
+     const sx = CENTER - dx * cosR + dy * sinR
+     const sy = CENTER - dx * sinR - dy * cosR
      // Only show buildings within minimap range
      if (Math.abs(sx - CENTER) > CENTER || Math.abs(sy - CENTER) > CENTER) return null
      const w = Math.max(1, b.width * MAP_SCALE * 0.5)
@@ -214,8 +278,8 @@ function Minimap({ playerPosition, npcs }: MinimapProps) {
     {npcs.slice(0, 20).map((npc) => {
      const dx = (npc.position[0] - playerPosition[0]) * MAP_SCALE
      const dy = (npc.position[2] - playerPosition[2]) * MAP_SCALE
-     const sx = CENTER - dx
-     const sy = CENTER - dy
+     const sx = CENTER - dx * cosR + dy * sinR
+     const sy = CENTER - dx * sinR - dy * cosR
      if (Math.abs(sx - CENTER) > CENTER || Math.abs(sy - CENTER) > CENTER) return null
      return <circle key={npc.id} cx={sx} cy={sy} r={1.5} fill="rgba(255,255,255,0.4)" />
     })}
