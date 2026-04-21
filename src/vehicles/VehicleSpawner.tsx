@@ -16,50 +16,30 @@ function seededRandom(seed: number): number {
 // ── Collision helpers ────────────────────────────────────────────────────────
 const TREE_RADIUS = 0.4
 
-function checkBuildingCollision(x: number, z: number, r: number) {
+function checkBuildingCollision(px: number, pz: number, r: number) {
   for (const b of LANDSCAPE_CONFIG.buildings) {
     const hx = b.width / 2 + r
     const hz = b.depth / 2 + r
-    const dxb = x - b.x
-    const dzb = z - b.z
-    if (Math.abs(dxb) < hx && Math.abs(dzb) < hz) {
-      return { hit: true, bounceX: dxb, bounceZ: dzb, hx, hz }
+    const dx = px - b.x
+    const dz = pz - b.z
+    if (Math.abs(dx) < hx && Math.abs(dz) < hz) {
+      return { hit: true, hx, hz, bounceX: dx, bounceZ: dz }
     }
   }
-  return { hit: false }
+  return { hit: false, hx: 0, hz: 0, bounceX: 0, bounceZ: 0 }
 }
 
-function checkTreeCollision(x: number, z: number, r: number) {
+function checkTreeCollision(px: number, pz: number, r: number) {
   for (const t of LANDSCAPE_CONFIG.trees) {
-    const dx = x - t.x
-    const dz = z - t.z
+    const dx = px - t.x
+    const dz = pz - t.z
     const dist = Math.sqrt(dx * dx + dz * dz)
-    if (dist < r + TREE_RADIUS) {
-      return { hit: true, dx, dz, dist }
+    const minDist = r + TREE_RADIUS
+    if (dist < minDist && dist > 0.001) {
+      return { hit: true, dist, dx, dz }
     }
   }
-  return { hit: false }
-}
-
-// Shared mutable positions for traffic cars (used for inter-vehicle collision)
-const trafficCarPositions: Map<string, { x: number; z: number }> = new Map()
-function getTrafficPos(id: string) { return trafficCarPositions.get(id) }
-
-function updateTrafficPos(id: string, x: number, z: number) {
-  trafficCarPositions.set(id, { x, z })
-}
-
-function checkCarCollision(x: number, z: number, r: number, selfId: string) {
-  for (const [id, pos] of trafficCarPositions) {
-    if (id === selfId) continue
-    const dx = x - pos.x
-    const dz = z - pos.z
-    const dist = Math.sqrt(dx * dx + dz * dz)
-    if (dist < r * 2 + 0.5) {
-      return { hit: true, dx, dz, dist }
-    }
-  }
-  return { hit: false }
+  return { hit: false, dist: 0, dx: 0, dz: 0 }
 }
 
 // Vehicle mesh components
@@ -334,7 +314,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       : spec.acceleration
 
     if (isGround) {
-      // Ground vehicle physics — WASD aligned to camera direction (180 flip applied)
+      // Ground vehicle physics
       if (playerInThis && fwd) vel.current.z += accel * dt
       if (playerInThis && bwd) vel.current.z -= accel * dt
       if (playerInThis && lft) angle.current += spec.handling * dt * 2

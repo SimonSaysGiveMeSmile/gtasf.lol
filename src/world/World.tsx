@@ -307,7 +307,7 @@ export default function World() {
   return (
     <>
       <fog attach="fog" args={[fogColor, isNight ? 60 : 1400, isNight ? 300 : 3200]} />
-      {!isNight && <Sky sunPosition={[0, 250, -50]} inclination={0.4995} azimuth={0.25} turbidity={1.2} rayleigh={0.2} phi={Math.PI * 0.498} />}
+      {!isNight && <Sky sunPosition={[0, 250, -50]} inclination={0.4995} azimuth={0.25} turbidity={1.2} rayleigh={0.2} />}
       {isNight && <Stars radius={500} depth={50} count={2000} factor={4} saturation={0} fade speed={1} />}
       <ambientLight intensity={ambientIntensity} color={ambientColor} />
       <directionalLight
