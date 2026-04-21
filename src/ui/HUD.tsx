@@ -280,10 +280,6 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
      if (Math.abs(sx - CENTER) > CENTER || Math.abs(sy - CENTER) > CENTER) return null
      return <circle key={npc.id} cx={sx} cy={sy} r={1.5} fill="rgba(255,255,255,0.4)" />
     })}
-
-    {/* Player dot */}
-    <circle cx={CENTER} cy={CENTER} r={4} fill="var(--color-cyan)" />
-    <circle cx={CENTER} cy={CENTER} r={8} fill="none" stroke="var(--color-cyan)" strokeWidth={1} opacity={0.4} />
    </svg>
    <div className="minimap-scale">
     <span>100m</span>
