@@ -17,8 +17,8 @@ async function loadGLTF(url: string): Promise<THREE.Group> {
         group.traverse((c) => {
           if ((c as THREE.Mesh).isMesh) {
             const mesh = c as THREE.Mesh
-            ;(mesh.material as THREE.Material).castShadow = true
-            ;(mesh.material as THREE.Material).receiveShadow = true
+            ;(mesh.material as any).castShadow = true
+            ;(mesh.material as any).receiveShadow = true
             if (Array.isArray(mesh.material)) {
               mesh.material.forEach((m) => {
                 ;(m as any).castShadow = true

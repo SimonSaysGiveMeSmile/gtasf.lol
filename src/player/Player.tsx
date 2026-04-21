@@ -54,22 +54,50 @@ export default function Player() {
   const isGrounded = useRef(true)
   const peakHeight = useRef(FOOT_Y)
   const isMouseDown = useRef(false)
+  const mouseDownTime = useRef(0)
+  const autoDragEnabled = useRef(false)
+  const lastClickTime = useRef(0)
   const lastJumpTime = useRef(0)
 
   const CAM_PHI_MIN = -1.3
   const CAM_PHI_MAX = 0.9
 
   useEffect(() => {
+    const AUTO_HOLD_MS = 1000
+
     const handleMouseDown = (e: MouseEvent) => {
-      if (e.button === 0) isMouseDown.current = true
+      if (e.button === 0) {
+        const now = Date.now()
+        if (autoDragEnabled.current) {
+          autoDragEnabled.current = false
+          lastClickTime.current = now
+          return
+        }
+        if (now - lastClickTime.current < 300) {
+          isMouseDown.current = false
+          lastClickTime.current = now
+          return
+        }
+        isMouseDown.current = true
+        mouseDownTime.current = now
+      }
     }
-    const handleMouseUp = () => { isMouseDown.current = false }
+    const handleMouseUp = () => {
+      isMouseDown.current = false
+    }
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isMouseDown.current) return
-      cameraAngle.current.theta -= e.movementX * 0.004
+      const shouldDrag = isMouseDown.current || autoDragEnabled.current
+      if (!shouldDrag) return
+      if (isMouseDown.current && Date.now() - mouseDownTime.current >= AUTO_HOLD_MS) {
+        autoDragEnabled.current = true
+        isMouseDown.current = false
+        return
+      }
+      // Inverted: right = turn right (positive theta)
+      cameraAngle.current.theta += e.movementX * 0.004
       cameraAngle.current.phi = Math.max(
         CAM_PHI_MIN,
-        Math.min(CAM_PHI_MAX, cameraAngle.current.phi + e.movementY * 0.004)
+        Math.min(CAM_PHI_MAX, cameraAngle.current.phi - e.movementY * 0.004)
       )
     }
     const handleContextMenu = (e: MouseEvent) => e.preventDefault()
@@ -101,7 +129,7 @@ export default function Player() {
       const deltaAlpha = e.alpha - gyroBase.current.alpha
       const deltaBeta = e.beta - gyroBase.current.beta
 
-      cameraAngle.current.theta = -deltaAlpha * (Math.PI / 180)
+      cameraAngle.current.theta = deltaAlpha * (Math.PI / 180)
       cameraAngle.current.phi = Math.max(
         CAM_PHI_MIN,
         Math.min(CAM_PHI_MAX, deltaBeta * (Math.PI / 180) * 0.5)
@@ -305,7 +333,7 @@ export default function Player() {
 
     if (meshRef.current) {
       meshRef.current.position.copy(position.current)
-      meshRef.current.rotation.y = angle
+      meshRef.current.rotation.y = -angle
     }
   })
 

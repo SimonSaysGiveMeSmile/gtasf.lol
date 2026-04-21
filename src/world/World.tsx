@@ -298,16 +298,16 @@ export default function World() {
   const timeOfDay = useGameStore((s) => s.timeOfDay)
   const isNight = timeOfDay === 'night'
 
-  const ambientIntensity = isNight ? 0.4 : 1.0
-  const ambientColor = isNight ? '#1a2a5a' : '#b8ccdd'
-  const fogColor = isNight ? '#050510' : '#c8dce8'
-  const dirIntensity = isNight ? 0.6 : 1.8
-  const dirColor = isNight ? '#3355aa' : '#ffffff'
+  const ambientIntensity = isNight ? 0.3 : 1.5
+  const ambientColor = isNight ? '#1a2a5a' : '#e8dcc8'
+  const fogColor = isNight ? '#050510' : '#b8d4e8'
+  const dirIntensity = isNight ? 0.4 : 3.2
+  const dirColor = isNight ? '#3355aa' : '#fff4d6'
 
   return (
     <>
-      <fog attach="fog" args={[fogColor, isNight ? 60 : 600, isNight ? 300 : 1500]} />
-      {!isNight && <Sky sunPosition={[100, 30, -80]} inclination={0.49} azimuth={0.25} turbidity={3} rayleigh={0.5} />}
+      <fog attach="fog" args={[fogColor, isNight ? 60 : 1200, isNight ? 300 : 3000]} />
+      {!isNight && <Sky sunPosition={[200, 80, -120]} inclination={0.52} azimuth={0.25} turbidity={1.5} rayleigh={0.3} />}
       {isNight && <Stars radius={500} depth={50} count={2000} factor={4} saturation={0} fade speed={1} />}
       <ambientLight intensity={ambientIntensity} color={ambientColor} />
       <directionalLight
@@ -331,7 +331,7 @@ export default function World() {
         </>
       )}
       {!isNight && (
-        <hemisphereLight args={['#88aadd', '#3a6a3a', 0.5]} />
+        <hemisphereLight args={['#9ec8ff', '#a8c87a', 0.7]} />
       )}
       <Ground />
       <Roads />

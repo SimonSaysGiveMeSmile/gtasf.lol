@@ -3,6 +3,7 @@ import { useGameStore } from '../game/store'
 import { CITIES, VEHICLES } from '../game/constants'
 import type { CityId } from '../game/types'
 import { BUILDING_LAYOUT } from '../world/buildings'
+import { LANDSCAPE_CONFIG } from '../game/landscape'
 import './HUD.css'
 
 export default function HUD() {
@@ -246,6 +247,51 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
     {/* Cardinal lines */}
     <line x1={CENTER} y1={0} x2={CENTER} y2={SIZE} stroke="var(--color-border)" strokeWidth={0.3} />
     <line x1={0} y1={CENTER} x2={SIZE} y2={CENTER} stroke="var(--color-border)" strokeWidth={0.3} />
+
+    {/* Horizontal roads */}
+    {LANDSCAPE_CONFIG.hRoads.map((rz, i) => {
+      const dy = (rz - playerPosition[2]) * MAP_SCALE
+      if (Math.abs(dy) > CENTER) return null
+      return <line key={`hr-${i}`} x1={0} y1={CENTER - dy} x2={SIZE} y2={CENTER - dy} stroke="rgba(80,80,80,0.5)" strokeWidth={1} />
+    })}
+    {/* Vertical roads */}
+    {LANDSCAPE_CONFIG.vRoads.map((rx, i) => {
+      const dx = (rx - playerPosition[0]) * MAP_SCALE
+      if (Math.abs(dx) > CENTER) return null
+      return <line key={`vr-${i}`} x1={CENTER - dx} y1={0} x2={CENTER - dx} y2={SIZE} stroke="rgba(80,80,80,0.5)" strokeWidth={1} />
+    })}
+
+    {/* Trees as small green dots */}
+    {LANDSCAPE_CONFIG.trees.map((t, i) => {
+      const dx = (t.x - playerPosition[0]) * MAP_SCALE
+      const dy = (t.z - playerPosition[2]) * MAP_SCALE
+      const sx = CENTER - dx * cosR + dy * sinR
+      const sy = CENTER - dx * sinR - dy * cosR
+      if (Math.abs(sx - CENTER) > CENTER || Math.abs(sy - CENTER) > CENTER) return null
+      return <circle key={`tree-${i}`} cx={sx} cy={sy} r={1} fill="rgba(40,140,40,0.5)" />
+    })}
+
+    {/* Street lamps as small yellow dots */}
+    {LANDSCAPE_CONFIG.streetLamps.map((l, i) => {
+      const dx = (l.x - playerPosition[0]) * MAP_SCALE
+      const dy = (l.z - playerPosition[2]) * MAP_SCALE
+      const sx = CENTER - dx * cosR + dy * sinR
+      const sy = CENTER - dx * sinR - dy * cosR
+      if (Math.abs(sx - CENTER) > CENTER || Math.abs(sy - CENTER) > CENTER) return null
+      return <circle key={`lamp-${i}`} cx={sx} cy={sy} r={1.2} fill="rgba(255,200,50,0.6)" />
+    })}
+
+    {/* Water body */}
+    {(() => {
+      const w = LANDSCAPE_CONFIG.water
+      const wx = (w.x - playerPosition[0]) * MAP_SCALE
+      const wy = (w.z - playerPosition[2]) * MAP_SCALE
+      const wW = w.width * MAP_SCALE
+      const wH = w.height * MAP_SCALE
+      const rx = CENTER - wx + wW / 2
+      const ry = CENTER - wy + wH / 2
+      return <rect x={rx - wW / 2} y={ry - wH / 2} width={wW} height={wH} fill="rgba(0,100,200,0.2)" stroke="rgba(0,150,255,0.3)" strokeWidth={0.5} />
+    })()}
 
     {/* Buildings as small rectangles */}
     {BUILDING_LAYOUT.map((b, i) => {
