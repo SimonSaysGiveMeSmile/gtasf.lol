@@ -108,14 +108,14 @@ export default function HUD() {
       </div>
       <div className="settings-divider" />
       <div className="settings-section credits">
-       <span className="credits-text">@SimonSaysGiveMeSmile 2026</span>
+       <span className="credits-text">@realsimontian 2026</span>
        <a
-        href="https://github.com/SimonSaysGiveMeSmile/gtasf.lol"
+        href="https://github.com/realsimontian/gtasf.lol"
         target="_blank"
         rel="noopener noreferrer"
         className="credits-link"
        >
-        github.com/SimonSaysGiveMeSmile/gtasf.lol
+        github.com/realsimontian/gtasf.lol
        </a>
       </div>
      </div>
@@ -217,9 +217,6 @@ export default function HUD() {
      <span className="falling-text">FALLING</span>
     </div>
    )}
-
-   {/* Scanline overlay */}
-   <div className="scanline-overlay" />
   </>
  )
 }
