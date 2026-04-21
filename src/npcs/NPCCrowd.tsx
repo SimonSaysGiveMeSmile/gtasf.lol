@@ -10,109 +10,214 @@ function seededRandom(seed: number) {
   return x - Math.floor(x)
 }
 
-// ── Humanoid shared body dimensions ──────────────────────────────────────────
-const FOOT_Y = 0
-const LEG_LENGTH = 0.5
-const TORSO_HEIGHT = 0.65
-const TORSO_Y = FOOT_Y + LEG_LENGTH
-const NECK_Y = TORSO_Y + TORSO_HEIGHT
+// ── Body dimensions ────────────────────────────────────────────────────────
+const LEG_LEN = 0.5
+const TORSO_H = 0.65
+const TORSO_Y = LEG_LEN
+const NECK_Y = TORSO_Y + TORSO_H
 const HEAD_Y = NECK_Y + 0.18
-const SHOULDER_Y = TORSO_Y + TORSO_HEIGHT * 0.85
-const ARM_LENGTH = 0.4
+const SHOULDER_Y = TORSO_Y + TORSO_H * 0.85
+const ARM_LEN = 0.4
 
-// ── Humanoid body component ──────────────────────────────────────────────────
-interface HumanoidProps {
-  color: string
-  shirtColor: string
-  pantsColor: string
-  leftArmRef?: React.RefObject<THREE.Group | null>
-  rightArmRef?: React.RefObject<THREE.Group | null>
-  leftLegRef?: React.RefObject<THREE.Group | null>
-  rightLegRef?: React.RefObject<THREE.Group | null>
-  bodyGroupRef?: React.RefObject<THREE.Group | null>
-}
-
-function Humanoid({ color, shirtColor, pantsColor, leftArmRef, rightArmRef, leftLegRef, rightLegRef, bodyGroupRef }: HumanoidProps) {
+// ── Shared body mesh ────────────────────────────────────────────────────────
+function BodyMesh({ shirt, pants, skin }: { shirt: string; pants: string; skin: string }) {
   return (
     <group>
-      <group ref={bodyGroupRef || undefined}>
-        {/* Torso */}
-        <mesh castShadow position={[0, TORSO_Y + TORSO_HEIGHT / 2, 0]}>
-          <boxGeometry args={[0.4, TORSO_HEIGHT, 0.22]} />
-          <meshStandardMaterial color={shirtColor} roughness={0.8} />
-        </mesh>
+      {/* Torso */}
+      <mesh castShadow position={[0, TORSO_Y + TORSO_H / 2, 0]}>
+        <boxGeometry args={[0.4, TORSO_H, 0.22]} />
+        <meshStandardMaterial color={shirt} roughness={0.8} />
+      </mesh>
+      {/* Neck */}
+      <mesh castShadow position={[0, NECK_Y, 0]}>
+        <cylinderGeometry args={[0.05, 0.06, 0.1, 8]} />
+        <meshStandardMaterial color={skin} roughness={0.8} />
+      </mesh>
+      {/* Head */}
+      <mesh castShadow position={[0, HEAD_Y, 0]}>
+        <sphereGeometry args={[0.15, 10, 10]} />
+        <meshStandardMaterial color={skin} roughness={0.7} />
+      </mesh>
+      {/* Arms */}
+      <mesh castShadow position={[-0.25, SHOULDER_Y, 0]}>
+        <capsuleGeometry args={[0.045, ARM_LEN * 0.6, 4, 8]} />
+        <meshStandardMaterial color={shirt} roughness={0.8} />
+      </mesh>
+      <mesh castShadow position={[0.25, SHOULDER_Y, 0]}>
+        <capsuleGeometry args={[0.045, ARM_LEN * 0.6, 4, 8]} />
+        <meshStandardMaterial color={shirt} roughness={0.8} />
+      </mesh>
+      {/* Hands */}
+      <mesh castShadow position={[-0.25, SHOULDER_Y - ARM_LEN - 0.1, 0]}>
+        <sphereGeometry args={[0.04, 8, 8]} />
+        <meshStandardMaterial color={skin} roughness={0.8} />
+      </mesh>
+      <mesh castShadow position={[0.25, SHOULDER_Y - ARM_LEN - 0.1, 0]}>
+        <sphereGeometry args={[0.04, 8, 8]} />
+        <meshStandardMaterial color={skin} roughness={0.8} />
+      </mesh>
+      {/* Legs */}
+      <mesh castShadow position={[-0.1, LEG_LEN / 2, 0]}>
+        <capsuleGeometry args={[0.065, LEG_LEN * 0.65, 4, 8]} />
+        <meshStandardMaterial color={pants} roughness={0.8} />
+      </mesh>
+      <mesh castShadow position={[0.1, LEG_LEN / 2, 0]}>
+        <capsuleGeometry args={[0.065, LEG_LEN * 0.65, 4, 8]} />
+        <meshStandardMaterial color={pants} roughness={0.8} />
+      </mesh>
+      {/* Lower legs */}
+      <mesh castShadow position={[-0.1, 0.12, 0]}>
+        <capsuleGeometry args={[0.045, 0.2, 4, 8]} />
+        <meshStandardMaterial color={pants} roughness={0.8} />
+      </mesh>
+      <mesh castShadow position={[0.1, 0.12, 0]}>
+        <capsuleGeometry args={[0.045, 0.2, 4, 8]} />
+        <meshStandardMaterial color={pants} roughness={0.8} />
+      </mesh>
+      {/* Shoes */}
+      <mesh castShadow position={[-0.1, 0.03, 0.05]}>
+        <boxGeometry args={[0.1, 0.06, 0.18]} />
+        <meshStandardMaterial color="#111111" roughness={0.9} />
+      </mesh>
+      <mesh castShadow position={[0.1, 0.03, 0.05]}>
+        <boxGeometry args={[0.1, 0.06, 0.18]} />
+        <meshStandardMaterial color="#111111" roughness={0.9} />
+      </mesh>
+    </group>
+  )
+}
 
-        {/* Neck */}
-        <mesh castShadow position={[0, NECK_Y, 0]}>
-          <cylinderGeometry args={[0.05, 0.06, 0.1, 8]} />
-          <meshStandardMaterial color={color} roughness={0.8} />
-        </mesh>
+// ── Pedestrian NPC ───────────────────────────────────────────────────────────
+const SHIRTS = ['#cc3333', '#3366cc', '#33aa55', '#ccaa33', '#8833cc', '#cc8844', '#338888']
+const PANTS = ['#1a1a3a', '#2a2a2a', '#3a3020', '#1a2a1a', '#2a1a2a', '#1a1a1a', '#2a3a2a']
 
-        {/* Head */}
-        <mesh castShadow position={[0, HEAD_Y, 0]}>
-          <sphereGeometry args={[0.15, 10, 10]} />
-          <meshStandardMaterial color={color} roughness={0.7} />
-        </mesh>
+interface PedProps {
+  x: number; z: number; color: string; shirt: string; pants: string; seed: number
+}
 
-        {/* Left Arm */}
-        <group ref={leftArmRef || undefined} position={[-0.25, SHOULDER_Y, 0]}>
-          <mesh castShadow position={[0, 0, 0]}>
-            <sphereGeometry args={[0.06, 8, 8]} />
-            <meshStandardMaterial color={shirtColor} roughness={0.8} />
+function PedestrianNPC({ x, z, color, shirt, pants, seed }: PedProps) {
+  const groupRef = useRef<THREE.Group>(null!)
+  const bodyGroupRef = useRef<THREE.Group>(null!)
+  const leftLegRef = useRef<THREE.Group>(null!)
+  const rightLegRef = useRef<THREE.Group>(null!)
+  const leftArmRef = useRef<THREE.Group>(null!)
+  const rightArmRef = useRef<THREE.Group>(null!)
+
+  const pos = useRef(new THREE.Vector3(x, 0, z))
+  const angle = useRef(seededRandom(seed) * Math.PI * 2)
+  const walkSpeed = 2.5 + seededRandom(seed * 13) * 1.5
+  const animTime = useRef(seededRandom(seed * 7) * 100)
+  const timer = useRef(0)
+  const tgtX = useRef(x)
+  const tgtZ = useRef(z)
+  const pLL = useRef(0)
+  const pRL = useRef(0)
+  const pLA = useRef(0)
+  const pRA = useRef(0)
+
+  useFrame((_, delta) => {
+    const dt = Math.min(delta, 0.05)
+    timer.current += dt
+
+    const dx = tgtX.current - pos.current.x
+    const dz = tgtZ.current - pos.current.z
+    const dist = Math.sqrt(dx * dx + dz * dz)
+    const isMoving = dist > 0.3
+
+    if (dist < 1.5 || timer.current > 4) {
+      timer.current = 0
+      tgtX.current = x + (seededRandom(timer.current + seed) - 0.5) * 40
+      tgtZ.current = z + (seededRandom(timer.current + seed * 3) - 0.5) * 40
+    }
+
+    if (dist > 0.1) {
+      pos.current.x += (dx / dist) * walkSpeed * dt
+      pos.current.z += (dz / dist) * walkSpeed * dt
+      angle.current = Math.atan2(dx, dz)
+    }
+
+    // Animation
+    if (isMoving) animTime.current += dt * 9
+    const t = animTime.current
+    const ls = 0.38
+    const ar = 0.28
+    const tLL = Math.sin(t) * ls
+    const tRL = Math.sin(t + Math.PI) * ls
+    const tLA = Math.sin(t + Math.PI) * ar
+    const tRA = Math.sin(t) * ar
+    const lp = 0.22
+    pLL.current += (tLL - pLL.current) * lp
+    pRL.current += (tRL - pRL.current) * lp
+    pLA.current += (tLA - pLA.current) * lp
+    pRA.current += (tRA - pRA.current) * lp
+
+    if (leftLegRef.current) leftLegRef.current.rotation.x = pLL.current
+    if (rightLegRef.current) rightLegRef.current.rotation.x = pRL.current
+    if (leftArmRef.current) leftArmRef.current.rotation.x = pLA.current
+    if (rightArmRef.current) rightArmRef.current.rotation.x = pRA.current
+
+    if (bodyGroupRef.current) {
+      const lean = isMoving ? 0.08 : 0
+      bodyGroupRef.current.rotation.x += (lean - bodyGroupRef.current.rotation.x) * 0.1
+    }
+
+    if (groupRef.current) {
+      groupRef.current.position.set(pos.current.x, 0, pos.current.z)
+      groupRef.current.rotation.y = angle.current
+    }
+  })
+
+  return (
+    <group ref={groupRef}>
+      {/* Body — rotates for lean */}
+      <group ref={bodyGroupRef}>
+        {/* Core body parts */}
+        <BodyMesh shirt={shirt} pants={pants} skin={color} />
+        {/* Animated limbs — pivot at shoulder/hip joints */}
+        <group ref={leftArmRef} position={[-0.25, SHOULDER_Y, 0]}>
+          <mesh castShadow position={[0, -ARM_LEN * 0.3, 0]}>
+            <capsuleGeometry args={[0.045, ARM_LEN * 0.6, 4, 8]} />
+            <meshStandardMaterial color={shirt} roughness={0.8} />
           </mesh>
-          <mesh castShadow position={[0, -ARM_LENGTH * 0.5, 0]}>
-            <capsuleGeometry args={[0.045, ARM_LENGTH * 0.55, 4, 8]} />
-            <meshStandardMaterial color={shirtColor} roughness={0.8} />
-          </mesh>
-          <mesh castShadow position={[0, -ARM_LENGTH - 0.1, 0]}>
-            <capsuleGeometry args={[0.038, 0.14, 4, 8]} />
+          <mesh castShadow position={[0, -ARM_LEN - 0.1, 0]}>
+            <sphereGeometry args={[0.04, 8, 8]} />
             <meshStandardMaterial color={color} roughness={0.8} />
           </mesh>
         </group>
-
-        {/* Right Arm */}
-        <group ref={rightArmRef || undefined} position={[0.25, SHOULDER_Y, 0]}>
-          <mesh castShadow position={[0, 0, 0]}>
-            <sphereGeometry args={[0.06, 8, 8]} />
-            <meshStandardMaterial color={shirtColor} roughness={0.8} />
+        <group ref={rightArmRef} position={[0.25, SHOULDER_Y, 0]}>
+          <mesh castShadow position={[0, -ARM_LEN * 0.3, 0]}>
+            <capsuleGeometry args={[0.045, ARM_LEN * 0.6, 4, 8]} />
+            <meshStandardMaterial color={shirt} roughness={0.8} />
           </mesh>
-          <mesh castShadow position={[0, -ARM_LENGTH * 0.5, 0]}>
-            <capsuleGeometry args={[0.045, ARM_LENGTH * 0.55, 4, 8]} />
-            <meshStandardMaterial color={shirtColor} roughness={0.8} />
-          </mesh>
-          <mesh castShadow position={[0, -ARM_LENGTH - 0.1, 0]}>
-            <capsuleGeometry args={[0.038, 0.14, 4, 8]} />
+          <mesh castShadow position={[0, -ARM_LEN - 0.1, 0]}>
+            <sphereGeometry args={[0.04, 8, 8]} />
             <meshStandardMaterial color={color} roughness={0.8} />
           </mesh>
         </group>
-
-        {/* Left Leg */}
-        <group ref={leftLegRef || undefined} position={[-0.1, 0, 0]}>
-          <mesh castShadow position={[0, LEG_LENGTH * 0.5, 0]}>
-            <capsuleGeometry args={[0.065, LEG_LENGTH * 0.65, 4, 8]} />
-            <meshStandardMaterial color={pantsColor} roughness={0.8} />
+        <group ref={leftLegRef} position={[-0.1, 0, 0]}>
+          <mesh castShadow position={[0, LEG_LEN * 0.35, 0]}>
+            <capsuleGeometry args={[0.065, LEG_LEN * 0.65, 4, 8]} />
+            <meshStandardMaterial color={pants} roughness={0.8} />
           </mesh>
-          <mesh castShadow position={[0, 0.12, 0]}>
+          <mesh castShadow position={[0, LEG_LEN + 0.12, 0]}>
             <capsuleGeometry args={[0.045, 0.2, 4, 8]} />
-            <meshStandardMaterial color={pantsColor} roughness={0.8} />
+            <meshStandardMaterial color={pants} roughness={0.8} />
           </mesh>
-          <mesh castShadow position={[0, 0.03, 0.05]}>
+          <mesh castShadow position={[0, LEG_LEN * 2 + 0.03, 0.05]}>
             <boxGeometry args={[0.1, 0.06, 0.18]} />
             <meshStandardMaterial color="#111111" roughness={0.9} />
           </mesh>
         </group>
-
-        {/* Right Leg */}
-        <group ref={rightLegRef || undefined} position={[0.1, 0, 0]}>
-          <mesh castShadow position={[0, LEG_LENGTH * 0.5, 0]}>
-            <capsuleGeometry args={[0.065, LEG_LENGTH * 0.65, 4, 8]} />
-            <meshStandardMaterial color={pantsColor} roughness={0.8} />
+        <group ref={rightLegRef} position={[0.1, 0, 0]}>
+          <mesh castShadow position={[0, LEG_LEN * 0.35, 0]}>
+            <capsuleGeometry args={[0.065, LEG_LEN * 0.65, 4, 8]} />
+            <meshStandardMaterial color={pants} roughness={0.8} />
           </mesh>
-          <mesh castShadow position={[0, 0.12, 0]}>
+          <mesh castShadow position={[0, LEG_LEN + 0.12, 0]}>
             <capsuleGeometry args={[0.045, 0.2, 4, 8]} />
-            <meshStandardMaterial color={pantsColor} roughness={0.8} />
+            <meshStandardMaterial color={pants} roughness={0.8} />
           </mesh>
-          <mesh castShadow position={[0, 0.03, 0.05]}>
+          <mesh castShadow position={[0, LEG_LEN * 2 + 0.03, 0.05]}>
             <boxGeometry args={[0.1, 0.06, 0.18]} />
             <meshStandardMaterial color="#111111" roughness={0.9} />
           </mesh>
@@ -122,101 +227,7 @@ function Humanoid({ color, shirtColor, pantsColor, leftArmRef, rightArmRef, left
   )
 }
 
-// ── Pedestrian NPC ───────────────────────────────────────────────────────────
-interface PedestrianProps {
-  x: number; z: number; color: string; shirtColor: string; pantsColor: string; seed: number
-}
-
-function PedestrianNPC({ x, z, color, shirtColor, pantsColor, seed }: PedestrianProps) {
-  const meshRef = useRef<THREE.Group>(null)
-  const leftArmRef = useRef<THREE.Group>(null)
-  const rightArmRef = useRef<THREE.Group>(null)
-  const leftLegRef = useRef<THREE.Group>(null)
-  const rightLegRef = useRef<THREE.Group>(null)
-  const bodyGroupRef = useRef<THREE.Group>(null)
-
-  const pos = useRef(new THREE.Vector3(x, FOOT_Y, z))
-  const angle = useRef(seededRandom(seed) * Math.PI * 2)
-  const walkSpeed = 2.5 + seededRandom(seed * 13) * 1.5
-  const animTime = useRef(seededRandom(seed * 7) * 100)
-  const timer = useRef(0)
-  const targetX = useRef(x)
-  const targetZ = useRef(z)
-  const prevLArm = useRef(0)
-  const prevRArm = useRef(0)
-  const prevLLeg = useRef(0)
-  const prevRLeg = useRef(0)
-
-  useFrame((_, delta) => {
-    const dt = Math.min(delta, 0.05)
-    timer.current += dt
-
-    const dx = targetX.current - pos.current.x
-    const dz = targetZ.current - pos.current.z
-    const dist = Math.sqrt(dx * dx + dz * dz)
-
-    const isMoving = dist > 0.3
-    const speed = isMoving ? walkSpeed : 0
-
-    if (dist < 1.5 || timer.current > 4) {
-      timer.current = 0
-      targetX.current = x + (seededRandom(timer.current + seed) - 0.5) * 40
-      targetZ.current = z + (seededRandom(timer.current + seed * 3) - 0.5) * 40
-    }
-
-    if (dist > 0.1) {
-      pos.current.x += (dx / dist) * speed * dt
-      pos.current.z += (dz / dist) * speed * dt
-      angle.current = Math.atan2(dx, dz)
-    }
-
-    // Animation
-    if (isMoving) animTime.current += dt * 9
-    const t = animTime.current
-    const ls = 0.38
-    const as = 0.28
-    const tLL = Math.sin(t) * ls
-    const tRL = Math.sin(t + Math.PI) * ls
-    const tLA = Math.sin(t + Math.PI) * as
-    const tRA = Math.sin(t) * as
-    prevLLeg.current += (tLL - prevLLeg.current) * 0.22
-    prevRLeg.current += (tRL - prevRLeg.current) * 0.22
-    prevLArm.current += (tLA - prevLArm.current) * 0.22
-    prevRArm.current += (tRA - prevRArm.current) * 0.22
-
-    if (leftLegRef.current) leftLegRef.current.rotation.x = prevLLeg.current
-    if (rightLegRef.current) rightLegRef.current.rotation.x = prevRLeg.current
-    if (leftArmRef.current) leftArmRef.current.rotation.x = prevLArm.current
-    if (rightArmRef.current) rightArmRef.current.rotation.x = prevRArm.current
-
-    if (bodyGroupRef.current) {
-      const leanTarget = isMoving ? 0.08 : 0
-      bodyGroupRef.current.rotation.x += (leanTarget - bodyGroupRef.current.rotation.x) * 0.1
-    }
-
-    if (meshRef.current) {
-      meshRef.current.position.set(pos.current.x, 0, pos.current.z)
-      meshRef.current.rotation.y = angle.current
-    }
-  })
-
-  return (
-    <group ref={meshRef}>
-      <Humanoid
-        color={color}
-        shirtColor={shirtColor}
-        pantsColor={pantsColor}
-        leftArmRef={leftArmRef}
-        rightArmRef={rightArmRef}
-        leftLegRef={leftLegRef}
-        rightLegRef={rightLegRef}
-        bodyGroupRef={bodyGroupRef}
-      />
-    </group>
-  )
-}
-
-// ── Traffic Car NPC ───────────────────────────────────────────────────────────
+// ── Traffic Car NPC ─────────────────────────────────────────────────────────
 function TrafficCar({ x, z, rotation, color }: { x: number; z: number; rotation: number; color: string }) {
   const meshRef = useRef<THREE.Group>(null)
   const carAngle = useRef(rotation)
@@ -261,15 +272,12 @@ function TrafficCar({ x, z, rotation, color }: { x: number; z: number; rotation:
   )
 }
 
-// ── NPC Crowd ────────────────────────────────────────────────────────────────
-const SHIRT_COLORS = ['#cc3333', '#3366cc', '#33aa55', '#ccaa33', '#8833cc', '#cc8844', '#338888']
-const PANTS_COLORS = ['#1a1a3a', '#2a2a2a', '#3a3020', '#1a2a1a', '#2a1a2a', '#1a1a1a', '#2a3a2a']
-
+// ── NPC Crowd ───────────────────────────────────────────────────────────────
 export default function NPCCrowd() {
   const setNPCs = useGameStore((s) => s.setNPCs)
 
   const { pedestrians, cars } = useMemo(() => {
-    const peds: { id: string; x: number; z: number; color: string; shirtColor: string; pantsColor: string; seed: number }[] = []
+    const peds: { id: string; x: number; z: number; color: string; shirt: string; pants: string; seed: number }[] = []
     const cars: { id: string; x: number; z: number; rotation: number; color: string }[] = []
     const carColors = ['#334488', '#883333', '#338833', '#aaaaaa', '#444444', '#665522']
 
@@ -282,8 +290,8 @@ export default function NPCCrowd() {
         x: Math.cos(ang) * dist,
         z: Math.sin(ang) * dist,
         color: NPC_COLORS[i % NPC_COLORS.length],
-        shirtColor: SHIRT_COLORS[i % SHIRT_COLORS.length],
-        pantsColor: PANTS_COLORS[i % PANTS_COLORS.length],
+        shirt: SHIRTS[i % SHIRTS.length],
+        pants: PANTS[i % PANTS.length],
         seed,
       })
     }
@@ -314,11 +322,11 @@ export default function NPCCrowd() {
 
   return (
     <>
-      {pedestrians.map((p) => (
-        <PedestrianNPC key={p.id} x={p.x} z={p.z} color={p.color} shirtColor={p.shirtColor} pantsColor={p.pantsColor} seed={p.seed} />
+      {pedestrians.map(p => (
+        <PedestrianNPC key={p.id} {...p} />
       ))}
-      {cars.map((c) => (
-        <TrafficCar key={c.id} x={c.x} z={c.z} rotation={c.rotation} color={c.color} />
+      {cars.map(c => (
+        <TrafficCar key={c.id} {...c} />
       ))}
     </>
   )
