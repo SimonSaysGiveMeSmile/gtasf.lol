@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { useGameStore } from '../game/store'
 import type { VehicleType } from '../game/types'
 import { VEHICLES, MAP_SIZE, VEHICLE_COUNT } from '../game/constants'
+import { makeVehiclePaintTexture } from '../utils/textureGen'
 
 // Seeded random for deterministic spawns
 function seededRandom(seed: number): number {
@@ -23,19 +24,21 @@ function Wheel({ position }: { position: [number, number, number] }) {
 }
 
 function TeslaCybertruck({ color }: { color: string }) {
+  const paintTex = useMemo(() => makeVehiclePaintTexture(color, 0), [color])
+  const glassTex = useMemo(() => makeVehiclePaintTexture('#003344', 1), [])
   return (
     <group>
       <mesh castShadow position={[0, 0.7, 0]}>
         <boxGeometry args={[2.2, 0.8, 4.8]} />
-        <meshStandardMaterial color={color} metalness={0.8} roughness={0.2} />
+        <meshStandardMaterial color={color} map={paintTex} metalness={0.8} roughness={0.2} />
       </mesh>
       <mesh castShadow position={[0, 1.15, -0.3]}>
         <boxGeometry args={[2.0, 0.5, 2.8]} />
-        <meshStandardMaterial color={color} metalness={0.8} roughness={0.2} />
+        <meshStandardMaterial color={color} map={paintTex} metalness={0.8} roughness={0.2} />
       </mesh>
       <mesh position={[0, 1.1, 1.0]} rotation={[-0.3, 0, 0]}>
         <boxGeometry args={[1.9, 0.02, 1.2]} />
-        <meshStandardMaterial color="#003344" metalness={0.9} roughness={0.1} transparent opacity={0.6} />
+        <meshStandardMaterial color="#003344" map={glassTex} metalness={0.9} roughness={0.1} transparent opacity={0.6} />
       </mesh>
       <mesh position={[0, 1.1, -1.5]} rotation={[0.2, 0, 0]}>
         <boxGeometry args={[1.9, 0.02, 0.8]} />
@@ -64,19 +67,20 @@ function TeslaCybertruck({ color }: { color: string }) {
 }
 
 function TeslaModelS({ color }: { color: string }) {
+  const paintTex = useMemo(() => makeVehiclePaintTexture(color, 2), [color])
   return (
     <group>
       <mesh castShadow position={[0, 0.55, 0]}>
         <boxGeometry args={[1.9, 0.6, 4.4]} />
-        <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
+        <meshStandardMaterial color={color} map={paintTex} metalness={0.6} roughness={0.3} />
       </mesh>
       <mesh castShadow position={[0, 0.7, 1.4]} rotation={[-0.15, 0, 0]}>
         <boxGeometry args={[1.85, 0.3, 1.2]} />
-        <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
+        <meshStandardMaterial color={color} map={paintTex} metalness={0.6} roughness={0.3} />
       </mesh>
       <mesh castShadow position={[0, 0.9, -0.2]}>
         <boxGeometry args={[1.8, 0.5, 2.2]} />
-        <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
+        <meshStandardMaterial color={color} map={paintTex} metalness={0.6} roughness={0.3} />
       </mesh>
       <mesh position={[0, 0.9, 0.8]} rotation={[-0.3, 0, 0]}>
         <boxGeometry args={[1.75, 0.02, 1.0]} />
@@ -93,15 +97,16 @@ function TeslaModelS({ color }: { color: string }) {
 }
 
 function SportsCar({ color }: { color: string }) {
+  const paintTex = useMemo(() => makeVehiclePaintTexture(color, 3), [color])
   return (
     <group>
       <mesh castShadow position={[0, 0.4, 0]}>
         <boxGeometry args={[1.9, 0.4, 4.2]} />
-        <meshStandardMaterial color={color} metalness={0.7} roughness={0.2} />
+        <meshStandardMaterial color={color} map={paintTex} metalness={0.7} roughness={0.2} />
       </mesh>
       <mesh castShadow position={[0, 0.65, -0.1]}>
         <boxGeometry args={[1.7, 0.35, 2.5]} />
-        <meshStandardMaterial color={color} metalness={0.7} roughness={0.2} />
+        <meshStandardMaterial color={color} map={paintTex} metalness={0.7} roughness={0.2} />
       </mesh>
       <mesh position={[0, 0.75, -2.0]}>
         <boxGeometry args={[1.6, 0.08, 0.3]} />
@@ -116,15 +121,16 @@ function SportsCar({ color }: { color: string }) {
 }
 
 function SUV({ color }: { color: string }) {
+  const paintTex = useMemo(() => makeVehiclePaintTexture(color, 4), [color])
   return (
     <group>
       <mesh castShadow position={[0, 0.7, 0]}>
         <boxGeometry args={[2.0, 0.8, 4.3]} />
-        <meshStandardMaterial color={color} metalness={0.5} roughness={0.5} />
+        <meshStandardMaterial color={color} map={paintTex} metalness={0.5} roughness={0.5} />
       </mesh>
       <mesh castShadow position={[0, 1.25, 0]}>
         <boxGeometry args={[1.9, 0.6, 2.5]} />
-        <meshStandardMaterial color={color} metalness={0.5} roughness={0.5} />
+        <meshStandardMaterial color={color} map={paintTex} metalness={0.5} roughness={0.5} />
       </mesh>
       <Wheel position={[0.85, 0.35, 1.3]} />
       <Wheel position={[-0.85, 0.35, 1.3]} />
@@ -135,15 +141,16 @@ function SUV({ color }: { color: string }) {
 }
 
 function Sedan({ color }: { color: string }) {
+  const paintTex = useMemo(() => makeVehiclePaintTexture(color, 5), [color])
   return (
     <group>
       <mesh castShadow position={[0, 0.5, 0]}>
         <boxGeometry args={[1.85, 0.55, 4.0]} />
-        <meshStandardMaterial color={color} metalness={0.5} roughness={0.4} />
+        <meshStandardMaterial color={color} map={paintTex} metalness={0.5} roughness={0.4} />
       </mesh>
       <mesh castShadow position={[0, 0.85, -0.1]}>
         <boxGeometry args={[1.7, 0.45, 2.0]} />
-        <meshStandardMaterial color={color} metalness={0.5} roughness={0.4} />
+        <meshStandardMaterial color={color} map={paintTex} metalness={0.5} roughness={0.4} />
       </mesh>
       <Wheel position={[0.78, 0.33, 1.2]} />
       <Wheel position={[-0.78, 0.33, 1.2]} />
@@ -154,11 +161,12 @@ function Sedan({ color }: { color: string }) {
 }
 
 function Plane({ color }: { color: string }) {
+  const paintTex = useMemo(() => makeVehiclePaintTexture(color, 6), [color])
   return (
     <group>
       <mesh castShadow position={[0, 0.6, 0]}>
         <boxGeometry args={[1.2, 1.0, 7.0]} />
-        <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
+        <meshStandardMaterial color={color} map={paintTex} metalness={0.6} roughness={0.3} />
       </mesh>
       <mesh castShadow position={[0, 1.0, 2.8]}>
         <boxGeometry args={[1.1, 0.6, 2.0]} />
@@ -166,26 +174,27 @@ function Plane({ color }: { color: string }) {
       </mesh>
       <mesh castShadow position={[0, 0.5, 0]}>
         <boxGeometry args={[10.0, 0.15, 2.5]} />
-        <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
+        <meshStandardMaterial color={color} map={paintTex} metalness={0.6} roughness={0.3} />
       </mesh>
       <mesh castShadow position={[0, 1.2, -3.2]}>
         <boxGeometry args={[0.15, 1.2, 1.5]} />
-        <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
+        <meshStandardMaterial color={color} map={paintTex} metalness={0.6} roughness={0.3} />
       </mesh>
       <mesh castShadow position={[0, 0.7, -3.5]}>
         <boxGeometry args={[3.5, 0.1, 1.0]} />
-        <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
+        <meshStandardMaterial color={color} map={paintTex} metalness={0.6} roughness={0.3} />
       </mesh>
     </group>
   )
 }
 
 function Boat({ color }: { color: string }) {
+  const paintTex = useMemo(() => makeVehiclePaintTexture(color, 7), [color])
   return (
     <group>
       <mesh castShadow position={[0, 0.3, 0]}>
         <boxGeometry args={[2.2, 0.6, 4.8]} />
-        <meshStandardMaterial color={color} roughness={0.6} />
+        <meshStandardMaterial color={color} map={paintTex} roughness={0.6} />
       </mesh>
       <mesh castShadow position={[0, 0.8, -0.3]}>
         <boxGeometry args={[1.8, 0.8, 2.2]} />
@@ -337,8 +346,8 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
 
       // Move forward in direction of angle
       const speed = throttleRef.current * accel * dt
-      pos.current.x -= Math.sin(angle.current) * speed * dt * 10
-      pos.current.z -= Math.cos(angle.current) * speed * dt * 10
+      pos.current.x += Math.sin(angle.current) * speed * dt * 10
+      pos.current.z += Math.cos(angle.current) * speed * dt * 10
 
       // Lift
       if (throttleRef.current > 0.1) {
@@ -380,20 +389,22 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       const height = isPlane ? pos.current.y : (isBoat ? 1.2 : 1.0)
       setPlayerPosition([pos.current.x, height, pos.current.z])
 
-      // Camera follow
+      // Camera follow — chase mode: distance and height scale with speed
+      const speedNorm = Math.min(1, Math.abs(vel.current.z) / Math.max(1, spec.maxSpeed * 0.05))
       if (isPlane) {
-        const camDist = 15
+        const camDist = 15 + speedNorm * 10
         const tx = pos.current.x + Math.sin(angle.current) * camDist
-        const ty = pos.current.y + 5
+        const ty = pos.current.y + 5 + speedNorm * 5
         const tz = pos.current.z + Math.cos(angle.current) * camDist
-        camera.position.lerp(new THREE.Vector3(tx, ty, tz), 0.08)
+        camera.position.lerp(new THREE.Vector3(tx, ty, tz), 0.06)
         camera.lookAt(pos.current.x, pos.current.y, pos.current.z)
       } else {
-        const camDist = 8
+        const camDist = 6 + speedNorm * 8
+        const camH = 2.5 + speedNorm * 3
         const tx = pos.current.x + Math.sin(angle.current) * camDist
-        const ty = pos.current.y + 3
+        const ty = pos.current.y + camH
         const tz = pos.current.z + Math.cos(angle.current) * camDist
-        camera.position.lerp(new THREE.Vector3(tx, ty, tz), 0.1)
+        camera.position.lerp(new THREE.Vector3(tx, ty, tz), 0.08)
         camera.lookAt(pos.current.x, pos.current.y + 0.5, pos.current.z)
       }
     }

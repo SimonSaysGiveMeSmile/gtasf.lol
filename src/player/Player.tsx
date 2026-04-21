@@ -1,10 +1,11 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useMemo, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '../game/store'
 import { PLAYER_CONFIG, MAP_SIZE } from '../game/constants'
 import { BUILDING_LAYOUT } from '../world/buildings'
+import { makeClothingTexture } from '../utils/textureGen'
 
 export default function Player() {
   const meshRef = useRef<THREE.Group>(null)
@@ -242,13 +243,15 @@ export default function Player() {
     }
   })
 
+  const clothingTex = useMemo(() => makeClothingTexture('#2255aa', 0), [])
+
   if (inVehicle || isDead) return null
 
   return (
     <group ref={meshRef}>
       <mesh castShadow position={[0, 0.6, 0]}>
         <capsuleGeometry args={[PLAYER_CONFIG.radius, PLAYER_CONFIG.height - PLAYER_CONFIG.radius * 2, 6, 12]} />
-        <meshStandardMaterial color="#2255aa" metalness={0.4} roughness={0.6} />
+        <meshStandardMaterial color="#2255aa" map={clothingTex} metalness={0.4} roughness={0.6} />
       </mesh>
       <mesh castShadow position={[0, 1.42, 0]}>
         <sphereGeometry args={[0.22, 12, 12]} />

@@ -1,7 +1,7 @@
 import { Canvas } from '@react-three/fiber'
 import { KeyboardControls } from '@react-three/drei'
 import { Physics } from '@react-three/cannon'
-import { Suspense } from 'react'
+import { Suspense, useEffect } from 'react'
 import World from './world/World'
 import Player from './player/Player'
 import VehicleSpawner from './vehicles/VehicleSpawner'
@@ -10,6 +10,8 @@ import HUD from './ui/HUD'
 import InputManager from './systems/InputManager'
 import TouchControls from './ui/TouchControls'
 import { useGameStore } from './game/store'
+import { preloadPolyHavenTextures } from './utils/texturePipeline'
+import { preloadKenneyAssets } from './utils/assetPipeline'
 
 const keyMap = [
  { name: 'forward', keys: ['KeyW', 'ArrowUp'] },
@@ -25,6 +27,11 @@ const keyMap = [
 
 export default function App() {
  const isDead = useGameStore((s) => s.isDead)
+
+ useEffect(() => {
+  preloadPolyHavenTextures()
+  preloadKenneyAssets()
+ }, [])
 
  return (
   <KeyboardControls map={keyMap}>

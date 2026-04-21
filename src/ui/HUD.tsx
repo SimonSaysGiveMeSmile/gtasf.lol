@@ -232,6 +232,7 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
  const SIZE = 180
  const CENTER = SIZE / 2
  const MAP_SCALE = (SIZE / 2) / RANGE
+  const ROAD_POSITIONS = [-120, -60, 0, 60, 120]
 
  const cosR = Math.cos(-playerRotation)
  const sinR = Math.sin(-playerRotation)
@@ -281,7 +282,22 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
      return <circle key={npc.id} cx={sx} cy={sy} r={1.5} fill="rgba(255,255,255,0.4)" />
     })}
 
-    {/* Player dot */}
+    {/* Road grid — horizontal lines */}
+{ROAD_POSITIONS.map((rz) => {
+  const dy = (rz - playerPosition[2]) * MAP_SCALE
+  const sy = CENTER - dy * cosR
+  if (Math.abs(sy - CENTER) > CENTER) return null
+  return <line key={`hr-${rz}`} x1={0} y1={sy} x2={SIZE} y2={sy} stroke="rgba(255,221,0,0.35)" strokeWidth={0.8} />
+})}
+{/* Road grid — vertical lines */}
+{ROAD_POSITIONS.map((rx) => {
+  const dx = (rx - playerPosition[0]) * MAP_SCALE
+  const sx = CENTER - dx * cosR
+  if (Math.abs(sx - CENTER) > CENTER) return null
+  return <line key={`vr-${rx}`} x1={sx} y1={0} x2={sx} y2={SIZE} stroke="rgba(255,221,0,0.35)" strokeWidth={0.8} />
+})}
+
+{/* Player dot */}
     <circle cx={CENTER} cy={CENTER} r={4} fill="var(--color-cyan)" />
     <circle cx={CENTER} cy={CENTER} r={8} fill="none" stroke="var(--color-cyan)" strokeWidth={1} opacity={0.4} />
    </svg>
