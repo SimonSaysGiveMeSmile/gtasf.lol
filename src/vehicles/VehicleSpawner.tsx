@@ -276,60 +276,62 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
     const lft = left || touch.left
     const rgt = right || touch.right
     const brk = brake || touch.brake
-    const bst = boost || touch.run
+    const bst = playerInThis && (boost || touch.boost || touch.run)
     const intract = interact || touch.interact
 
-    const accel = bst ? spec.acceleration * 1.15 : spec.acceleration
+    const MAX_SPEED = 30 // m/s hard cap
 
     if (isGround) {
       // Ground vehicle physics
-      if (fwd) vel.current.z -= accel * dt
-      if (bwd) vel.current.z += accel * dt
-      if (lft) angle.current += spec.handling * dt * 2
-      if (rgt) angle.current -= spec.handling * dt * 2
+      if (playerInThis && fwd) vel.current.z -= accel * dt
+      if (playerInThis && bwd) vel.current.z += accel * dt
+      if (playerInThis && lft) angle.current += spec.handling * dt * 2
+      if (playerInThis && rgt) angle.current -= spec.handling * dt * 2
 
       // Drag
       vel.current.z *= 0.97
 
       // Clamp speed
-      const maxSpd = spec.maxSpeed * 0.05
+      const maxSpd = Math.min(spec.maxSpeed * 0.05, MAX_SPEED)
       vel.current.z = Math.max(-maxSpd, Math.min(maxSpd, vel.current.z))
 
-      if (brk) vel.current.z *= 0.9
+      if (playerInThis && brk) vel.current.z *= 0.9
 
       // Move
       pos.current.x -= Math.sin(angle.current) * vel.current.z * dt * 60
       pos.current.z -= Math.cos(angle.current) * vel.current.z * dt * 60
       pos.current.y = 0
 
-      setVehicleSpeed(Math.abs(vel.current.z) * 50)
+      if (playerInThis) setVehicleSpeed(Math.abs(vel.current.z) * 3.6)
 
     } else if (isBoat) {
       // Boat physics - slower, more floaty
-      if (fwd) vel.current.z -= accel * dt
-      if (bwd) vel.current.z += accel * dt
-      if (lft) angle.current += spec.handling * dt * 1.5
-      if (rgt) angle.current -= spec.handling * dt * 1.5
+      if (playerInThis && fwd) vel.current.z -= accel * dt
+      if (playerInThis && bwd) vel.current.z += accel * dt
+      if (playerInThis && lft) angle.current += spec.handling * dt * 1.5
+      if (playerInThis && rgt) angle.current -= spec.handling * dt * 1.5
 
       vel.current.z *= 0.96
-      const maxSpd = spec.maxSpeed * 0.04
+      const maxSpd = Math.min(spec.maxSpeed * 0.04, MAX_SPEED)
       vel.current.z = Math.max(-maxSpd, Math.min(maxSpd, vel.current.z))
 
-      if (brk) vel.current.z *= 0.9
+      if (playerInThis && brk) vel.current.z *= 0.9
 
       pos.current.x -= Math.sin(angle.current) * vel.current.z * dt * 60
       pos.current.z -= Math.cos(angle.current) * vel.current.z * dt * 60
-      pos.current.y = Math.sin(Date.now() * 0.002) * 0.1 // slight bob
+      pos.current.y = Math.sin(Date.now() * 0.002) * 0.1
 
-      setVehicleSpeed(Math.abs(vel.current.z) * 50)
-      setIsFlying(false)
-      setAltitude(0)
+      if (playerInThis) {
+        setVehicleSpeed(Math.abs(vel.current.z) * 3.6)
+        setIsFlying(false)
+        setAltitude(0)
+      }
 
     } else {
       // Plane physics
-      if (fwd) throttleRef.current = Math.min(1.0, throttleRef.current + 0.03)
-      if (bwd) throttleRef.current = Math.max(0, throttleRef.current - 0.02)
-      if (!fwd && !bwd) throttleRef.current = Math.max(0, throttleRef.current - 0.01)
+      if (playerInThis && fwd) throttleRef.current = Math.min(1.0, throttleRef.current + 0.03)
+      if (playerInThis && bwd) throttleRef.current = Math.max(0, throttleRef.current - 0.02)
+      if (!playerInThis || (!fwd && !bwd)) throttleRef.current = Math.max(0, throttleRef.current - 0.01)
 
       // Move forward in direction of angle
       const speed = throttleRef.current * accel * dt
@@ -347,13 +349,15 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
 
       // Pitch/yaw
       pitchRef.current *= 0.92
-      if (lft) angle.current += spec.handling * dt
-      if (rgt) angle.current -= spec.handling * dt
+      if (playerInThis && lft) angle.current += spec.handling * dt
+      if (playerInThis && rgt) angle.current -= spec.handling * dt
 
       const hSpeed = Math.sqrt(vel.current.x ** 2 + vel.current.z ** 2)
-      setVehicleSpeed(hSpeed * 50)
-      setAltitude(Math.round(pos.current.y))
-      setIsFlying(pos.current.y > 2)
+      if (playerInThis) {
+        setVehicleSpeed(hSpeed * 3.6)
+        setAltitude(Math.round(pos.current.y))
+        setIsFlying(pos.current.y > 2)
+      }
     }
 
     // Map bounds
@@ -415,7 +419,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       const dist = Math.sqrt(dx * dx + dz * dz)
 
       if (playerInThis) {
-        exitVehicle()
+        exitVehicle([pos.current.x, isBoat ? 1.2 : 1.0, pos.current.z])
         interactCooldown.current = true
         setTimeout(() => { interactCooldown.current = false }, 500)
       } else if (dist < 4) {

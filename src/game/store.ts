@@ -22,6 +22,7 @@ interface GameState {
  // Vehicles
  activeVehicles: string[]
  vehicleSpeed: number
+ exitVehiclePosition: [number, number, number] | null
 
  // Interaction
  nearbyInteractable: { type: string; id: string } | null
@@ -46,7 +47,7 @@ interface GameState {
  setInVehicle: (id: string | null) => void
  setRunning: (running: boolean) => void
  enterVehicle: (id: string) => void
- exitVehicle: () => void
+ exitVehicle: (exitPos?: [number, number, number]) => void
  die: () => void
  respawn: () => void
  setCity: (city: CityId) => void
@@ -103,7 +104,7 @@ export const useGameStore = create<GameState>((set, get) => ({
  setRunning: (running) => set({ isRunning: running }),
 
  enterVehicle: (id) => set({ inVehicle: id, playerMode: 'vehicle' }),
- exitVehicle: () => set({ inVehicle: null, playerMode: 'onfoot', vehicleSpeed: 0 }),
+ exitVehicle: (exitPos) => set({ inVehicle: null, playerMode: 'onfoot', vehicleSpeed: 0, exitVehiclePosition: exitPos || null }),
  setInVehicle: (id) => set({ inVehicle: id }),
 
  die: () => {
@@ -147,4 +148,5 @@ export const useGameStore = create<GameState>((set, get) => ({
  setVehicleSpeed: (speed) => set({ vehicleSpeed: speed }),
  setIsFlying: (flying) => set({ isFlying: flying }),
  setAltitude: (altitude) => set({ altitude }),
+ exitVehiclePosition: null,
 }))
