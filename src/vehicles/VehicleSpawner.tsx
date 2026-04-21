@@ -276,10 +276,12 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
     const lft = left || touch.left
     const rgt = right || touch.right
     const brk = brake || touch.brake
-    const bst = playerInThis && (boost || touch.boost || touch.run)
     const intract = interact || touch.interact
 
     const MAX_SPEED = 30 // m/s hard cap
+    const accel = playerInThis && (boost || touch.boost || touch.run)
+      ? spec.acceleration * 1.15
+      : spec.acceleration
 
     if (isGround) {
       // Ground vehicle physics
