@@ -156,13 +156,15 @@ export default function Player() {
     const rn = run || touch.run || isRunning
 
     const speed = rn ? PLAYER_CONFIG.runSpeed : PLAYER_CONFIG.walkSpeed
+    // Camera angle is negated to flip 180 degrees (WASD directions match screen up)
     const angle = cameraAngle.current.theta
+    const camAngle = -angle
 
     let dx = 0, dz = 0
-    if (fwd) { dx -= Math.sin(angle); dz -= Math.cos(angle) }
-    if (bwd) { dx += Math.sin(angle); dz += Math.cos(angle) }
-    if (lft) { dx -= Math.cos(angle); dz += Math.sin(angle) }
-    if (rgt) { dx += Math.cos(angle); dz -= Math.sin(angle) }
+    if (fwd) { dx += Math.sin(angle); dz += Math.cos(angle) }
+    if (bwd) { dx -= Math.sin(angle); dz -= Math.cos(angle) }
+    if (lft) { dx += Math.cos(angle); dz -= Math.sin(angle) }
+    if (rgt) { dx -= Math.cos(angle); dz += Math.sin(angle) }
 
     const len = Math.sqrt(dx * dx + dz * dz)
     const isMoving = len > 0.1
@@ -253,9 +255,9 @@ export default function Player() {
     const camDist = PLAYER_CONFIG.cameraDistance
     const camH = PLAYER_CONFIG.cameraHeight
     const phi = cameraAngle.current.phi
-    const tx = position.current.x + Math.sin(angle) * camDist
+    const tx = position.current.x + Math.sin(camAngle) * camDist
     const ty = position.current.y + camH - phi * camDist * 0.7
-    const tz = position.current.z + Math.cos(angle) * camDist
+    const tz = position.current.z + Math.cos(camAngle) * camDist
 
     camera.position.lerp(new THREE.Vector3(tx, ty, tz), 0.12)
     camera.lookAt(position.current.x, position.current.y + 0.8, position.current.z)

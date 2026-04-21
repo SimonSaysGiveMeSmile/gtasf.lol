@@ -8,7 +8,7 @@ import {
 } from '../utils/textureGen'
 import {
   MAP_SIZE, BUILDING_COUNT, TREE_COUNT,
-  BUILDING_COLORS, WINDOW_COLORS, ROAD_POSITIONS,
+  BUILDING_COLORS, WINDOW_COLORS,
 } from '../game/constants'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
 

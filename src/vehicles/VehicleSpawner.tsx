@@ -284,11 +284,11 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       : spec.acceleration
 
     if (isGround) {
-      // Ground vehicle physics
-      if (playerInThis && fwd) vel.current.z -= accel * dt
-      if (playerInThis && bwd) vel.current.z += accel * dt
-      if (playerInThis && lft) angle.current += spec.handling * dt * 2
-      if (playerInThis && rgt) angle.current -= spec.handling * dt * 2
+      // Ground vehicle physics — WASD aligned to camera direction (180 flip applied)
+      if (playerInThis && fwd) vel.current.z += accel * dt
+      if (playerInThis && bwd) vel.current.z -= accel * dt
+      if (playerInThis && lft) angle.current -= spec.handling * dt * 2
+      if (playerInThis && rgt) angle.current += spec.handling * dt * 2
 
       // Drag
       vel.current.z *= 0.97
@@ -299,19 +299,19 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
 
       if (playerInThis && brk) vel.current.z *= 0.9
 
-      // Move
-      pos.current.x -= Math.sin(angle.current) * vel.current.z * dt * 60
-      pos.current.z -= Math.cos(angle.current) * vel.current.z * dt * 60
+      // Move (180 flip: sin/cos negated)
+      pos.current.x += Math.sin(angle.current) * vel.current.z * dt * 60
+      pos.current.z += Math.cos(angle.current) * vel.current.z * dt * 60
       pos.current.y = 0
 
       if (playerInThis) setVehicleSpeed(Math.abs(vel.current.z) * 3.6)
 
     } else if (isBoat) {
-      // Boat physics - slower, more floaty
-      if (playerInThis && fwd) vel.current.z -= accel * dt
-      if (playerInThis && bwd) vel.current.z += accel * dt
-      if (playerInThis && lft) angle.current += spec.handling * dt * 1.5
-      if (playerInThis && rgt) angle.current -= spec.handling * dt * 1.5
+      // Boat physics — 180 flip applied
+      if (playerInThis && fwd) vel.current.z += accel * dt
+      if (playerInThis && bwd) vel.current.z -= accel * dt
+      if (playerInThis && lft) angle.current -= spec.handling * dt * 1.5
+      if (playerInThis && rgt) angle.current += spec.handling * dt * 1.5
 
       vel.current.z *= 0.96
       const maxSpd = Math.min(spec.maxSpeed * 0.04, MAX_SPEED)
@@ -319,8 +319,8 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
 
       if (playerInThis && brk) vel.current.z *= 0.9
 
-      pos.current.x -= Math.sin(angle.current) * vel.current.z * dt * 60
-      pos.current.z -= Math.cos(angle.current) * vel.current.z * dt * 60
+      pos.current.x += Math.sin(angle.current) * vel.current.z * dt * 60
+      pos.current.z += Math.cos(angle.current) * vel.current.z * dt * 60
       pos.current.y = Math.sin(Date.now() * 0.002) * 0.1
 
       if (playerInThis) {
@@ -330,12 +330,12 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       }
 
     } else {
-      // Plane physics
-      if (playerInThis && fwd) throttleRef.current = Math.min(1.0, throttleRef.current + 0.03)
-      if (playerInThis && bwd) throttleRef.current = Math.max(0, throttleRef.current - 0.02)
+      // Plane physics — 180 flip applied (W reverses direction)
+      if (playerInThis && fwd) throttleRef.current = Math.max(0, throttleRef.current - 0.02)
+      if (playerInThis && bwd) throttleRef.current = Math.min(1.0, throttleRef.current + 0.03)
       if (!playerInThis || (!fwd && !bwd)) throttleRef.current = Math.max(0, throttleRef.current - 0.01)
 
-      // Move forward in direction of angle
+      // Move (180 flip: sin/cos negated)
       const speed = throttleRef.current * accel * dt
       pos.current.x -= Math.sin(angle.current) * speed * dt * 10
       pos.current.z -= Math.cos(angle.current) * speed * dt * 10
