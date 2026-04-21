@@ -184,10 +184,8 @@ export default function Player() {
     const rn = run || touch.run || isRunning
 
     const speed = rn ? PLAYER_CONFIG.runSpeed : PLAYER_CONFIG.walkSpeed
-    // World-relative movement: W=+Z, S=-Z, A=-X, D=+X (independent of camera angle)
-    // Camera angle only affects visual rotation (mesh faces camera direction)
+    // Camera-relative movement: forward/back/left/right follow where the camera looks
     const angle = cameraAngle.current.theta
-    const camAngle = -angle
 
     let dx = 0, dz = 0
     if (fwd) dz += 1
@@ -199,9 +197,13 @@ export default function Player() {
     const isMoving = len > 0.1
     if (len > 0) { dx /= len; dz /= len }
 
+    // Rotate movement by camera angle (camera-relative → world space)
+    const worldDx = dx * Math.cos(angle) - dz * Math.sin(angle)
+    const worldDz = dx * Math.sin(angle) + dz * Math.cos(angle)
+
     // Smooth velocity
-    velocity.current.x += (dx * speed - velocity.current.x) * 0.2
-    velocity.current.z += (dz * speed - velocity.current.z) * 0.2
+    velocity.current.x += (worldDx * speed - velocity.current.x) * 0.2
+    velocity.current.z += (worldDz * speed - velocity.current.z) * 0.2
 
     // Jump
     const now = Date.now()
@@ -284,6 +286,7 @@ export default function Player() {
     const camDist = PLAYER_CONFIG.cameraDistance
     const camH = PLAYER_CONFIG.cameraHeight
     const phi = cameraAngle.current.phi
+    const camAngle = -angle
     const tx = position.current.x + Math.sin(camAngle) * camDist
     const ty = position.current.y + camH - phi * camDist * 0.7
     const tz = position.current.z + Math.cos(camAngle) * camDist
