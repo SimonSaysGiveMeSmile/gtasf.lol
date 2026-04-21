@@ -174,8 +174,3 @@ export default function Player() {
   )
 }
 
-// Global touch input registry
-;(window as any).__touchInput = { forward: false, backward: false, left: false, right: false, jump: false, run: false }
-;(window as any).__setTouchInput = (input: Partial<typeof import('../player/Player').default extends never ? {} : {}>) => {
-  Object.assign((window as any).__touchInput, input)
-}
