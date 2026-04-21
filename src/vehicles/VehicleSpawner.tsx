@@ -15,6 +15,43 @@ function seededRandom(seed: number): number {
 
 // ── Collision helpers ────────────────────────────────────────────────────────
 const TREE_RADIUS = 0.4
+const VEHICLE_RADIUS = 2.2
+
+function isClearOfBuildings(x: number, z: number, r: number): boolean {
+  for (const b of LANDSCAPE_CONFIG.buildings) {
+    const hx = b.width / 2 + r + 2
+    const hz = b.depth / 2 + r + 2
+    if (Math.abs(x - b.x) < hx && Math.abs(z - b.z) < hz) return false
+  }
+  return true
+}
+
+function findSplineSpawnPoint(seed: number): { x: number; z: number } | null {
+  // Collect all road path points as potential spawn locations
+  const allPoints: { x: number; z: number }[] = []
+  for (const path of LANDSCAPE_CONFIG.roadPaths) {
+    for (let i = 0; i < path.length; i += 8) {
+      allPoints.push({ x: path[i].x, z: path[i].z })
+    }
+  }
+  if (allPoints.length === 0) return null
+
+  // Shuffle with seed
+  for (let i = allPoints.length - 1; i > 0; i--) {
+    const j = Math.floor(seededRandom(seed + i * 17) * (i + 1))
+    const tmp = allPoints[i]
+    allPoints[i] = allPoints[j]
+    allPoints[j] = tmp
+  }
+
+  // Try to find a clear spot
+  for (const pt of allPoints) {
+    if (isClearOfBuildings(pt.x, pt.z, VEHICLE_RADIUS)) {
+      return pt
+    }
+  }
+  return allPoints[0]
+}
 
 function checkBuildingCollision(px: number, pz: number, r: number) {
   for (const b of LANDSCAPE_CONFIG.buildings) {
@@ -45,7 +82,7 @@ function checkTreeCollision(px: number, pz: number, r: number) {
 // Vehicle mesh components
 function Wheel({ position }: { position: [number, number, number] }) {
   return (
-    <mesh position={position} rotation={[0, 0, Math.PI / 2]} castShadow>
+    <mesh position={position} rotation={[0, 0, Math.PI / 2]}>
       <cylinderGeometry args={[0.35, 0.35, 0.25, 12]} />
       <meshStandardMaterial color="#1a1a1a" roughness={0.9} />
     </mesh>
@@ -55,11 +92,11 @@ function Wheel({ position }: { position: [number, number, number] }) {
 function TeslaCybertruck({ color }: { color: string }) {
   return (
     <group>
-      <mesh castShadow position={[0, 0.7, 0]}>
+      <mesh position={[0, 0.7, 0]}>
         <boxGeometry args={[2.2, 0.8, 4.8]} />
         <meshStandardMaterial color={color} metalness={0.8} roughness={0.2} />
       </mesh>
-      <mesh castShadow position={[0, 1.15, -0.3]}>
+      <mesh position={[0, 1.15, -0.3]}>
         <boxGeometry args={[2.0, 0.5, 2.8]} />
         <meshStandardMaterial color={color} metalness={0.8} roughness={0.2} />
       </mesh>
@@ -96,15 +133,15 @@ function TeslaCybertruck({ color }: { color: string }) {
 function TeslaModelS({ color }: { color: string }) {
   return (
     <group>
-      <mesh castShadow position={[0, 0.55, 0]}>
+      <mesh position={[0, 0.55, 0]}>
         <boxGeometry args={[1.9, 0.6, 4.4]} />
         <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
       </mesh>
-      <mesh castShadow position={[0, 0.7, 1.4]} rotation={[-0.15, 0, 0]}>
+      <mesh position={[0, 0.7, 1.4]} rotation={[-0.15, 0, 0]}>
         <boxGeometry args={[1.85, 0.3, 1.2]} />
         <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
       </mesh>
-      <mesh castShadow position={[0, 0.9, -0.2]}>
+      <mesh position={[0, 0.9, -0.2]}>
         <boxGeometry args={[1.8, 0.5, 2.2]} />
         <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
       </mesh>
@@ -125,11 +162,11 @@ function TeslaModelS({ color }: { color: string }) {
 function SportsCar({ color }: { color: string }) {
   return (
     <group>
-      <mesh castShadow position={[0, 0.4, 0]}>
+      <mesh position={[0, 0.4, 0]}>
         <boxGeometry args={[1.9, 0.4, 4.2]} />
         <meshStandardMaterial color={color} metalness={0.7} roughness={0.2} />
       </mesh>
-      <mesh castShadow position={[0, 0.65, -0.1]}>
+      <mesh position={[0, 0.65, -0.1]}>
         <boxGeometry args={[1.7, 0.35, 2.5]} />
         <meshStandardMaterial color={color} metalness={0.7} roughness={0.2} />
       </mesh>
@@ -148,13 +185,17 @@ function SportsCar({ color }: { color: string }) {
 function SUV({ color }: { color: string }) {
   return (
     <group>
-      <mesh castShadow position={[0, 0.7, 0]}>
+      <mesh position={[0, 0.7, 0]}>
         <boxGeometry args={[2.0, 0.8, 4.3]} />
         <meshStandardMaterial color={color} metalness={0.5} roughness={0.5} />
       </mesh>
-      <mesh castShadow position={[0, 1.25, 0]}>
+      <mesh position={[0, 1.25, 0]}>
         <boxGeometry args={[1.9, 0.6, 2.5]} />
         <meshStandardMaterial color={color} metalness={0.5} roughness={0.5} />
+      </mesh>
+      <mesh position={[0, 1.25, -0.2]} rotation={[-0.3, 0, 0]}>
+        <boxGeometry args={[1.8, 0.02, 1.5]} />
+        <meshStandardMaterial color="#001122" metalness={0.9} transparent opacity={0.5} />
       </mesh>
       <Wheel position={[0.85, 0.35, 1.3]} />
       <Wheel position={[-0.85, 0.35, 1.3]} />
@@ -167,14 +208,20 @@ function SUV({ color }: { color: string }) {
 function Sedan({ color }: { color: string }) {
   return (
     <group>
-      <mesh castShadow position={[0, 0.5, 0]}>
+      <mesh position={[0, 0.5, 0]}>
         <boxGeometry args={[1.85, 0.55, 4.0]} />
         <meshStandardMaterial color={color} metalness={0.5} roughness={0.4} />
       </mesh>
-      <mesh castShadow position={[0, 0.85, -0.1]}>
+      <mesh position={[0, 0.85, -0.1]}>
         <boxGeometry args={[1.7, 0.45, 2.0]} />
         <meshStandardMaterial color={color} metalness={0.5} roughness={0.4} />
       </mesh>
+      <mesh position={[0, 0.85, 0.6]} rotation={[-0.3, 0, 0]}>
+        <boxGeometry args={[1.65, 0.02, 1.0]} />
+        <meshStandardMaterial color="#001122" metalness={0.9} transparent opacity={0.5} />
+      </mesh>
+      <pointLight position={[0.55, 0.5, 2.0]} color="#aaeeff" intensity={1.5} distance={8} />
+      <pointLight position={[-0.55, 0.5, 2.0]} color="#aaeeff" intensity={1.5} distance={8} />
       <Wheel position={[0.78, 0.33, 1.2]} />
       <Wheel position={[-0.78, 0.33, 1.2]} />
       <Wheel position={[0.78, 0.33, -1.2]} />
@@ -183,26 +230,195 @@ function Sedan({ color }: { color: string }) {
   )
 }
 
+function SemiTruck({ color }: { color: string }) {
+  return (
+    <group>
+      {/* Cab */}
+      <mesh position={[0, 0.9, 1.5]}>
+        <boxGeometry args={[2.4, 1.8, 3.2]} />
+        <meshStandardMaterial color={color} metalness={0.6} roughness={0.4} />
+      </mesh>
+      {/* Cab roof visor */}
+      <mesh position={[0, 1.75, 2.2]}>
+        <boxGeometry args={[2.3, 0.15, 0.8]} />
+        <meshStandardMaterial color="#111111" roughness={0.8} />
+      </mesh>
+      {/* Windshield */}
+      <mesh position={[0, 1.1, 3.1]} rotation={[-0.2, 0, 0]}>
+        <boxGeometry args={[2.2, 0.7, 0.05]} />
+        <meshStandardMaterial color="#002233" metalness={0.9} transparent opacity={0.5} />
+      </mesh>
+      {/* Headlights */}
+      <mesh position={[0.7, 0.6, 3.11]}>
+        <boxGeometry args={[0.3, 0.15, 0.05]} />
+        <meshStandardMaterial color="#ffeecc" emissive="#ffcc44" emissiveIntensity={2} />
+      </mesh>
+      <mesh position={[-0.7, 0.6, 3.11]}>
+        <boxGeometry args={[0.3, 0.15, 0.05]} />
+        <meshStandardMaterial color="#ffeecc" emissive="#ffcc44" emissiveIntensity={2} />
+      </mesh>
+      {/* Cargo container */}
+      <mesh position={[0, 1.5, -3.3]}>
+        <boxGeometry args={[2.5, 3.0, 6.5]} />
+        <meshStandardMaterial color="#888888" metalness={0.3} roughness={0.7} />
+      </mesh>
+      {/* Cargo detail lines */}
+      <mesh position={[0, 2.5, 0]}>
+        <boxGeometry args={[2.52, 0.05, 6.52]} />
+        <meshStandardMaterial color="#555555" metalness={0.4} roughness={0.6} />
+      </mesh>
+      {/* Exhaust stacks */}
+      <mesh position={[1.15, 2.5, 1.5]}>
+        <cylinderGeometry args={[0.08, 0.1, 1.5, 6]} />
+        <meshStandardMaterial color="#444444" metalness={0.8} roughness={0.3} />
+      </mesh>
+      <mesh position={[-1.15, 2.5, 1.5]}>
+        <cylinderGeometry args={[0.08, 0.1, 1.5, 6]} />
+        <meshStandardMaterial color="#444444" metalness={0.8} roughness={0.3} />
+      </mesh>
+      <Wheel position={[0.9, 0.45, 2.5]} />
+      <Wheel position={[-0.9, 0.45, 2.5]} />
+      <Wheel position={[0.9, 0.45, -1.5]} />
+      <Wheel position={[-0.9, 0.45, -1.5]} />
+      <Wheel position={[0.9, 0.45, -5.5]} />
+      <Wheel position={[-0.9, 0.45, -5.5]} />
+    </group>
+  )
+}
+
+function Scooter({ color }: { color: string }) {
+  return (
+    <group>
+      {/* Deck */}
+      <mesh position={[0, 0.15, 0]}>
+        <boxGeometry args={[0.25, 0.08, 1.0]} />
+        <meshStandardMaterial color="#1a1a1a" roughness={0.9} />
+      </mesh>
+      {/* Stem */}
+      <mesh position={[0, 0.55, -0.3]}>
+        <cylinderGeometry args={[0.03, 0.03, 0.8, 6]} />
+        <meshStandardMaterial color="#333333" metalness={0.6} roughness={0.4} />
+      </mesh>
+      {/* Handlebars */}
+      <mesh position={[0, 0.95, -0.3]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.025, 0.025, 0.6, 6]} />
+        <meshStandardMaterial color="#333333" metalness={0.6} roughness={0.4} />
+      </mesh>
+      {/* Grips */}
+      <mesh position={[0.3, 0.95, -0.3]}>
+        <cylinderGeometry args={[0.04, 0.04, 0.15, 6]} />
+        <meshStandardMaterial color="#ff4444" roughness={0.9} />
+      </mesh>
+      <mesh position={[-0.3, 0.95, -0.3]}>
+        <cylinderGeometry args={[0.04, 0.04, 0.15, 6]} />
+        <meshStandardMaterial color="#ff4444" roughness={0.9} />
+      </mesh>
+      {/* Front wheel */}
+      <mesh position={[0, 0.15, -0.35]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.18, 0.18, 0.08, 10]} />
+        <meshStandardMaterial color="#222222" roughness={0.9} />
+      </mesh>
+      {/* Rear wheel */}
+      <mesh position={[0, 0.15, 0.4]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.18, 0.18, 0.08, 10]} />
+        <meshStandardMaterial color="#222222" roughness={0.9} />
+      </mesh>
+      {/* Headlight */}
+      <mesh position={[0, 0.85, -0.32]}>
+        <sphereGeometry args={[0.04, 6, 6]} />
+        <meshStandardMaterial color="#ffffff" emissive="#ffeeaa" emissiveIntensity={2} />
+      </mesh>
+      {/* Taillight */}
+      <mesh position={[0, 0.3, 0.48]}>
+        <boxGeometry args={[0.1, 0.05, 0.03]} />
+        <meshStandardMaterial color="#ff0000" emissive="#ff0000" emissiveIntensity={2} />
+      </mesh>
+    </group>
+  )
+}
+
+function CaltrainCar({ color }: { color: string }) {
+  return (
+    <group>
+      {/* Main body */}
+      <mesh position={[0, 0.9, 0]}>
+        <boxGeometry args={[2.8, 1.6, 8.0]} />
+        <meshStandardMaterial color={color} metalness={0.4} roughness={0.6} />
+      </mesh>
+      {/* Roof */}
+      <mesh position={[0, 1.72, 0]}>
+        <boxGeometry args={[2.7, 0.15, 7.8]} />
+        <meshStandardMaterial color="#cccccc" metalness={0.3} roughness={0.7} />
+      </mesh>
+      {/* Windows — left side */}
+      {[-3.0, -1.5, 0, 1.5, 3.0].map((wx, idx) => (
+        <mesh key={`wl-${idx}`} position={[-1.41, 0.9, wx]} rotation={[0, Math.PI / 2, 0]}>
+          <planeGeometry args={[1.0, 0.6]} />
+          <meshStandardMaterial color="#88ccff" metalness={0.8} transparent opacity={0.5} />
+        </mesh>
+      ))}
+      {/* Windows — right side */}
+      {[-3.0, -1.5, 0, 1.5, 3.0].map((wx, idx) => (
+        <mesh key={`wr-${idx}`} position={[1.41, 0.9, wx]} rotation={[0, -Math.PI / 2, 0]}>
+          <planeGeometry args={[1.0, 0.6]} />
+          <meshStandardMaterial color="#88ccff" metalness={0.8} transparent opacity={0.5} />
+        </mesh>
+      ))}
+      {/* Doors */}
+      <mesh position={[0, 0.7, -2.5]}>
+        <boxGeometry args={[2.78, 1.0, 0.1]} />
+        <meshStandardMaterial color="#aaaaaa" metalness={0.5} roughness={0.5} />
+      </mesh>
+      <mesh position={[0, 0.7, 2.5]}>
+        <boxGeometry args={[2.78, 1.0, 0.1]} />
+        <meshStandardMaterial color="#aaaaaa" metalness={0.5} roughness={0.5} />
+      </mesh>
+      {/* Wheels / bogies */}
+      <mesh position={[0.9, 0.2, -2.5]} rotation={[0, 0, Math.PI / 2]}>
+        <boxGeometry args={[0.3, 0.3, 1.2]} />
+        <meshStandardMaterial color="#333333" roughness={0.9} />
+      </mesh>
+      <mesh position={[-0.9, 0.2, -2.5]} rotation={[0, 0, Math.PI / 2]}>
+        <boxGeometry args={[0.3, 0.3, 1.2]} />
+        <meshStandardMaterial color="#333333" roughness={0.9} />
+      </mesh>
+      <mesh position={[0.9, 0.2, 2.5]} rotation={[0, 0, Math.PI / 2]}>
+        <boxGeometry args={[0.3, 0.3, 1.2]} />
+        <meshStandardMaterial color="#333333" roughness={0.9} />
+      </mesh>
+      <mesh position={[-0.9, 0.2, 2.5]} rotation={[0, 0, Math.PI / 2]}>
+        <boxGeometry args={[0.3, 0.3, 1.2]} />
+        <meshStandardMaterial color="#333333" roughness={0.9} />
+      </mesh>
+      {/* Antenna */}
+      <mesh position={[0, 1.9, -3.5]}>
+        <cylinderGeometry args={[0.02, 0.02, 0.6, 4]} />
+        <meshStandardMaterial color="#666666" metalness={0.7} roughness={0.3} />
+      </mesh>
+    </group>
+  )
+}
+
 function Plane({ color }: { color: string }) {
   return (
     <group>
-      <mesh castShadow position={[0, 0.6, 0]}>
+      <mesh position={[0, 0.6, 0]}>
         <boxGeometry args={[1.2, 1.0, 7.0]} />
         <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
       </mesh>
-      <mesh castShadow position={[0, 1.0, 2.8]}>
+      <mesh position={[0, 1.0, 2.8]}>
         <boxGeometry args={[1.1, 0.6, 2.0]} />
         <meshStandardMaterial color="#001133" metalness={0.8} transparent opacity={0.6} />
       </mesh>
-      <mesh castShadow position={[0, 0.5, 0]}>
+      <mesh position={[0, 0.5, 0]}>
         <boxGeometry args={[10.0, 0.15, 2.5]} />
         <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
       </mesh>
-      <mesh castShadow position={[0, 1.2, -3.2]}>
+      <mesh position={[0, 1.2, -3.2]}>
         <boxGeometry args={[0.15, 1.2, 1.5]} />
         <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
       </mesh>
-      <mesh castShadow position={[0, 0.7, -3.5]}>
+      <mesh position={[0, 0.7, -3.5]}>
         <boxGeometry args={[3.5, 0.1, 1.0]} />
         <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
       </mesh>
@@ -213,11 +429,11 @@ function Plane({ color }: { color: string }) {
 function Boat({ color }: { color: string }) {
   return (
     <group>
-      <mesh castShadow position={[0, 0.3, 0]}>
+      <mesh position={[0, 0.3, 0]}>
         <boxGeometry args={[2.2, 0.6, 4.8]} />
         <meshStandardMaterial color={color} roughness={0.6} />
       </mesh>
-      <mesh castShadow position={[0, 0.8, -0.3]}>
+      <mesh position={[0, 0.8, -0.3]}>
         <boxGeometry args={[1.8, 0.8, 2.2]} />
         <meshStandardMaterial color="#f0f0f0" roughness={0.5} />
       </mesh>
@@ -236,6 +452,9 @@ function VehicleMesh({ type, color }: { type: VehicleType; color: string }) {
     case 'sports': return <SportsCar color={color} />
     case 'suv': return <SUV color={color} />
     case 'sedan': return <Sedan color={color} />
+    case 'semi': return <SemiTruck color={color} />
+    case 'scooter': return <Scooter color={color} />
+    case 'caltrain': return <CaltrainCar color={color} />
     case 'plane': return <Plane color={color} />
     case 'boat': return <Boat color={color} />
     default: return <TeslaCybertruck color={color} />
@@ -268,7 +487,10 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
 
   const isPlane = type === 'plane'
   const isBoat = type === 'boat'
-  const isGround = !isPlane && !isBoat
+  const isCaltrain = type === 'caltrain'
+  const isScooter = type === 'scooter'
+  const isGround = !isPlane && !isBoat && !isCaltrain
+  const isRail = isCaltrain
 
   const spec = VEHICLES.find(v => v.type === type) || VEHICLES[0]
 
@@ -329,33 +551,52 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
 
       if (playerInThis && brk) vel.current.z *= 0.9
 
-      // Move
-      pos.current.x += Math.sin(angle.current) * vel.current.z * dt * 60
-      pos.current.z += Math.cos(angle.current) * vel.current.z * dt * 60
-      pos.current.y = 0
-
-      // Building collision
+      // Pre-movement collision: try each axis independently, slide along walls
       const vR = 2.5
-      const bCol = checkBuildingCollision(pos.current.x, pos.current.z, vR)
-      if (bCol.hit) {
-        const ovX = bCol.hx - Math.abs(bCol.bounceX)
-        const ovZ = bCol.hz - Math.abs(bCol.bounceZ)
-        if (ovX < ovZ) {
-          pos.current.x -= Math.sign(bCol.bounceX) * ovX
-          vel.current.z *= 0.3
+      const dx = Math.sin(angle.current) * vel.current.z * dt * 60
+      const dz = Math.cos(angle.current) * vel.current.z * dt * 60
+      const px = pos.current.x + dx
+      const pz = pos.current.z + dz
+
+      // Check X-only movement
+      const xCol = checkBuildingCollision(px, pos.current.z, vR)
+      // Check Z-only movement
+      const zCol = checkBuildingCollision(pos.current.x, pz, vR)
+      // Check full movement
+      const fCol = checkBuildingCollision(px, pz, vR)
+
+      let finalDx = 0
+      let finalDz = 0
+
+      if (!fCol.hit) {
+        // Free path — move freely
+        finalDx = dx
+        finalDz = dz
+      } else {
+        // Collision in at least one axis — try sliding
+        if (!xCol.hit) {
+          finalDx = dx
+        } else if (!zCol.hit) {
+          // Sliding along Z axis
+          finalDz = dz
+          vel.current.z *= 0.5
         } else {
-          pos.current.z -= Math.sign(bCol.bounceZ) * ovZ
-          vel.current.z *= 0.3
+          // Corner — block movement
+          vel.current.z *= 0.2
         }
       }
 
-      // Tree collision
+      pos.current.x += finalDx
+      pos.current.z += finalDz
+      pos.current.y = 0
+
+      // Tree collision (push-out approach — trees are small enough this is fine)
       const tCol = checkTreeCollision(pos.current.x, pos.current.z, vR)
       if (tCol.hit) {
         const nd = tCol.dist - (vR + TREE_RADIUS)
         pos.current.x -= (tCol.dx / tCol.dist) * nd
         pos.current.z -= (tCol.dz / tCol.dist) * nd
-        vel.current.z *= 0.3
+        vel.current.z *= 0.4
       }
 
       if (playerInThis) setVehicleSpeed(Math.abs(vel.current.z) * 3.6)
@@ -381,6 +622,51 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
         setVehicleSpeed(Math.abs(vel.current.z) * 3.6)
         setIsFlying(false)
         setAltitude(0)
+      }
+
+    } else if (isCaltrain) {
+      // Caltrain rail physics — follows the track automatically
+      const railPaths = LANDSCAPE_CONFIG.caltransPaths
+      const trackIdx = railPaths.length > 0 ? 0 : -1
+      if (trackIdx >= 0 && railPaths[trackIdx].length > 0) {
+        const path = railPaths[trackIdx]
+        // Find nearest point on track
+        let nearestIdx = 0
+        let nearestDist = Infinity
+        for (let i = 0; i < path.length; i++) {
+          const dx = pos.current.x - path[i].x
+          const dz = pos.current.z - path[i].z
+          const d = Math.sqrt(dx * dx + dz * dz)
+          if (d < nearestDist) { nearestDist = d; nearestIdx = i }
+        }
+        const targetIdx = (nearestIdx + (vel.current.z >= 0 ? 1 : -1) + path.length) % path.length
+        const tgt = path[targetIdx]
+        const dx = tgt.x - pos.current.x
+        const dz = tgt.z - pos.current.z
+        const distToTarget = Math.sqrt(dx * dx + dz * dz)
+
+        // Auto-accelerate to max speed
+        const maxSpd = Math.min(spec.maxSpeed * 0.003, 0.5)
+        if (playerInThis) {
+          if (fwd) vel.current.z = Math.min(maxSpd, vel.current.z + accel * dt * 0.5)
+          else if (bwd) vel.current.z = Math.max(-maxSpd * 0.3, vel.current.z - accel * dt * 0.5)
+          else vel.current.z *= 0.98
+        } else {
+          vel.current.z = maxSpd * 0.5
+        }
+
+        if (distToTarget > 0.1) {
+          pos.current.x += (dx / distToTarget) * vel.current.z * dt * 60
+          pos.current.z += (dz / distToTarget) * vel.current.z * dt * 60
+          angle.current = Math.atan2(dx, dz)
+        }
+        pos.current.y = 0
+
+        if (playerInThis) {
+          setVehicleSpeed(Math.abs(vel.current.z) * 3.6)
+          setIsFlying(false)
+          setAltitude(0)
+        }
       }
 
     } else {
@@ -508,30 +794,76 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
 
 // Vehicle spawner
 export default function VehicleSpawner() {
-  const { groundVehicles, boats, planes } = useMemo(() => {
+  const { groundVehicles, boats, planes, scooters, caltrains } = useMemo(() => {
     const ground: { id: string; type: VehicleType; x: number; z: number; rotation: number; color: string }[] = []
     const water: { id: string; type: VehicleType; x: number; z: number; rotation: number; color: string }[] = []
     const air: { id: string; type: VehicleType; x: number; z: number; rotation: number; color: string }[] = []
+    const scoot: { id: string; type: VehicleType; x: number; z: number; rotation: number; color: string }[] = []
+    const trains: { id: string; type: VehicleType; x: number; z: number; rotation: number; color: string }[] = []
+
+    const scooterSpec = VEHICLES.find(v => v.type === 'scooter')!
+    const caltrainSpec = VEHICLES.find(v => v.type === 'caltrain')!
 
     for (let i = 0; i < VEHICLE_COUNT; i++) {
       const spec = VEHICLES[i % 5]
-      const rx = seededRandom(i * 17)
-      const rz = seededRandom(i * 31)
       const rr = seededRandom(i * 53)
+      const spawn = findSplineSpawnPoint(i * 137)
+      const sx = spawn ? spawn.x : (seededRandom(i * 17) - 0.5) * MAP_SIZE * 0.5
+      const sz = spawn ? spawn.z : (seededRandom(i * 31) - 0.5) * MAP_SIZE * 0.5
       ground.push({
         id: `vehicle-${i}`,
         type: spec.type,
-        x: (rx - 0.5) * MAP_SIZE * 0.6,
-        z: (rz - 0.5) * MAP_SIZE * 0.6,
+        x: sx,
+        z: sz,
         rotation: rr * Math.PI * 2,
         color: spec.color,
       })
     }
 
-    for (let i = 0; i < 3; i++) {
+    // E-scooters scattered around pedestrian areas (not on roads)
+    for (let i = 0; i < 15; i++) {
+      const sx = (seededRandom(1000 + i * 41) - 0.5) * MAP_SIZE * 0.7
+      const sz = (seededRandom(1100 + i * 37) - 0.5) * MAP_SIZE * 0.7
+      if (isClearOfBuildings(sx, sz, 1.5)) {
+        scoot.push({
+          id: `scooter-${i}`,
+          type: 'scooter',
+          x: sx,
+          z: sz,
+          rotation: seededRandom(1200 + i) * Math.PI * 2,
+          color: scooterSpec.color,
+        })
+      }
+    }
+
+    // Caltrain cars — spawned along rail lines
+    const railPaths = LANDSCAPE_CONFIG.caltransPaths
+    for (let t = 0; t < railPaths.length; t++) {
+      const path = railPaths[t]
+      if (!path || path.length === 0) continue
+      for (let i = 0; i < 3; i++) {
+        const idx = Math.floor((i / 3) * path.length) % path.length
+        const pt = path[idx]
+        const nextIdx = (idx + 1) % path.length
+        const nextPt = path[nextIdx]
+        const dx = nextPt.x - pt.x
+        const dz = nextPt.z - pt.z
+        trains.push({
+          id: `caltrain-t${t}-${i}`,
+          type: 'caltrain',
+          x: pt.x,
+          z: pt.z,
+          rotation: Math.atan2(dx, dz),
+          color: caltrainSpec.color,
+        })
+      }
+    }
+
+    // Boats in water region
+    for (let i = 0; i < 5; i++) {
       const spec = VEHICLES.find(v => v.type === 'boat')!
       const angle = seededRandom(200 + i) * Math.PI * 2
-      const dist = MAP_SIZE * 0.5 + seededRandom(300 + i) * 50
+      const dist = MAP_SIZE * 0.55 + seededRandom(300 + i) * 60
       water.push({
         id: `boat-${i}`,
         type: 'boat',
@@ -554,12 +886,18 @@ export default function VehicleSpawner() {
       })
     }
 
-    return { groundVehicles: ground, boats: water, planes: air }
+    return { groundVehicles: ground, boats: water, planes: air, scooters: scoot, caltrains: trains }
   }, [])
 
   return (
     <>
       {groundVehicles.map(v => (
+        <Vehicle key={v.id} {...v} />
+      ))}
+      {scooters.map(v => (
+        <Vehicle key={v.id} {...v} />
+      ))}
+      {caltrains.map(v => (
         <Vehicle key={v.id} {...v} />
       ))}
       {boats.map(v => (

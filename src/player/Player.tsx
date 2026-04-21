@@ -349,43 +349,57 @@ export default function Player() {
       <group ref={bodyGroupRef}>
 
         {/* Torso */}
-        <mesh castShadow position={[0, TORSO_Y + TORSO_HEIGHT / 2, 0]}>
+        <mesh position={[0, TORSO_Y + TORSO_HEIGHT / 2, 0]}>
           <boxGeometry args={[0.5, TORSO_HEIGHT, 0.28]} />
           <meshStandardMaterial color="#2255aa" metalness={0.3} roughness={0.6} />
         </mesh>
 
         {/* Neck */}
-        <mesh castShadow position={[0, NECK_Y, 0]}>
+        <mesh position={[0, NECK_Y, 0]}>
           <cylinderGeometry args={[0.06, 0.07, 0.12, 8]} />
           <meshStandardMaterial color="#e8c090" roughness={0.8} />
         </mesh>
 
         {/* Head */}
-        <mesh castShadow position={[0, HEAD_Y, 0]}>
+        <mesh position={[0, HEAD_Y, 0]}>
           <sphereGeometry args={[0.18, 12, 12]} />
           <meshStandardMaterial color="#e8c090" roughness={0.7} />
+        </mesh>
+        {/* Hair — short styled cap */}
+        <mesh position={[0, HEAD_Y + 0.04, 0]} scale={[1.0, 0.38, 1.0]}>
+          <sphereGeometry args={[0.19, 8, 6]} />
+          <meshStandardMaterial color="#1a0f05" roughness={0.95} />
+        </mesh>
+        {/* Hair — side fade */}
+        <mesh position={[-0.12, HEAD_Y - 0.02, 0]} scale={[0.6, 0.25, 0.7]}>
+          <sphereGeometry args={[0.16, 6, 4]} />
+          <meshStandardMaterial color="#1a0f05" roughness={0.95} />
+        </mesh>
+        <mesh position={[0.12, HEAD_Y - 0.02, 0]} scale={[0.6, 0.25, 0.7]}>
+          <sphereGeometry args={[0.16, 6, 4]} />
+          <meshStandardMaterial color="#1a0f05" roughness={0.95} />
         </mesh>
 
         {/* Left Arm */}
         <group ref={leftArmRef} position={[-0.32, SHOULDER_Y, 0]}>
           {/* Shoulder joint */}
-          <mesh castShadow position={[0, 0, 0]}>
+          <mesh position={[0, 0, 0]}>
             <sphereGeometry args={[0.07, 8, 8]} />
             <meshStandardMaterial color="#2255aa" roughness={0.6} />
           </mesh>
           {/* Upper arm */}
-          <mesh castShadow position={[0, -ARM_LENGTH * 0.5, 0]}>
+          <mesh position={[0, -ARM_LENGTH * 0.5, 0]}>
             <capsuleGeometry args={[0.055, ARM_LENGTH * 0.6, 4, 8]} />
             <meshStandardMaterial color="#2255aa" metalness={0.3} roughness={0.6} />
           </mesh>
           {/* Lower arm + hand */}
           <group position={[0, -ARM_LENGTH, 0]}>
-            <mesh castShadow position={[0, -0.11, 0]}>
+            <mesh position={[0, -0.11, 0]}>
               <capsuleGeometry args={[0.045, 0.16, 4, 8]} />
               <meshStandardMaterial color="#d4a574" roughness={0.8} />
             </mesh>
             {/* Hand */}
-            <mesh castShadow position={[0, -0.24, 0]}>
+            <mesh position={[0, -0.24, 0]}>
               <sphereGeometry args={[0.05, 8, 8]} />
               <meshStandardMaterial color="#d4a574" roughness={0.8} />
             </mesh>
@@ -394,20 +408,20 @@ export default function Player() {
 
         {/* Right Arm */}
         <group ref={rightArmRef} position={[0.32, SHOULDER_Y, 0]}>
-          <mesh castShadow position={[0, 0, 0]}>
+          <mesh position={[0, 0, 0]}>
             <sphereGeometry args={[0.07, 8, 8]} />
             <meshStandardMaterial color="#2255aa" roughness={0.6} />
           </mesh>
-          <mesh castShadow position={[0, -ARM_LENGTH * 0.5, 0]}>
+          <mesh position={[0, -ARM_LENGTH * 0.5, 0]}>
             <capsuleGeometry args={[0.055, ARM_LENGTH * 0.6, 4, 8]} />
             <meshStandardMaterial color="#2255aa" metalness={0.3} roughness={0.6} />
           </mesh>
           <group position={[0, -ARM_LENGTH, 0]}>
-            <mesh castShadow position={[0, -0.11, 0]}>
+            <mesh position={[0, -0.11, 0]}>
               <capsuleGeometry args={[0.045, 0.16, 4, 8]} />
               <meshStandardMaterial color="#d4a574" roughness={0.8} />
             </mesh>
-            <mesh castShadow position={[0, -0.24, 0]}>
+            <mesh position={[0, -0.24, 0]}>
               <sphereGeometry args={[0.05, 8, 8]} />
               <meshStandardMaterial color="#d4a574" roughness={0.8} />
             </mesh>
@@ -417,23 +431,23 @@ export default function Player() {
         {/* Left Leg */}
         <group ref={leftLegRef} position={[-0.14, 0, 0]}>
           {/* Hip joint */}
-          <mesh castShadow position={[0, LEG_LENGTH, 0]}>
+          <mesh position={[0, LEG_LENGTH, 0]}>
             <sphereGeometry args={[0.08, 8, 8]} />
             <meshStandardMaterial color="#1a1a3a" roughness={0.8} />
           </mesh>
           {/* Upper leg (thigh) */}
-          <mesh castShadow position={[0, LEG_LENGTH * 0.5, 0]}>
+          <mesh position={[0, LEG_LENGTH * 0.5, 0]}>
             <capsuleGeometry args={[0.08, LEG_LENGTH * 0.6, 4, 8]} />
             <meshStandardMaterial color="#1a1a3a" roughness={0.8} />
           </mesh>
           {/* Lower leg + foot */}
           <group position={[0, 0, 0]}>
-            <mesh castShadow position={[0, 0.15, 0]}>
+            <mesh position={[0, 0.15, 0]}>
               <capsuleGeometry args={[0.055, 0.22, 4, 8]} />
               <meshStandardMaterial color="#1a1a3a" roughness={0.8} />
             </mesh>
             {/* Foot */}
-            <mesh castShadow position={[0, 0.03, 0.06]}>
+            <mesh position={[0, 0.03, 0.06]}>
               <boxGeometry args={[0.12, 0.06, 0.2]} />
               <meshStandardMaterial color="#111111" roughness={0.9} />
             </mesh>
@@ -442,20 +456,20 @@ export default function Player() {
 
         {/* Right Leg */}
         <group ref={rightLegRef} position={[0.14, 0, 0]}>
-          <mesh castShadow position={[0, LEG_LENGTH, 0]}>
+          <mesh position={[0, LEG_LENGTH, 0]}>
             <sphereGeometry args={[0.08, 8, 8]} />
             <meshStandardMaterial color="#1a1a3a" roughness={0.8} />
           </mesh>
-          <mesh castShadow position={[0, LEG_LENGTH * 0.5, 0]}>
+          <mesh position={[0, LEG_LENGTH * 0.5, 0]}>
             <capsuleGeometry args={[0.08, LEG_LENGTH * 0.6, 4, 8]} />
             <meshStandardMaterial color="#1a1a3a" roughness={0.8} />
           </mesh>
           <group position={[0, 0, 0]}>
-            <mesh castShadow position={[0, 0.15, 0]}>
+            <mesh position={[0, 0.15, 0]}>
               <capsuleGeometry args={[0.055, 0.22, 4, 8]} />
               <meshStandardMaterial color="#1a1a3a" roughness={0.8} />
             </mesh>
-            <mesh castShadow position={[0, 0.03, 0.06]}>
+            <mesh position={[0, 0.03, 0.06]}>
               <boxGeometry args={[0.12, 0.06, 0.2]} />
               <meshStandardMaterial color="#111111" roughness={0.9} />
             </mesh>

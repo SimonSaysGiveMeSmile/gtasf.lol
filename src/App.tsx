@@ -31,19 +31,20 @@ export default function App() {
    <InputManager>
     <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
      <Canvas
-      shadows
-      camera={{ fov: 60, near: 0.1, far: 2000 }}
+      shadows={false}
+      camera={{ fov: 60, near: 0.1, far: 8000 }}
       gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
       style={{ background: '#87CEEB' }}
       frameloop="always"
+      dpr={[1, 1.5]}
      >
       <Suspense fallback={null}>
        <Physics gravity={[0, -25, 0]} defaultContactMaterial={{ friction: 0.5, restitution: 0.1 }}>
         <World />
         <Player />
-        <VehicleSpawner />
-        <NPCCrowd />
        </Physics>
+       <VehicleSpawner />
+       <NPCCrowd />
       </Suspense>
      </Canvas>
      <HUD />

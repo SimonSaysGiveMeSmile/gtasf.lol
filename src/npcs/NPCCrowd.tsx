@@ -11,6 +11,65 @@ function seededRandom(seed: number) {
   return x - Math.floor(x)
 }
 
+// NPC spawn helpers — use road paths
+function isClearOfBuildings(x: number, z: number, r: number): boolean {
+  for (const b of LANDSCAPE_CONFIG.buildings) {
+    const hx = b.width / 2 + r + 2
+    const hz = b.depth / 2 + r + 2
+    if (Math.abs(x - b.x) < hx && Math.abs(z - b.z) < hz) return false
+  }
+  return true
+}
+
+function findNPCSpawn(seed: number): { x: number; z: number } | null {
+  const allPoints: { x: number; z: number }[] = []
+  for (const path of LANDSCAPE_CONFIG.roadPaths) {
+    for (let i = 0; i < path.length; i += 12) {
+      allPoints.push({ x: path[i].x, z: path[i].z })
+    }
+  }
+  if (allPoints.length === 0) return null
+  for (let i = allPoints.length - 1; i > 0; i--) {
+    const j = Math.floor(seededRandom(seed + i * 13) * (i + 1))
+    const tmp = allPoints[i]
+    allPoints[i] = allPoints[j]
+    allPoints[j] = tmp
+  }
+  for (const pt of allPoints) {
+    if (isClearOfBuildings(pt.x, pt.z, 0.3)) {
+      return pt
+    }
+  }
+  return null
+}
+
+function findCarSpawn(seed: number): { x: number; z: number } | null {
+  const allPoints: { x: number; z: number }[] = []
+  for (const path of LANDSCAPE_CONFIG.roadPaths) {
+    for (let i = 0; i < path.length; i += 8) {
+      allPoints.push({ x: path[i].x, z: path[i].z })
+    }
+  }
+  if (allPoints.length === 0) return null
+  for (let i = allPoints.length - 1; i > 0; i--) {
+    const j = Math.floor(seededRandom(seed + i * 19) * (i + 1))
+    const tmp = allPoints[i]
+    allPoints[i] = allPoints[j]
+    allPoints[j] = tmp
+  }
+  const vR = 2.0
+  for (const pt of allPoints) {
+    let clear = true
+    for (const b of LANDSCAPE_CONFIG.buildings) {
+      const hx = b.width / 2 + vR + 3
+      const hz = b.depth / 2 + vR + 3
+      if (Math.abs(pt.x - b.x) < hx && Math.abs(pt.z - b.z) < hz) { clear = false; break }
+    }
+    if (clear) return pt
+  }
+  return null
+}
+
 // ── Body dimensions ────────────────────────────────────────────────────────
 const LEG_LEN = 0.5
 const TORSO_H = 0.65
@@ -21,66 +80,80 @@ const SHOULDER_Y = TORSO_Y + TORSO_H * 0.85
 const ARM_LEN = 0.4
 
 // ── Shared body mesh ────────────────────────────────────────────────────────
-function BodyMesh({ shirt, pants, skin }: { shirt: string; pants: string; skin: string }) {
+function BodyMesh({ shirt, pants, skin, hair }: { shirt: string; pants: string; skin: string; hair: string }) {
   return (
     <group>
       {/* Torso */}
-      <mesh castShadow position={[0, TORSO_Y + TORSO_H / 2, 0]}>
+      <mesh position={[0, TORSO_Y + TORSO_H / 2, 0]}>
         <boxGeometry args={[0.4, TORSO_H, 0.22]} />
         <meshStandardMaterial color={shirt} roughness={0.8} />
       </mesh>
       {/* Neck */}
-      <mesh castShadow position={[0, NECK_Y, 0]}>
+      <mesh position={[0, NECK_Y, 0]}>
         <cylinderGeometry args={[0.05, 0.06, 0.1, 8]} />
         <meshStandardMaterial color={skin} roughness={0.8} />
       </mesh>
       {/* Head */}
-      <mesh castShadow position={[0, HEAD_Y, 0]}>
+      <mesh position={[0, HEAD_Y, 0]}>
         <sphereGeometry args={[0.15, 10, 10]} />
         <meshStandardMaterial color={skin} roughness={0.7} />
       </mesh>
+      {/* Hair */}
+      <mesh position={[0, HEAD_Y + 0.03, 0]} scale={[1.0, 0.38, 1.0]}>
+        <sphereGeometry args={[0.16, 8, 6]} />
+        <meshStandardMaterial color={hair} roughness={0.95} />
+      </mesh>
+      {/* Hair — side */}
+      <mesh position={[-0.1, HEAD_Y - 0.02, 0]} scale={[0.55, 0.22, 0.65]}>
+        <sphereGeometry args={[0.14, 6, 4]} />
+        <meshStandardMaterial color={hair} roughness={0.95} />
+      </mesh>
+      <mesh position={[0.1, HEAD_Y - 0.02, 0]} scale={[0.55, 0.22, 0.65]}>
+        <sphereGeometry args={[0.14, 6, 4]} />
+        <meshStandardMaterial color={hair} roughness={0.95} />
+      </mesh>
       {/* Arms */}
-      <mesh castShadow position={[-0.25, SHOULDER_Y, 0]}>
+      <mesh position={[-0.25, SHOULDER_Y, 0]}>
         <capsuleGeometry args={[0.045, ARM_LEN * 0.6, 4, 8]} />
         <meshStandardMaterial color={shirt} roughness={0.8} />
       </mesh>
-      <mesh castShadow position={[0.25, SHOULDER_Y, 0]}>
+      <mesh position={[0.25, SHOULDER_Y, 0]}>
         <capsuleGeometry args={[0.045, ARM_LEN * 0.6, 4, 8]} />
         <meshStandardMaterial color={shirt} roughness={0.8} />
       </mesh>
       {/* Hands */}
-      <mesh castShadow position={[-0.25, SHOULDER_Y - ARM_LEN - 0.1, 0]}>
+      <mesh position={[-0.25, SHOULDER_Y - ARM_LEN - 0.1, 0]}>
         <sphereGeometry args={[0.04, 8, 8]} />
         <meshStandardMaterial color={skin} roughness={0.8} />
       </mesh>
-      <mesh castShadow position={[0.25, SHOULDER_Y - ARM_LEN - 0.1, 0]}>
+      <mesh position={[0.25, SHOULDER_Y - ARM_LEN - 0.1, 0]}>
         <sphereGeometry args={[0.04, 8, 8]} />
         <meshStandardMaterial color={skin} roughness={0.8} />
       </mesh>
       {/* Legs */}
-      <mesh castShadow position={[-0.1, LEG_LEN / 2, 0]}>
+      <mesh position={[-0.1, LEG_LEN / 2, 0]}>
         <capsuleGeometry args={[0.065, LEG_LEN * 0.65, 4, 8]} />
         <meshStandardMaterial color={pants} roughness={0.8} />
       </mesh>
-      <mesh castShadow position={[0.1, LEG_LEN / 2, 0]}>
+      <mesh position={[0.1, LEG_LEN / 2, 0]}>
         <capsuleGeometry args={[0.065, LEG_LEN * 0.65, 4, 8]} />
         <meshStandardMaterial color={pants} roughness={0.8} />
       </mesh>
       {/* Lower legs */}
-      <mesh castShadow position={[-0.1, 0.12, 0]}>
+      <mesh position={[-0.1, 0.12, 0]}>
         <capsuleGeometry args={[0.045, 0.2, 4, 8]} />
         <meshStandardMaterial color={pants} roughness={0.8} />
       </mesh>
-      <mesh castShadow position={[0.1, 0.12, 0]}>
+      <mesh position={[0.1, 0.12, 0]}>
         <capsuleGeometry args={[0.045, 0.2, 4, 8]} />
         <meshStandardMaterial color={pants} roughness={0.8} />
       </mesh>
       {/* Shoes */}
-      <mesh castShadow position={[-0.1, 0.03, 0.05]}>
+      <mesh position={[-0.1, 0.03, 0.05]}>
         <boxGeometry args={[0.1, 0.06, 0.18]} />
         <meshStandardMaterial color="#111111" roughness={0.9} />
       </mesh>
-      <mesh castShadow position={[0.1, 0.03, 0.05]}>
+      <mesh position={[0.1, 0.03, 0.05]}>
         <boxGeometry args={[0.1, 0.06, 0.18]} />
         <meshStandardMaterial color="#111111" roughness={0.9} />
       </mesh>
@@ -91,12 +164,13 @@ function BodyMesh({ shirt, pants, skin }: { shirt: string; pants: string; skin: 
 // ── Pedestrian NPC ───────────────────────────────────────────────────────────
 const SHIRTS = ['#cc3333', '#3366cc', '#33aa55', '#ccaa33', '#8833cc', '#cc8844', '#338888']
 const PANTS = ['#1a1a3a', '#2a2a2a', '#3a3020', '#1a2a1a', '#2a1a2a', '#1a1a1a', '#2a3a2a']
+const HAIR_COLORS = ['#0a0505', '#1a0f08', '#2a1a10', '#3a2515', '#8a6030', '#c0a060', '#404040', '#c0c0c0']
 
 interface PedProps {
-  x: number; z: number; color: string; shirt: string; pants: string; seed: number
+  x: number; z: number; color: string; shirt: string; pants: string; hair: string; seed: number
 }
 
-function PedestrianNPC({ x, z, color, shirt, pants, seed }: PedProps) {
+function PedestrianNPC({ x, z, color, shirt, pants, hair, seed }: PedProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const bodyGroupRef = useRef<THREE.Group>(null!)
   const leftLegRef = useRef<THREE.Group>(null!)
@@ -204,52 +278,52 @@ function PedestrianNPC({ x, z, color, shirt, pants, seed }: PedProps) {
       {/* Body — rotates for lean */}
       <group ref={bodyGroupRef}>
         {/* Core body parts */}
-        <BodyMesh shirt={shirt} pants={pants} skin={color} />
+        <BodyMesh shirt={shirt} pants={pants} skin={color} hair={hair} />
         {/* Animated limbs — pivot at shoulder/hip joints */}
         <group ref={leftArmRef} position={[-0.25, SHOULDER_Y, 0]}>
-          <mesh castShadow position={[0, -ARM_LEN * 0.3, 0]}>
+          <mesh position={[0, -ARM_LEN * 0.3, 0]}>
             <capsuleGeometry args={[0.045, ARM_LEN * 0.6, 4, 8]} />
             <meshStandardMaterial color={shirt} roughness={0.8} />
           </mesh>
-          <mesh castShadow position={[0, -ARM_LEN - 0.1, 0]}>
+          <mesh position={[0, -ARM_LEN - 0.1, 0]}>
             <sphereGeometry args={[0.04, 8, 8]} />
             <meshStandardMaterial color={color} roughness={0.8} />
           </mesh>
         </group>
         <group ref={rightArmRef} position={[0.25, SHOULDER_Y, 0]}>
-          <mesh castShadow position={[0, -ARM_LEN * 0.3, 0]}>
+          <mesh position={[0, -ARM_LEN * 0.3, 0]}>
             <capsuleGeometry args={[0.045, ARM_LEN * 0.6, 4, 8]} />
             <meshStandardMaterial color={shirt} roughness={0.8} />
           </mesh>
-          <mesh castShadow position={[0, -ARM_LEN - 0.1, 0]}>
+          <mesh position={[0, -ARM_LEN - 0.1, 0]}>
             <sphereGeometry args={[0.04, 8, 8]} />
             <meshStandardMaterial color={color} roughness={0.8} />
           </mesh>
         </group>
         <group ref={leftLegRef} position={[-0.1, 0, 0]}>
-          <mesh castShadow position={[0, LEG_LEN * 0.35, 0]}>
+          <mesh position={[0, LEG_LEN * 0.35, 0]}>
             <capsuleGeometry args={[0.065, LEG_LEN * 0.65, 4, 8]} />
             <meshStandardMaterial color={pants} roughness={0.8} />
           </mesh>
-          <mesh castShadow position={[0, LEG_LEN + 0.12, 0]}>
+          <mesh position={[0, LEG_LEN + 0.12, 0]}>
             <capsuleGeometry args={[0.045, 0.2, 4, 8]} />
             <meshStandardMaterial color={pants} roughness={0.8} />
           </mesh>
-          <mesh castShadow position={[0, LEG_LEN * 2 + 0.03, 0.05]}>
+          <mesh position={[0, LEG_LEN * 2 + 0.03, 0.05]}>
             <boxGeometry args={[0.1, 0.06, 0.18]} />
             <meshStandardMaterial color="#111111" roughness={0.9} />
           </mesh>
         </group>
         <group ref={rightLegRef} position={[0.1, 0, 0]}>
-          <mesh castShadow position={[0, LEG_LEN * 0.35, 0]}>
+          <mesh position={[0, LEG_LEN * 0.35, 0]}>
             <capsuleGeometry args={[0.065, LEG_LEN * 0.65, 4, 8]} />
             <meshStandardMaterial color={pants} roughness={0.8} />
           </mesh>
-          <mesh castShadow position={[0, LEG_LEN + 0.12, 0]}>
+          <mesh position={[0, LEG_LEN + 0.12, 0]}>
             <capsuleGeometry args={[0.045, 0.2, 4, 8]} />
             <meshStandardMaterial color={pants} roughness={0.8} />
           </mesh>
-          <mesh castShadow position={[0, LEG_LEN * 2 + 0.03, 0.05]}>
+          <mesh position={[0, LEG_LEN * 2 + 0.03, 0.05]}>
             <boxGeometry args={[0.1, 0.06, 0.18]} />
             <meshStandardMaterial color="#111111" roughness={0.9} />
           </mesh>
@@ -271,18 +345,38 @@ function TrafficCar({ x, z, rotation, color }: { x: number; z: number; rotation:
     const dt = Math.min(delta, 0.05)
     timer.current += dt
 
-    pos.current.x += Math.sin(carAngle.current) * speed * dt
-    pos.current.z += Math.cos(carAngle.current) * speed * dt
+    const dx = Math.sin(carAngle.current) * speed * dt
+    const dz = Math.cos(carAngle.current) * speed * dt
+    const nx = pos.current.x + dx
+    const nz = pos.current.z + dz
 
-    if (timer.current > 3 + Math.random() * 2) {
-      carAngle.current += (Math.random() - 0.5) * 0.6
-      timer.current = 0
+    // Building collision for traffic cars
+    const tcR = 1.5
+    let blocked = false
+    for (const b of LANDSCAPE_CONFIG.buildings) {
+      const hx = b.width / 2 + tcR
+      const hz = b.depth / 2 + tcR
+      const ddx = nx - b.x
+      const ddz = nz - b.z
+      if (Math.abs(ddx) < hx && Math.abs(ddz) < hz) {
+        blocked = true
+        break
+      }
     }
 
-    if (pos.current.x < -MAP_SIZE * 0.6) pos.current.x = MAP_SIZE * 0.6
-    if (pos.current.x > MAP_SIZE * 0.6) pos.current.x = -MAP_SIZE * 0.6
-    if (pos.current.z < -MAP_SIZE * 0.6) pos.current.z = MAP_SIZE * 0.6
-    if (pos.current.z > MAP_SIZE * 0.6) pos.current.z = -MAP_SIZE * 0.6
+    if (!blocked) {
+      pos.current.x = nx
+      pos.current.z = nz
+    } else {
+      carAngle.current += Math.PI / 2 + seededRandom(timer.current * 17) * Math.PI
+    }
+
+    // Wrap around map edges
+    const half = MAP_SIZE * 0.6
+    if (pos.current.x < -half) pos.current.x = half
+    if (pos.current.x > half) pos.current.x = -half
+    if (pos.current.z < -half) pos.current.z = half
+    if (pos.current.z > half) pos.current.z = -half
 
     if (meshRef.current) {
       meshRef.current.position.set(pos.current.x, 0, pos.current.z)
@@ -292,11 +386,11 @@ function TrafficCar({ x, z, rotation, color }: { x: number; z: number; rotation:
 
   return (
     <group ref={meshRef}>
-      <mesh castShadow>
+      <mesh>
         <boxGeometry args={[1.7, 0.7, 3.8]} />
         <meshStandardMaterial color={color} metalness={0.5} roughness={0.4} />
       </mesh>
-      <mesh castShadow position={[0, 0.45, -0.2]}>
+      <mesh position={[0, 0.45, -0.2]}>
         <boxGeometry args={[1.5, 0.4, 2.0]} />
         <meshStandardMaterial color={color} metalness={0.5} roughness={0.4} />
       </mesh>
@@ -309,7 +403,7 @@ export default function NPCCrowd() {
   const setNPCs = useGameStore((s) => s.setNPCs)
 
   const { pedestrians, cars } = useMemo(() => {
-    const peds: { id: string; x: number; z: number; color: string; shirt: string; pants: string; seed: number }[] = []
+    const peds: { id: string; x: number; z: number; color: string; shirt: string; pants: string; hair: string; seed: number }[] = []
     const cars: { id: string; x: number; z: number; rotation: number; color: string }[] = []
     const carColors = ['#334488', '#883333', '#338833', '#aaaaaa', '#444444', '#665522']
 
@@ -317,22 +411,27 @@ export default function NPCCrowd() {
       const seed = i * 17
       const ang = seededRandom(seed * 13) * Math.PI * 2
       const dist = 15 + seededRandom(seed * 29) * MAP_SIZE * 0.35
+      const spawn = findNPCSpawn(seed)
+      const x = spawn ? spawn.x : Math.cos(ang) * dist
+      const z = spawn ? spawn.z : Math.sin(ang) * dist
       peds.push({
         id: `ped-${i}`,
-        x: Math.cos(ang) * dist,
-        z: Math.sin(ang) * dist,
+        x,
+        z,
         color: NPC_COLORS[i % NPC_COLORS.length],
         shirt: SHIRTS[i % SHIRTS.length],
         pants: PANTS[i % PANTS.length],
+        hair: HAIR_COLORS[i % HAIR_COLORS.length],
         seed,
       })
     }
 
     for (let i = 0; i < TRAFFIC_COUNT; i++) {
+      const carSpawn = findCarSpawn(i * 41 + 100)
       cars.push({
         id: `traffic-${i}`,
-        x: (seededRandom(i * 23 + 100) - 0.5) * MAP_SIZE * 0.6,
-        z: (seededRandom(i * 37 + 100) - 0.5) * MAP_SIZE * 0.6,
+        x: carSpawn ? carSpawn.x : (seededRandom(i * 23) - 0.5) * MAP_SIZE * 0.8,
+        z: carSpawn ? carSpawn.z : (seededRandom(i * 37 + 50) - 0.5) * MAP_SIZE * 0.8,
         rotation: seededRandom(i * 53 + 100) * Math.PI * 2,
         color: carColors[i % carColors.length],
       })
