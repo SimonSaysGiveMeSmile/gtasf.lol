@@ -317,6 +317,13 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
      )
     })}
 
+    {/* Player indicator — triangle arrow pointing in movement direction */}
+    <polygon
+      points={`${CENTER},${CENTER - 6} ${CENTER - 4},${CENTER + 4} ${CENTER + 4},${CENTER + 4}`}
+      fill="var(--color-cyan)"
+      opacity="0.9"
+    />
+
     {/* NPCs as small white dots */}
     {npcs.slice(0, 20).map((npc) => {
      const dx = (npc.position[0] - playerPosition[0]) * MAP_SCALE

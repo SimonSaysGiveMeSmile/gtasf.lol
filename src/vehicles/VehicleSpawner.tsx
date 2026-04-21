@@ -5,11 +5,61 @@ import * as THREE from 'three'
 import { useGameStore } from '../game/store'
 import type { VehicleType } from '../game/types'
 import { VEHICLES, MAP_SIZE, VEHICLE_COUNT } from '../game/constants'
+import { LANDSCAPE_CONFIG } from '../game/landscape'
 
 // Seeded random for deterministic spawns
 function seededRandom(seed: number): number {
   const x = Math.sin(seed + 1) * 10000
   return x - Math.floor(x)
+}
+
+// ── Collision helpers ────────────────────────────────────────────────────────
+const TREE_RADIUS = 0.4
+
+function checkBuildingCollision(x: number, z: number, r: number) {
+  for (const b of LANDSCAPE_CONFIG.buildings) {
+    const hx = b.width / 2 + r
+    const hz = b.depth / 2 + r
+    const dxb = x - b.x
+    const dzb = z - b.z
+    if (Math.abs(dxb) < hx && Math.abs(dzb) < hz) {
+      return { hit: true, bounceX: dxb, bounceZ: dzb, hx, hz }
+    }
+  }
+  return { hit: false }
+}
+
+function checkTreeCollision(x: number, z: number, r: number) {
+  for (const t of LANDSCAPE_CONFIG.trees) {
+    const dx = x - t.x
+    const dz = z - t.z
+    const dist = Math.sqrt(dx * dx + dz * dz)
+    if (dist < r + TREE_RADIUS) {
+      return { hit: true, dx, dz, dist }
+    }
+  }
+  return { hit: false }
+}
+
+// Shared mutable positions for traffic cars (used for inter-vehicle collision)
+const trafficCarPositions: Map<string, { x: number; z: number }> = new Map()
+function getTrafficPos(id: string) { return trafficCarPositions.get(id) }
+
+function updateTrafficPos(id: string, x: number, z: number) {
+  trafficCarPositions.set(id, { x, z })
+}
+
+function checkCarCollision(x: number, z: number, r: number, selfId: string) {
+  for (const [id, pos] of trafficCarPositions) {
+    if (id === selfId) continue
+    const dx = x - pos.x
+    const dz = z - pos.z
+    const dist = Math.sqrt(dx * dx + dz * dz)
+    if (dist < r * 2 + 0.5) {
+      return { hit: true, dx, dz, dist }
+    }
+  }
+  return { hit: false }
 }
 
 // Vehicle mesh components
@@ -287,22 +337,46 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       // Ground vehicle physics — WASD aligned to camera direction (180 flip applied)
       if (playerInThis && fwd) vel.current.z += accel * dt
       if (playerInThis && bwd) vel.current.z -= accel * dt
-      if (playerInThis && lft) angle.current -= spec.handling * dt * 2
-      if (playerInThis && rgt) angle.current += spec.handling * dt * 2
+      if (playerInThis && lft) angle.current += spec.handling * dt * 2
+      if (playerInThis && rgt) angle.current -= spec.handling * dt * 2
 
       // Drag
       vel.current.z *= 0.97
 
       // Clamp speed
-      const maxSpd = Math.min(spec.maxSpeed * 0.05, MAX_SPEED)
+      const maxSpd = Math.min(spec.maxSpeed * 0.005, MAX_SPEED)
       vel.current.z = Math.max(-maxSpd, Math.min(maxSpd, vel.current.z))
 
       if (playerInThis && brk) vel.current.z *= 0.9
 
-      // Move (180 flip: sin/cos negated)
+      // Move
       pos.current.x += Math.sin(angle.current) * vel.current.z * dt * 60
       pos.current.z += Math.cos(angle.current) * vel.current.z * dt * 60
       pos.current.y = 0
+
+      // Building collision
+      const vR = 2.5
+      const bCol = checkBuildingCollision(pos.current.x, pos.current.z, vR)
+      if (bCol.hit) {
+        const ovX = bCol.hx - Math.abs(bCol.bounceX)
+        const ovZ = bCol.hz - Math.abs(bCol.bounceZ)
+        if (ovX < ovZ) {
+          pos.current.x -= Math.sign(bCol.bounceX) * ovX
+          vel.current.z *= 0.3
+        } else {
+          pos.current.z -= Math.sign(bCol.bounceZ) * ovZ
+          vel.current.z *= 0.3
+        }
+      }
+
+      // Tree collision
+      const tCol = checkTreeCollision(pos.current.x, pos.current.z, vR)
+      if (tCol.hit) {
+        const nd = tCol.dist - (vR + TREE_RADIUS)
+        pos.current.x -= (tCol.dx / tCol.dist) * nd
+        pos.current.z -= (tCol.dz / tCol.dist) * nd
+        vel.current.z *= 0.3
+      }
 
       if (playerInThis) setVehicleSpeed(Math.abs(vel.current.z) * 3.6)
 
@@ -310,11 +384,11 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       // Boat physics — 180 flip applied
       if (playerInThis && fwd) vel.current.z += accel * dt
       if (playerInThis && bwd) vel.current.z -= accel * dt
-      if (playerInThis && lft) angle.current -= spec.handling * dt * 1.5
-      if (playerInThis && rgt) angle.current += spec.handling * dt * 1.5
+      if (playerInThis && lft) angle.current += spec.handling * dt * 1.5
+      if (playerInThis && rgt) angle.current -= spec.handling * dt * 1.5
 
       vel.current.z *= 0.96
-      const maxSpd = Math.min(spec.maxSpeed * 0.04, MAX_SPEED)
+      const maxSpd = Math.min(spec.maxSpeed * 0.0004, MAX_SPEED)
       vel.current.z = Math.max(-maxSpd, Math.min(maxSpd, vel.current.z))
 
       if (playerInThis && brk) vel.current.z *= 0.9
@@ -330,12 +404,11 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       }
 
     } else {
-      // Plane physics — 180 flip applied (W reverses direction)
+      // Plane physics
       if (playerInThis && fwd) throttleRef.current = Math.max(0, throttleRef.current - 0.02)
       if (playerInThis && bwd) throttleRef.current = Math.min(1.0, throttleRef.current + 0.03)
       if (!playerInThis || (!fwd && !bwd)) throttleRef.current = Math.max(0, throttleRef.current - 0.01)
 
-      // Move (180 flip: sin/cos negated)
       const speed = throttleRef.current * accel * dt
       pos.current.x -= Math.sin(angle.current) * speed * dt * 10
       pos.current.z -= Math.cos(angle.current) * speed * dt * 10
@@ -345,6 +418,14 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
         pos.current.y += throttleRef.current * 15 * dt
       }
       pos.current.y -= 5 * dt // gravity
+
+      // Building collision (plane crashes into buildings at low altitude)
+      if (pos.current.y < 30) {
+        const pCol = checkBuildingCollision(pos.current.x, pos.current.z, 4)
+        if (pCol.hit) {
+          pos.current.y = Math.max(pos.current.y + 2, 30)
+        }
+      }
 
       // Altitude clamp
       pos.current.y = Math.max(1, Math.min(MAX_ALTITUDE, pos.current.y))

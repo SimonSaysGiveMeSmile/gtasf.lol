@@ -298,20 +298,20 @@ export default function World() {
   const timeOfDay = useGameStore((s) => s.timeOfDay)
   const isNight = timeOfDay === 'night'
 
-  const ambientIntensity = isNight ? 0.3 : 1.5
-  const ambientColor = isNight ? '#1a2a5a' : '#e8dcc8'
-  const fogColor = isNight ? '#050510' : '#b8d4e8'
-  const dirIntensity = isNight ? 0.4 : 3.2
-  const dirColor = isNight ? '#3355aa' : '#fff4d6'
+  const ambientIntensity = isNight ? 0.3 : 2.0
+  const ambientColor = isNight ? '#1a2a5a' : '#f5f0e8'
+  const fogColor = isNight ? '#050510' : '#c8dce8'
+  const dirIntensity = isNight ? 0.4 : 5.0
+  const dirColor = isNight ? '#3355aa' : '#ffffff'
 
   return (
     <>
-      <fog attach="fog" args={[fogColor, isNight ? 60 : 1200, isNight ? 300 : 3000]} />
-      {!isNight && <Sky sunPosition={[200, 80, -120]} inclination={0.52} azimuth={0.25} turbidity={1.5} rayleigh={0.3} />}
+      <fog attach="fog" args={[fogColor, isNight ? 60 : 1400, isNight ? 300 : 3200]} />
+      {!isNight && <Sky sunPosition={[0, 250, -50]} inclination={0.4995} azimuth={0.25} turbidity={1.2} rayleigh={0.2} phi={Math.PI * 0.498} />}
       {isNight && <Stars radius={500} depth={50} count={2000} factor={4} saturation={0} fade speed={1} />}
       <ambientLight intensity={ambientIntensity} color={ambientColor} />
       <directionalLight
-        position={[80, 150, 60]}
+        position={[20, 250, 30]}
         intensity={dirIntensity}
         color={dirColor}
         castShadow={!isNight}

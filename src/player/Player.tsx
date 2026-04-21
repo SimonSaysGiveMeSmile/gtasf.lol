@@ -184,15 +184,16 @@ export default function Player() {
     const rn = run || touch.run || isRunning
 
     const speed = rn ? PLAYER_CONFIG.runSpeed : PLAYER_CONFIG.walkSpeed
-    // Camera angle is negated to flip 180 degrees (WASD directions match screen up)
+    // World-relative movement: W=+Z, S=-Z, A=-X, D=+X (independent of camera angle)
+    // Camera angle only affects visual rotation (mesh faces camera direction)
     const angle = cameraAngle.current.theta
     const camAngle = -angle
 
     let dx = 0, dz = 0
-    if (fwd) { dx += Math.sin(angle); dz += Math.cos(angle) }
-    if (bwd) { dx -= Math.sin(angle); dz -= Math.cos(angle) }
-    if (lft) { dx += Math.cos(angle); dz -= Math.sin(angle) }
-    if (rgt) { dx -= Math.cos(angle); dz += Math.sin(angle) }
+    if (fwd) dz += 1
+    if (bwd) dz -= 1
+    if (lft) dx -= 1
+    if (rgt) dx += 1
 
     const len = Math.sqrt(dx * dx + dz * dz)
     const isMoving = len > 0.1

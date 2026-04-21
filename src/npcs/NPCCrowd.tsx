@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { useGameStore } from '../game/store'
 import type { NPC } from '../game/types'
 import { NPC_COUNT, TRAFFIC_COUNT, NPC_COLORS, MAP_SIZE } from '../game/constants'
+import { LANDSCAPE_CONFIG } from '../game/landscape'
 
 function seededRandom(seed: number) {
   const x = Math.sin(seed + 1) * 10000
@@ -134,6 +135,37 @@ function PedestrianNPC({ x, z, color, shirt, pants, seed }: PedProps) {
       pos.current.x += (dx / dist) * walkSpeed * dt
       pos.current.z += (dz / dist) * walkSpeed * dt
       angle.current = Math.atan2(dx, dz)
+
+      // Building collision for pedestrians
+      const pR = 0.3
+      for (const b of LANDSCAPE_CONFIG.buildings) {
+        const hx = b.width / 2 + pR
+        const hz = b.depth / 2 + pR
+        const ddx = pos.current.x - b.x
+        const ddz = pos.current.z - b.z
+        if (Math.abs(ddx) < hx && Math.abs(ddz) < hz) {
+          const ovX = hx - Math.abs(ddx)
+          const ovZ = hz - Math.abs(ddz)
+          if (ovX < ovZ) {
+            pos.current.x -= Math.sign(ddx) * ovX
+          } else {
+            pos.current.z -= Math.sign(ddz) * ovZ
+          }
+        }
+      }
+
+      // Tree collision for pedestrians
+      const tR = 0.25
+      for (const t of LANDSCAPE_CONFIG.trees) {
+        const tdx = pos.current.x - t.x
+        const tdz = pos.current.z - t.z
+        const tDist = Math.sqrt(tdx * tdx + tdz * tdz)
+        if (tDist < pR + tR) {
+          const nd = tDist - (pR + tR)
+          pos.current.x -= (tdx / tDist) * nd
+          pos.current.z -= (tdz / tDist) * nd
+        }
+      }
     }
 
     // Animation
@@ -239,8 +271,8 @@ function TrafficCar({ x, z, rotation, color }: { x: number; z: number; rotation:
     const dt = Math.min(delta, 0.05)
     timer.current += dt
 
-    pos.current.x -= Math.sin(carAngle.current) * speed * dt
-    pos.current.z -= Math.cos(carAngle.current) * speed * dt
+    pos.current.x += Math.sin(carAngle.current) * speed * dt
+    pos.current.z += Math.cos(carAngle.current) * speed * dt
 
     if (timer.current > 3 + Math.random() * 2) {
       carAngle.current += (Math.random() - 0.5) * 0.6
