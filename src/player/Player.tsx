@@ -4,6 +4,7 @@ import { useKeyboardControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '../game/store'
 import { PLAYER_CONFIG, MAP_SIZE } from '../game/constants'
+import { BUILDING_LAYOUT } from '../world/buildings'
 
 export default function Player() {
   const meshRef = useRef<THREE.Group>(null)
@@ -12,6 +13,7 @@ export default function Player() {
   const isRunning = useGameStore((s) => s.isRunning)
   const inVehicle = useGameStore((s) => s.inVehicle)
   const isDead = useGameStore((s) => s.isDead)
+  const exitVehiclePosition = useGameStore((s) => s.exitVehiclePosition)
   const setPlayerPosition = useGameStore((s) => s.setPlayerPosition)
   const takeDamage = useGameStore((s) => s.takeDamage)
   const setIsFalling = useGameStore((s) => s.setIsFalling)
@@ -58,6 +60,62 @@ export default function Player() {
     }
   }, [])
 
+  // Device gyroscope / deviceorientation for camera control on mobile
+  useEffect(() => {
+    const handleOrientation = (e: DeviceOrientationEvent) => {
+      if (!gyroEnabled.current) return
+      if (e.alpha === null || e.beta === null || e.gamma === null) return
+
+      if (gyroBase.current.alpha === 0) {
+        gyroBase.current.alpha = e.alpha
+        gyroBase.current.beta = e.beta
+        gyroBase.current.gamma = e.gamma
+      }
+
+      const deltaAlpha = e.alpha - gyroBase.current.alpha
+      const deltaBeta = e.beta - gyroBase.current.beta
+
+      cameraAngle.current.theta = -deltaAlpha * (Math.PI / 180)
+      cameraAngle.current.phi = Math.max(
+        CAM_PHI_MIN,
+        Math.min(CAM_PHI_MAX, deltaBeta * (Math.PI / 180) * 0.5)
+      )
+    }
+
+    const requestGyro = () => {
+      if (typeof DeviceOrientationEvent !== 'undefined' &&
+          typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+        ;(DeviceOrientationEvent as any).requestPermission()
+          .then((permission: string) => {
+            if (permission === 'granted') {
+              gyroEnabled.current = true
+              window.addEventListener('deviceorientation', handleOrientation)
+            }
+          })
+          .catch(() => {})
+      } else if ('DeviceOrientationEvent' in window) {
+        gyroEnabled.current = true
+        window.addEventListener('deviceorientation', handleOrientation)
+      }
+    }
+
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+      requestGyro()
+    }
+
+    return () => {
+      window.removeEventListener('deviceorientation', handleOrientation)
+    }
+  }, [])
+
+  // Teleport player to vehicle exit position when they exit
+  useEffect(() => {
+    if (exitVehiclePosition && !inVehicle) {
+      position.current.set(exitVehiclePosition[0], exitVehiclePosition[1], exitVehiclePosition[2])
+      velocity.current.set(0, 0, 0)
+    }
+  }, [exitVehiclePosition, inVehicle])
+
   useFrame((_, delta) => {
     if (inVehicle || isDead) return
 
@@ -103,9 +161,41 @@ export default function Player() {
       velocity.current.y -= 28 * dt
     }
 
-    // Move
-    position.current.x += velocity.current.x * dt
-    position.current.z += velocity.current.z * dt
+    // Building collision — predict next position, block movement into solid geometry
+    {
+      const r = PLAYER_CONFIG.radius + 0.1
+      const newX = position.current.x + velocity.current.x * dt
+      const newZ = position.current.z + velocity.current.z * dt
+
+      let hitX = false, hitZ = false
+      for (const b of BUILDING_LAYOUT) {
+        const hx = b.width / 2 + r
+        const hz = b.depth / 2 + r
+        const dxb = newX - b.x
+        const dzb = newZ - b.z
+
+        if (Math.abs(dxb) < hx && Math.abs(dzb) < hz) {
+          const overlapX = hx - Math.abs(dxb)
+          const overlapZ = hz - Math.abs(dzb)
+
+          if (overlapX < overlapZ) {
+            // Side collision — cancel X velocity
+            velocity.current.x = 0
+            position.current.x = b.x + Math.sign(dxb) * hx
+            hitX = true
+          } else {
+            // Front/back collision — cancel Z velocity
+            velocity.current.z = 0
+            position.current.z = b.z + Math.sign(dzb) * hz
+            hitZ = true
+          }
+        }
+      }
+
+      if (!hitX) position.current.x = newX
+      if (!hitZ) position.current.z = newZ
+    }
+
     position.current.y += velocity.current.y * dt
 
     // Ground check
@@ -140,7 +230,6 @@ export default function Player() {
     const camH = PLAYER_CONFIG.cameraHeight
     const phi = cameraAngle.current.phi
     const tx = position.current.x + Math.sin(angle) * camDist
-    // phi negative = look UP, phi positive = look DOWN
     const ty = position.current.y + camH - phi * camDist * 0.7
     const tz = position.current.z + Math.cos(angle) * camDist
 
@@ -174,3 +263,6 @@ export default function Player() {
   )
 }
 
+// Module-level refs for gyro (not component state, so they persist)
+const gyroEnabled = { current: false }
+const gyroBase = { current: { alpha: 0, beta: 0, gamma: 0 } }

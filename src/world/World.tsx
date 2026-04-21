@@ -94,7 +94,7 @@ function Tree({ x, z }: { x: number; z: number }) {
   )
 }
 
-function Trees() {
+function TreeInstances() {
   const trees = useMemo(() => {
     const result = []
     for (let i = 0; i < TREE_COUNT; i++) {
@@ -110,6 +110,60 @@ function Trees() {
     return result
   }, [])
   return <>{trees.map((t) => <Tree key={t.id} x={t.x} z={t.z} />)}</>
+}
+
+// ─── ROADS ───────────────────────────────────────────────────────────────────
+function Roads() {
+  const timeOfDay = useGameStore((s) => s.timeOfDay)
+  const isNight = timeOfDay === 'night'
+  const roadColor = isNight ? '#1a1a1a' : '#2a2a2a'
+  const lineColor = '#ffdd00'
+
+  // Horizontal roads at intervals across the map
+  const hRoadPositions = [-120, -60, 0, 60, 120]
+  const vRoadPositions = [-120, -60, 0, 60, 120]
+
+  return (
+    <>
+      {hRoadPositions.map((z) => (
+        <group key={`h-${z}`}>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, z]} receiveShadow>
+            <planeGeometry args={[MAP_SIZE, 12]} />
+            <meshStandardMaterial color={roadColor} roughness={0.9} />
+          </mesh>
+          {[-3, 0, 3].map((offset, i) => (
+            <mesh key={`hm-${i}`} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, z + offset]} receiveShadow>
+              <planeGeometry args={[MAP_SIZE, 0.3]} />
+              <meshStandardMaterial color={lineColor} emissive={lineColor} emissiveIntensity={isNight ? 0.5 : 0} />
+            </mesh>
+          ))}
+        </group>
+      ))}
+      {vRoadPositions.map((x) => (
+        <group key={`v-${x}`}>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[x, 0.005, 0]} receiveShadow>
+            <planeGeometry args={[12, MAP_SIZE]} />
+            <meshStandardMaterial color={roadColor} roughness={0.9} />
+          </mesh>
+          {[-3, 0, 3].map((offset, i) => (
+            <mesh key={`vm-${i}`} rotation={[-Math.PI / 2, 0, 0]} position={[x + offset, 0.01, 0]} receiveShadow>
+              <planeGeometry args={[0.3, MAP_SIZE]} />
+              <meshStandardMaterial color={lineColor} emissive={lineColor} emissiveIntensity={isNight ? 0.5 : 0} />
+            </mesh>
+          ))}
+        </group>
+      ))}
+      {/* Crosswalks at intersections */}
+      {hRoadPositions.map((z) =>
+        vRoadPositions.map((x) => (
+          <mesh key={`cw-${x}-${z}`} rotation={[-Math.PI / 2, 0, 0]} position={[x, 0.006, z]}>
+            <planeGeometry args={[10, 10]} />
+            <meshStandardMaterial color="#3a3a3a" roughness={0.8} />
+          </mesh>
+        ))
+      )}
+    </>
+  )
 }
 
 // ─── STREET LAMPS ────────────────────────────────────────────────────────────
@@ -212,8 +266,9 @@ export default function World() {
       )}
 
       <Ground />
+      <Roads />
       <Buildings />
-      <Trees />
+      <TreeInstances />
       <StreetLamps />
       <Water />
     </>
