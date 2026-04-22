@@ -6,7 +6,9 @@ import { useGameStore } from '../game/store'
 import type { VehicleType } from '../game/types'
 import { VEHICLES, MAP_SIZE, VEHICLE_COUNT } from '../game/constants'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
+import { vehiclePositions } from '../game/vehicleState'
 import { getNearbyBuildingsGrid } from '../world/World'
+import { VehicleAdWrap, CaltrainAdWrap, CALTRAIN_ADS } from '../systems/billboards'
 
 // Seeded random for deterministic spawns
 function seededRandom(seed: number): number {
@@ -786,6 +788,10 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
     }
     prevInteract.current = intract
 
+
+      // Register vehicle position for NPC/pedestrian collision
+      vehiclePositions.set(id, { x: pos.current.x, z: pos.current.z, radius: 2.5 })
+
     // Show interaction prompt when in vehicle
     if (playerInThis) {
       setNearbyInteractable({ type: 'vehicle', id }, 'Press F to exit')
@@ -795,6 +801,8 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
   return (
     <group ref={meshRef} position={[x, isPlane ? 50 : 0, z]}>
       <VehicleMesh type={type} color={color} />
+      <VehicleAdWrap vehicleId={id} vehicleType={type} />
+      {isCaltrain && <CaltrainAdWrap ad={CALTRAIN_ADS[Math.abs(x * 17 + z) % CALTRAIN_ADS.length]} index={Math.floor(Math.abs(x * 7 + z * 13)) % 10} />}
     </group>
   )
 }

@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
 import { Sky } from '@react-three/drei'
-import * as THREE from 'three'
 import { useGameStore } from '../game/store'
 import { MAP_SIZE } from '../game/constants'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
+import { BillboardLayer } from '../systems/billboards'
 
 // ─── Spatial Grid for Collision Detection ─────────────────────────────────────
 // Divide the map into a grid; each cell stores building indices
@@ -58,7 +58,7 @@ let _spatialGrid: SpatialGrid | null = null
 function Building({ x, z, width, depth, height, colorIdx }: {
   x: number; z: number; width: number; depth: number; height: number; colorIdx: number
 }) {
-  const isNight = useGameStore((s) => s.isNight)
+  const isNight = useGameStore((s) => s.timeOfDay === "night")
   const colors = ['#1a1a3a', '#151535', '#202050', '#0f0f2a', '#1e1e40',
     '#12122a', '#18183a', '#222245', '#0d0d25', '#1c1c3a',
     '#252560', '#1a1a50', '#2a2a55', '#181845', '#202048']
@@ -140,35 +140,73 @@ function TreesLayer() {
 }
 
 // ─── Road ─────────────────────────────────────────────────────────────────────
-function RoadSegment({ x, z, angle, width, color }: {
-  x: number; z: number; angle: number; width: number; color: string
+function RoadSegment({ x, z, angle, width, color, len }: {
+  x: number; z: number; angle: number; width: number; color: string; len: number
 }) {
   return (
     <mesh position={[x, 0.02, z]} rotation={[-Math.PI / 2, 0, -angle]}>
-      <planeGeometry args={[width, 10]} />
+      <planeGeometry args={[width, len]} />
       <meshStandardMaterial color={color} roughness={0.95} />
     </mesh>
   )
 }
 
 function RoadLayer() {
+  const timeOfDay = useGameStore((s) => s.timeOfDay)
+  const isNight = timeOfDay === "night"
+
   const roads = useMemo(() => {
-    const segments: { x: number; z: number; angle: number; width: number; color: string }[] = []
+    const segments: { x: number; z: number; angle: number; width: number; color: string; len: number }[] = []
+    const ROAD_WIDTH = 14
+    const SEG_LEN = 12 // longer segments = fewer gaps
+    const STEP = 2 // overlap by stepping every 2 points (50% overlap)
+
     for (const road of LANDSCAPE_CONFIG.roadPaths) {
-      for (let i = 0; i < road.length; i += 3) {
+      for (let i = 0; i < road.length; i += STEP) {
         const pt = road[i]
         const nextPt = road[Math.min(i + 1, road.length - 1)]
         const angle = Math.atan2(nextPt.x - pt.x, nextPt.z - pt.z)
-        segments.push({ x: pt.x, z: pt.z, angle, width: 14, color: road === LANDSCAPE_CONFIG.roadPaths[0] ? '#333344' : '#2a2a3a' })
+
+        // Road surface
+        segments.push({ x: pt.x, z: pt.z, angle, width: ROAD_WIDTH, len: SEG_LEN, color: '#404050' })
       }
     }
     return segments
   }, [])
 
+  // Road center lines (dashed yellow)
+  const roadLines = useMemo(() => {
+    const lines: { x: number; z: number; angle: number }[] = []
+    for (const road of LANDSCAPE_CONFIG.roadPaths) {
+      for (let i = 0; i < road.length; i += 4) {
+        const pt = road[i]
+        const nextPt = road[Math.min(i + 1, road.length - 1)]
+        const angle = Math.atan2(nextPt.x - pt.x, nextPt.z - pt.z)
+        lines.push({ x: pt.x, z: pt.z, angle })
+      }
+    }
+    return lines
+  }, [])
+
+  const lineColor = isNight ? '#ffdd00' : '#ffcc00'
+  const lineEmissive = isNight ? '#ffaa00' : '#000000'
+  const lineEmissiveInt = isNight ? 0.6 : 0
+
   return (
     <>
       {roads.map((seg, i) => (
-        <RoadSegment key={i} {...seg} />
+        <RoadSegment key={`r-${i}`} {...seg} />
+      ))}
+      {/* Road center lines */}
+      {roadLines.map((line, i) => (
+        <mesh key={`l-${i}`} position={[line.x, 0.03, line.z]} rotation={[-Math.PI / 2, 0, -line.angle]}>
+          <planeGeometry args={[0.3, 4]} />
+          <meshStandardMaterial
+            color={lineColor}
+            emissive={lineEmissive}
+            emissiveIntensity={lineEmissiveInt}
+          />
+        </mesh>
       ))}
     </>
   )
@@ -179,7 +217,7 @@ function RailLayer() {
   const tracks = useMemo(() => {
     const segments: { x: number; z: number; angle: number }[] = []
     for (const path of LANDSCAPE_CONFIG.caltransPaths) {
-      for (let i = 0; i < path.length; i += 4) {
+      for (let i = 0; i < path.length; i += 3) { // denser for better coverage
         const pt = path[i]
         const nextPt = path[Math.min(i + 1, path.length - 1)]
         const angle = Math.atan2(nextPt.x - pt.x, nextPt.z - pt.z)
@@ -192,10 +230,23 @@ function RailLayer() {
   return (
     <>
       {tracks.map((seg, i) => (
-        <mesh key={i} position={[seg.x, 0.03, seg.z]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
-          <planeGeometry args={[4, 12]} />
-          <meshStandardMaterial color="#888888" roughness={0.95} />
-        </mesh>
+        <group key={i}>
+          {/* Rail bed */}
+          <mesh position={[seg.x, 0.03, seg.z]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
+            <planeGeometry args={[5, 14]} />
+            <meshStandardMaterial color="#555555" roughness={0.95} />
+          </mesh>
+          {/* Left rail */}
+          <mesh position={[seg.x, 0.06, seg.z]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
+            <planeGeometry args={[0.25, 14]} />
+            <meshStandardMaterial color="#999999" metalness={0.8} roughness={0.3} />
+          </mesh>
+          {/* Right rail */}
+          <mesh position={[seg.x, 0.06, seg.z]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
+            <planeGeometry args={[0.25, 14]} />
+            <meshStandardMaterial color="#999999" metalness={0.8} roughness={0.3} />
+          </mesh>
+        </group>
       ))}
     </>
   )
@@ -203,7 +254,7 @@ function RailLayer() {
 
 // ─── Street Lamp ──────────────────────────────────────────────────────────────
 function StreetLamp({ x, z }: { x: number; z: number }) {
-  const isNight = useGameStore((s) => s.isNight)
+  const isNight = useGameStore((s) => s.timeOfDay === "night")
   return (
     <group position={[x, 0, z]}>
       {/* Pole */}
@@ -292,6 +343,7 @@ export default function World() {
       <BuildingsLayer />
       <TreesLayer />
       <StreetLampsLayer />
+      <BillboardLayer />
     </>
   )
 }
