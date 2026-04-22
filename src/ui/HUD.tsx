@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
 import { useGameStore } from '../game/store'
 import { CITIES, VEHICLES } from '../game/constants'
 import type { CityId } from '../game/types'
-import { BUILDING_LAYOUT } from '../world/buildings'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
 import './HUD.css'
 
@@ -33,11 +33,25 @@ export default function HUD() {
  const healthSegments = Array.from({ length: 10 }, (_, i) => {
   const threshold = (i + 1) * 10
   return health >= threshold
- })
+})
 
- return (
+function FPSCounter() {
+  const fps = useGameStore((s) => s.fps)
+  const fpsColor = fps > 55 ? 'var(--color-green)' : fps > 30 ? 'var(--color-amber)' : 'var(--color-magenta)'
+  return (
+    <div className="fps-counter">
+      <span className="fps-value" style={{ color: fpsColor }}>{fps}</span>
+      <span className="fps-label">FPS</span>
+    </div>
+  )
+}
+
+export default function HUD() {
+  return (
   <>
-   {/* Top bar */}
+  {/* FPS counter — top right */}
+  <FPSCounter />
+  {/* Top bar */}
    <div className="hud-topbar">
     {/* Left: Menu button */}
     <button className="menu-button" onClick={() => setShowMenu(!showMenu)} aria-label="Menu">
@@ -248,18 +262,17 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
     <line x1={CENTER} y1={0} x2={CENTER} y2={SIZE} stroke="var(--color-border)" strokeWidth={0.3} />
     <line x1={0} y1={CENTER} x2={SIZE} y2={CENTER} stroke="var(--color-border)" strokeWidth={0.3} />
 
-    {/* Horizontal roads */}
-    {LANDSCAPE_CONFIG.hRoads.map((rz, i) => {
-      const dy = (rz - playerPosition[2]) * MAP_SCALE
-      if (Math.abs(dy) > CENTER) return null
-      return <line key={`hr-${i}`} x1={0} y1={CENTER - dy} x2={SIZE} y2={CENTER - dy} stroke="rgba(80,80,80,0.5)" strokeWidth={1} />
-    })}
-    {/* Vertical roads */}
-    {LANDSCAPE_CONFIG.vRoads.map((rx, i) => {
-      const dx = (rx - playerPosition[0]) * MAP_SCALE
-      if (Math.abs(dx) > CENTER) return null
-      return <line key={`vr-${i}`} x1={CENTER - dx} y1={0} x2={CENTER - dx} y2={SIZE} stroke="rgba(80,80,80,0.5)" strokeWidth={1} />
-    })}
+    {/* Roads from spline paths */}
+    {LANDSCAPE_CONFIG.roadPaths.map((path, pi) =>
+      path.map((pt, i) => {
+        const dx = (pt.x - playerPosition[0]) * MAP_SCALE
+        const dy = (pt.z - playerPosition[2]) * MAP_SCALE
+        const sx = CENTER - dx * cosR + dy * sinR
+        const sy = CENTER - dx * sinR - dy * cosR
+        if (Math.abs(sx - CENTER) > CENTER || Math.abs(sy - CENTER) > CENTER) return null
+        return <circle key={`road-${pi}-${i}`} cx={sx} cy={sy} r={1.5} fill="rgba(80,80,80,0.6)" />
+      })
+    )}
 
     {/* Trees as small green dots */}
     {LANDSCAPE_CONFIG.trees.map((t, i) => {
@@ -294,7 +307,7 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
     })()}
 
     {/* Buildings as small rectangles */}
-    {BUILDING_LAYOUT.map((b, i) => {
+    {LANDSCAPE_CONFIG.buildings.slice(0, 80).map((b, i) => {
      const dx = (b.x - playerPosition[0]) * MAP_SCALE
      const dy = (b.z - playerPosition[2]) * MAP_SCALE
      const sx = CENTER - dx * cosR + dy * sinR
