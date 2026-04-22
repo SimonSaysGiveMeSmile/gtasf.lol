@@ -1,0 +1,356 @@
+/* === LOADING SCREEN === */
+.ls-backdrop {
+  position: fixed;
+  inset: 0;
+  background: #1a2e1a;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Pixel grid overlay */
+.ls-pixel-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 200, 100, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 200, 100, 0.04) 1px, transparent 1px);
+  background-size: 8px 8px;
+  pointer-events: none;
+}
+
+/* Vignette */
+.ls-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, 0.7) 100%);
+  pointer-events: none;
+}
+
+/* Top scanline */
+.ls-scanline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(to bottom, rgba(0, 255, 100, 0.15), transparent);
+  animation: scanDown 3s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes scanDown {
+  0% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+
+/* Main container */
+.ls-container {
+  position: relative;
+  width: 100%;
+  max-width: 700px;
+  padding: 0 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+}
+
+/* === LOGO === */
+.ls-logo-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+
+.ls-logo-grid {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.ls-char {
+  display: flex;
+  flex-direction: column;
+}
+
+.ls-dash-block {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+}
+
+/* block styles reused */
+.ls-block {
+  flex-shrink: 0;
+}
+
+.ls-block-cyan {
+  background-color: #00e5ff;
+  box-shadow: 0 0 6px rgba(0, 229, 255, 0.6);
+}
+
+.ls-block-magenta {
+  background-color: #ff0080;
+  box-shadow: 0 0 6px rgba(255, 0, 128, 0.6);
+}
+
+.ls-block-transparent {
+  background: transparent;
+}
+
+.ls-subtitle {
+  font-family: 'Orbitron', monospace;
+  font-size: 13px;
+  letter-spacing: 8px;
+  color: #6a6a9a;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(106, 106, 154, 0.3);
+}
+
+/* Minecraft grass/dirt divider */
+.ls-divider {
+  display: flex;
+  gap: 2px;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.ls-divider-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.ls-grass {
+  width: 32px;
+  height: 8px;
+  background: #2d6e2d;
+  border-top: 3px solid #3d9e3d;
+}
+
+.ls-dirt {
+  width: 32px;
+  height: 8px;
+  background: #8b5a2b;
+}
+
+/* === PROGRESS === */
+.ls-progress-wrap {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Pixel spinner */
+.ls-spinner {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.ls-spinner-pixel {
+  width: 8px;
+  height: 24px;
+  animation: pixelPulse 0.8s ease-in-out infinite;
+  border-radius: 1px;
+}
+
+@keyframes pixelPulse {
+  0%, 100% { transform: scaleY(0.3); opacity: 0.4; }
+  50% { transform: scaleY(1); opacity: 1; }
+}
+
+/* Progress bar */
+.ls-progress-track {
+  width: 100%;
+  height: 24px;
+  background: #0a1a0a;
+  border: 2px solid #2a5a2a;
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.ls-progress-fill {
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    #3d9e3d 0%,
+    #2d7e2d 40%,
+    #1d5e1d 100%
+  );
+  border-right: 2px solid #4dbe4d;
+  transition: width 0.1s linear;
+  position: relative;
+  box-shadow: 0 0 8px rgba(61, 158, 61, 0.5);
+}
+
+.ls-progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Notch marks on track */
+.ls-progress-notch {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(42, 90, 42, 0.6);
+}
+
+/* Progress text row */
+.ls-progress-text {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 16px;
+}
+
+.ls-progress-pct {
+  font-family: 'Orbitron', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: #3d9e3d;
+  text-shadow: 0 0 10px rgba(61, 158, 61, 0.5);
+  min-width: 48px;
+}
+
+.ls-progress-msg {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #4a8a4a;
+  letter-spacing: 0.5px;
+  text-align: right;
+  flex: 1;
+  animation: fadeInTip 0.3s ease-out;
+}
+
+@keyframes fadeInTip {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* === TIP BOX === */
+.ls-tip-wrap {
+  width: 100%;
+  background: rgba(0, 10, 0, 0.4);
+  border: 1px solid #1e3e1e;
+  border-radius: 4px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: fadeInTip 0.5s ease-out;
+}
+
+.ls-tip-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ls-tip-icon {
+  flex-shrink: 0;
+}
+
+.ls-pixel-icon {
+  display: grid;
+  grid-template-columns: repeat(3, 4px);
+  grid-template-rows: repeat(3, 4px);
+  gap: 1px;
+}
+
+.ls-info-block {
+  background: #3d9e3d;
+  box-shadow: 0 0 4px rgba(61, 158, 61, 0.5);
+}
+
+.ls-tip-category {
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: #3d9e3d;
+  text-transform: uppercase;
+}
+
+.ls-tip-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #7ab87a;
+  line-height: 1.6;
+  padding-left: 24px;
+}
+
+/* === FOOTER === */
+.ls-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding-top: 8px;
+  border-top: 1px solid #1e3e1e;
+}
+
+.ls-footer-left,
+.ls-footer-right,
+.ls-footer-center {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: #3a5a3a;
+}
+
+.ls-footer-center {
+  text-align: center;
+  font-size: 8px;
+  letter-spacing: 0.5px;
+  max-width: 300px;
+}
+
+/* === CORNER DECORATIONS === */
+.ls-corner {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: #2a5a2a;
+  border-style: solid;
+}
+
+.ls-corner-tl {
+  top: 20px;
+  left: 20px;
+  border-width: 2px 0 0 2px;
+}
+
+.ls-corner-tr {
+  top: 20px;
+  right: 20px;
+  border-width: 2px 2px 0 0;
+}
+
+.ls-corner-bl {
+  bottom: 20px;
+  left: 20px;
+  border-width: 0 0 2px 2px;
+}
+
+.ls-corner-br {
+  bottom: 20px;
+  right: 20px;
+  border-width: 0 2px 2px 0;
+}

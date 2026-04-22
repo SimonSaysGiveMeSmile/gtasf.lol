@@ -7,6 +7,7 @@ import Player from './player/Player'
 import VehicleSpawner from './vehicles/VehicleSpawner'
 import NPCCrowd from './npcs/NPCCrowd'
 import HUD from './ui/HUD'
+import LoadingScreen from './ui/LoadingScreen'
 import InputManager from './systems/InputManager'
 import TouchControls from './ui/TouchControls'
 import FPSTracker from './systems/FPSTracker'
@@ -34,7 +35,7 @@ export default function App() {
      <Canvas
       shadows={false}
       camera={{ fov: 60, near: 0.1, far: 8000 }}
-      gl={{ antialias: true, alpha: false, powerPreference: 'high-performance', preferWebGl2: true }}
+      gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
       style={{ background: '#87CEEB' }}
       frameloop="always"
       dpr={[1, 1]}
@@ -51,6 +52,7 @@ export default function App() {
      </Canvas>
      <HUD />
      <TouchControls />
+     <LoadingScreen />
      {!isDead && (
       <div style={{
        position: 'absolute',
