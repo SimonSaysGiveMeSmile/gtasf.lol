@@ -8,7 +8,8 @@ import { VEHICLES, MAP_SIZE, VEHICLE_COUNT } from '../game/constants'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
 import { vehiclePositions } from '../game/vehicleState'
 import { getNearbyBuildingsGrid } from '../world/World'
-import { VehicleAdWrap, CaltrainAdWrap, CALTRAIN_ADS } from '../systems/billboards'
+import { VehicleAdWrap } from '../systems/billboards/VehicleAdWraps'
+import CaltrainAdWrap from '../systems/billboards/CaltrainAdWrap'
 
 // Seeded random for deterministic spawns
 function seededRandom(seed: number): number {
@@ -545,9 +546,9 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       : spec.acceleration
 
     if (isGround) {
-      // Ground vehicle physics — negated so W moves forward (toward camera direction behind player)
-      if (playerInThis && fwd) vel.current.z -= accel * dt
-      if (playerInThis && bwd) vel.current.z += accel * dt
+      // Ground vehicle physics — W/S inverted so W moves backward, S moves forward
+      if (playerInThis && fwd) vel.current.z += accel * dt
+      if (playerInThis && bwd) vel.current.z -= accel * dt
       if (playerInThis && lft) angle.current += spec.handling * dt * 2
       if (playerInThis && rgt) angle.current -= spec.handling * dt * 2
 
@@ -781,7 +782,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
         interactCooldown.current = true
         setTimeout(() => { interactCooldown.current = false }, 500)
       } else if (dist < 4) {
-        enterVehicle(id)
+        enterVehicle(id, type)
         interactCooldown.current = true
         setTimeout(() => { interactCooldown.current = false }, 500)
       }
@@ -802,7 +803,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
     <group ref={meshRef} position={[x, isPlane ? 50 : 0, z]}>
       <VehicleMesh type={type} color={color} />
       <VehicleAdWrap vehicleId={id} vehicleType={type} />
-      {isCaltrain && <CaltrainAdWrap ad={CALTRAIN_ADS[Math.abs(x * 17 + z) % CALTRAIN_ADS.length]} index={Math.floor(Math.abs(x * 7 + z * 13)) % 10} />}
+      {isCaltrain && <CaltrainAdWrap index={Math.floor(Math.abs(x * 7 + z * 13)) % 10} seedX={x} seedZ={z} />}
     </group>
   )
 }

@@ -147,6 +147,8 @@ export default function HUD() {
   const timeOfDay = useGameStore((s) => s.timeOfDay)
   const setTimeOfDay = useGameStore((s) => s.setTimeOfDay)
   const vehicleSpeed = useGameStore((s) => s.vehicleSpeed)
+  const currentVehicleType = useGameStore((s) => s.currentVehicleType)
+  const vehicleName = currentVehicleType ? (VEHICLES.find(v => v.type === currentVehicleType)?.name || 'VEHICLE') : 'VEHICLE'
   const isFalling = useGameStore((s) => s.isFalling)
   const npcs = useGameStore((s) => s.npcs)
   const playerRotation = useGameStore((s) => s.playerRotation)

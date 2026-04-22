@@ -3,7 +3,7 @@ import { Sky } from '@react-three/drei'
 import { useGameStore } from '../game/store'
 import { MAP_SIZE } from '../game/constants'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
-import { BillboardLayer } from '../systems/billboards'
+import { default as BillboardLayer } from '../systems/billboards/BillboardLayer'
 
 // ─── Spatial Grid for Collision Detection ─────────────────────────────────────
 // Divide the map into a grid; each cell stores building indices
@@ -323,10 +323,10 @@ export default function World() {
 
   return (
     <>
-      <ambientLight intensity={0.6} />
+      <ambientLight intensity={3.0} />
       <directionalLight
         position={[100, 200, 80]}
-        intensity={1.5}
+        intensity={7.5}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-far={5000}

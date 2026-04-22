@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { CityId, NPC, PlayerMode } from './types'
+import type { CityId, NPC, PlayerMode, VehicleType } from './types'
 
 interface GameState {
   // Player state
@@ -22,6 +22,7 @@ interface GameState {
   // Vehicles
   activeVehicles: string[]
   vehicleSpeed: number
+  currentVehicleType: VehicleType | null
   exitVehiclePosition: [number, number, number] | null
 
   // Interaction
@@ -59,6 +60,7 @@ interface GameState {
   triggerDamageFlash: () => void
   setTimeOfDay: (time: 'day' | 'night') => void
   setVehicleSpeed: (speed: number) => void
+  setCurrentVehicleType: (type: VehicleType | null) => void
   setIsFlying: (flying: boolean) => void
   setAltitude: (altitude: number) => void
   setFps: (fps: number) => void
@@ -83,6 +85,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   lastDamageTime: 0,
   damageFlash: false,
   vehicleSpeed: 0,
+  currentVehicleType: null,
   isFalling: false,
   isFlying: false,
   altitude: 0,
@@ -109,8 +112,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   setPlayerMode: (mode) => set({ playerMode: mode }),
   setRunning: (running) => set({ isRunning: running }),
 
-  enterVehicle: (id) => set({ inVehicle: id, playerMode: 'vehicle' }),
-  exitVehicle: (exitPos) => set({ inVehicle: null, playerMode: 'onfoot', vehicleSpeed: 0, exitVehiclePosition: exitPos || null }),
+  enterVehicle: (id: string, vehicleType?: VehicleType) => set({ inVehicle: id, playerMode: 'vehicle', currentVehicleType: vehicleType || null }),
+  exitVehicle: (exitPos) => set({ inVehicle: null, playerMode: 'onfoot', vehicleSpeed: 0, currentVehicleType: null, exitVehiclePosition: exitPos || null }),
   setInVehicle: (id) => set({ inVehicle: id }),
 
   die: () => {
@@ -130,6 +133,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       playerHealth: 100,
       playerMode: 'onfoot',
       inVehicle: null,
+      currentVehicleType: null,
       playerPosition: [0, 3, 0],
     })
   },
@@ -152,6 +156,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setTimeOfDay: (time) => set({ timeOfDay: time }),
   setIsFalling: (falling) => set({ isFalling: falling }),
   setVehicleSpeed: (speed) => set({ vehicleSpeed: speed }),
+  setCurrentVehicleType: (type) => set({ currentVehicleType: type }),
   setIsFlying: (flying) => set({ isFlying: flying }),
   setAltitude: (altitude) => set({ altitude }),
   setFps: (fps) => set({ fps }),

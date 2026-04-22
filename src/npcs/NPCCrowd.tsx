@@ -82,7 +82,7 @@ const SHOULDER_Y = TORSO_Y + TORSO_H * 0.85
 const ARM_LEN = 0.4
 
 // ── Shared body mesh ────────────────────────────────────────────────────────
-function BodyMesh({ shirt, pants, skin, hair }: { shirt: string; pants: string; skin: string; hair: string }) {
+function BodyMesh({ shirt, pants, skin }: { shirt: string; pants: string; skin: string }) {
   return (
     <group>
       {/* Torso */}
@@ -158,7 +158,7 @@ interface PedProps {
   x: number; z: number; color: string; shirt: string; pants: string; hair: string; seed: number
 }
 
-function PedestrianNPC({ x, z, color, shirt, pants, hair, seed }: PedProps) {
+function PedestrianNPC({ x, z, color, shirt, pants, hair: _hair, seed }: PedProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const bodyGroupRef = useRef<THREE.Group>(null!)
   const leftLegRef = useRef<THREE.Group>(null!)
@@ -230,6 +230,19 @@ function PedestrianNPC({ x, z, color, shirt, pants, hair, seed }: PedProps) {
           pos.current.z -= (tdz / tDist) * nd
         }
       }
+
+    // Vehicle collision — push pedestrians away from vehicles
+    for (const [, v] of vehiclePositions) {
+      const vdx = pos.current.x - v.x
+      const vdz = pos.current.z - v.z
+      const vDist = Math.sqrt(vdx * vdx + vdz * vdz)
+      const minDist = 0.3 + v.radius
+      if (vDist < minDist && vDist > 0.001) {
+        const nd = minDist - vDist
+        pos.current.x += (vdx / vDist) * nd
+        pos.current.z += (vdz / vDist) * nd
+      }
+    }
     }
 
     // Vehicle collision — push pedestrians away from vehicles
@@ -237,7 +250,7 @@ function PedestrianNPC({ x, z, color, shirt, pants, hair, seed }: PedProps) {
       const vdx = pos.current.x - v.x
       const vdz = pos.current.z - v.z
       const vDist = Math.sqrt(vdx * vdx + vdz * vdz)
-      const minDist = pR + v.radius
+      const minDist = 0.3 + v.radius
       if (vDist < minDist && vDist > 0.001) {
         const nd = minDist - vDist
         pos.current.x += (vdx / vDist) * nd
@@ -281,7 +294,7 @@ function PedestrianNPC({ x, z, color, shirt, pants, hair, seed }: PedProps) {
       {/* Body — rotates for lean */}
       <group ref={bodyGroupRef}>
         {/* Core body parts */}
-        <BodyMesh shirt={shirt} pants={pants} skin={color} hair={hair} />
+        <BodyMesh shirt={shirt} pants={pants} skin={color} />
         {/* Animated limbs — pivot at shoulder/hip joints */}
         <group ref={leftArmRef} position={[-0.25, SHOULDER_Y, 0]}>
           <mesh position={[0, -ARM_LEN * 0.3, 0]}>

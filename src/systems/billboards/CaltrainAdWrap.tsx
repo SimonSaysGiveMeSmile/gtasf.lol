@@ -1,15 +1,99 @@
 import { useGameStore } from '../../game/store'
-import type { AdContent } from './adsConfig'
+
+// Inlined caltrain ads to avoid barrel re-export runtime issues in Vite dev pre-bundler
+type AdContent = {
+  id: string
+  brand: string
+  headline: string
+  subline?: string
+  primaryColor: string
+  secondaryColor: string
+  textColor: string
+  accentColor: string
+  style: string
+}
+
+const FALLBACK_AD: AdContent = {
+  id: 'fallback',
+  brand: 'Salesforce',
+  headline: 'HELLO, TRAINS',
+  primaryColor: '#00a1e0',
+  secondaryColor: '#001122',
+  textColor: '#ffffff',
+  accentColor: '#0099cc',
+  style: 'tech',
+}
+
+const CALTRAIN_ADS: AdContent[] = [
+  {
+    id: 'caltrain-salesforce',
+    brand: 'Salesforce',
+    headline: 'HELLO, TRAINS',
+    subline: 'salesforce.com',
+    primaryColor: '#00a1e0',
+    secondaryColor: '#001122',
+    textColor: '#ffffff',
+    accentColor: '#0099cc',
+    style: 'tech',
+  },
+  {
+    id: 'caltrain-lyft',
+    brand: 'Lyft',
+    headline: 'CONNECTING BAYS',
+    subline: 'lyft.com/caltrain',
+    primaryColor: '#ff71ce',
+    secondaryColor: '#1a0033',
+    textColor: '#ffffff',
+    accentColor: '#ff99ee',
+    style: 'transit',
+  },
+  {
+    id: 'caltrain-caltrain',
+    brand: 'Caltrain',
+    headline: 'PENINSULA RAIL',
+    subline: 'Caltrain · 505-9900',
+    primaryColor: '#cc4422',
+    secondaryColor: '#ffdd00',
+    textColor: '#ffffff',
+    accentColor: '#ffee66',
+    style: 'transit',
+  },
+  {
+    id: 'caltrain-uber',
+    brand: 'Uber',
+    headline: 'FIRST RIDE FREE',
+    subline: 'Get Uber · Download now',
+    primaryColor: '#000000',
+    secondaryColor: '#06c170',
+    textColor: '#ffffff',
+    accentColor: '#00ff88',
+    style: 'transit',
+  },
+  {
+    id: 'caltrain-stripe',
+    brand: 'Stripe',
+    headline: 'SF HQ',
+    subline: 'stripe.com/careers',
+    primaryColor: '#635bff',
+    secondaryColor: '#111111',
+    textColor: '#ffffff',
+    accentColor: '#9b99ff',
+    style: 'tech',
+  },
+]
 
 // Apply ad wrap to the Caltrain car body
 // The caltrain car is 8 units long, 2.8 wide, 1.6 tall at body center
 interface CaltrainAdWrapProps {
-  ad: AdContent
-  index: number // which car (0 = front car)
+  index: number // which car (0 = front car) — used to pick ad variant
+  seedX?: number // x position for ad selection
+  seedZ?: number // z position for ad selection
 }
 
-export function CaltrainAdWrap({ ad, index }: CaltrainAdWrapProps) {
+export default function CaltrainAdWrap({ index, seedX = 0, seedZ = 0 }: CaltrainAdWrapProps) {
   const isNight = useGameStore((s) => s.timeOfDay === 'night')
+  const idx = Math.abs(Math.round(seedX * 17 + seedZ)) % CALTRAIN_ADS.length
+  const ad = CALTRAIN_ADS[idx] ?? FALLBACK_AD
 
   // Alternate ad sides per car
   const showFront = index % 2 === 0

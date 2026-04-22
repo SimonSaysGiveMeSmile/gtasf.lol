@@ -94,11 +94,11 @@ export default function Player() {
         isMouseDown.current = false
         return
       }
-      // Inverted: right = turn right (positive theta)
-      cameraAngle.current.theta += e.movementX * 0.004
+      // Inverted: right = turn left (negative theta), down = look up (positive phi)
+      cameraAngle.current.theta -= e.movementX * 0.004
       cameraAngle.current.phi = Math.max(
         CAM_PHI_MIN,
-        Math.min(CAM_PHI_MAX, cameraAngle.current.phi - e.movementY * 0.004)
+        Math.min(CAM_PHI_MAX, cameraAngle.current.phi + e.movementY * 0.004)
       )
     }
     const handleContextMenu = (e: MouseEvent) => e.preventDefault()
@@ -199,8 +199,8 @@ export default function Player() {
     if (len > 0) { dx /= len; dz /= len }
 
     // Rotate movement by camera angle (camera-relative → world space)
-    const worldDx = dx * Math.cos(angle) - dz * Math.sin(angle)
-    const worldDz = dx * Math.sin(angle) + dz * Math.cos(angle)
+    const worldDx = dx * Math.cos(angle) + dz * Math.sin(angle)
+    const worldDz = -dx * Math.sin(angle) + dz * Math.cos(angle)
 
     // Smooth velocity
     velocity.current.x += (worldDx * speed - velocity.current.x) * 0.2
@@ -227,7 +227,9 @@ export default function Player() {
       const newZ = position.current.z + velocity.current.z * dt
 
       let hitX = false, hitZ = false
-      for (const b of BUILDING_LAYOUT) {
+      const nearbyBuildings = getNearbyBuildingsGrid(newX, newZ, r + 10)
+      for (const bi of nearbyBuildings) {
+        const b = BUILDING_LAYOUT[bi]
         const hx = b.width / 2 + r
         const hz = b.depth / 2 + r
         const dxb = newX - b.x
@@ -287,7 +289,7 @@ export default function Player() {
     const camDist = PLAYER_CONFIG.cameraDistance
     const camH = PLAYER_CONFIG.cameraHeight
     const phi = cameraAngle.current.phi
-    const camAngle = -angle
+    const camAngle = angle + Math.PI
     const tx = position.current.x + Math.sin(camAngle) * camDist
     const ty = position.current.y + camH - phi * camDist * 0.7
     const tz = position.current.z + Math.cos(camAngle) * camDist
@@ -338,7 +340,7 @@ export default function Player() {
 
     if (meshRef.current) {
       meshRef.current.position.copy(position.current)
-      meshRef.current.rotation.y = -angle
+      meshRef.current.rotation.y = angle
     }
   })
 
