@@ -723,6 +723,36 @@
   100% { transform: translate(0); }
 }
 
+/* === FPS COUNTER === */
+.fps-counter {
+  position: fixed;
+  top: 56px;
+  right: 16px;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  background: rgba(10, 10, 25, 0.8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  backdrop-filter: blur(8px);
+  z-index: 100;
+}
+
+.fps-value {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.fps-label {
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--color-muted);
+}
+
 /* === SCANLINE OVERLAY === */
 .scanline-overlay {
   position: fixed;

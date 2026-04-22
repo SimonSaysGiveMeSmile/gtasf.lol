@@ -178,7 +178,7 @@ export default function TouchControls() {
         {/* Middle row: Interact */}
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <ActionButton
-            label="E"
+            label="F"
             color="#00ff88"
             onPress={() => pressButton('interact', true)}
             onRelease={() => pressButton('interact', false)}

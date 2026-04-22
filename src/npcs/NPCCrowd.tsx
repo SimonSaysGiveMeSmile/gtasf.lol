@@ -5,6 +5,8 @@ import { useGameStore } from '../game/store'
 import type { NPC } from '../game/types'
 import { NPC_COUNT, TRAFFIC_COUNT, NPC_COLORS, MAP_SIZE } from '../game/constants'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
+import { vehiclePositions } from '../game/vehicleState'
+import { getNearbyBuildingsGrid } from '../world/World'
 
 function seededRandom(seed: number) {
   const x = Math.sin(seed + 1) * 10000
@@ -93,24 +95,10 @@ function BodyMesh({ shirt, pants, skin, hair }: { shirt: string; pants: string; 
         <cylinderGeometry args={[0.05, 0.06, 0.1, 8]} />
         <meshStandardMaterial color={skin} roughness={0.8} />
       </mesh>
-      {/* Head */}
+      {/* Head — simple smooth sphere */}
       <mesh position={[0, HEAD_Y, 0]}>
         <sphereGeometry args={[0.15, 10, 10]} />
-        <meshStandardMaterial color={skin} roughness={0.7} />
-      </mesh>
-      {/* Hair */}
-      <mesh position={[0, HEAD_Y + 0.03, 0]} scale={[1.0, 0.38, 1.0]}>
-        <sphereGeometry args={[0.16, 8, 6]} />
-        <meshStandardMaterial color={hair} roughness={0.95} />
-      </mesh>
-      {/* Hair — side */}
-      <mesh position={[-0.1, HEAD_Y - 0.02, 0]} scale={[0.55, 0.22, 0.65]}>
-        <sphereGeometry args={[0.14, 6, 4]} />
-        <meshStandardMaterial color={hair} roughness={0.95} />
-      </mesh>
-      <mesh position={[0.1, HEAD_Y - 0.02, 0]} scale={[0.55, 0.22, 0.65]}>
-        <sphereGeometry args={[0.14, 6, 4]} />
-        <meshStandardMaterial color={hair} roughness={0.95} />
+        <meshStandardMaterial color={skin} roughness={0.8} />
       </mesh>
       {/* Arms */}
       <mesh position={[-0.25, SHOULDER_Y, 0]}>
@@ -212,7 +200,9 @@ function PedestrianNPC({ x, z, color, shirt, pants, hair, seed }: PedProps) {
 
       // Building collision for pedestrians
       const pR = 0.3
-      for (const b of LANDSCAPE_CONFIG.buildings) {
+      const nearbyBuildings = getNearbyBuildingsGrid(pos.current.x, pos.current.z, pR + 10)
+      for (const bi of nearbyBuildings) {
+        const b = LANDSCAPE_CONFIG.buildings[bi]
         const hx = b.width / 2 + pR
         const hz = b.depth / 2 + pR
         const ddx = pos.current.x - b.x
@@ -239,6 +229,19 @@ function PedestrianNPC({ x, z, color, shirt, pants, hair, seed }: PedProps) {
           pos.current.x -= (tdx / tDist) * nd
           pos.current.z -= (tdz / tDist) * nd
         }
+      }
+    }
+
+    // Vehicle collision — push pedestrians away from vehicles
+    for (const [, v] of vehiclePositions) {
+      const vdx = pos.current.x - v.x
+      const vdz = pos.current.z - v.z
+      const vDist = Math.sqrt(vdx * vdx + vdz * vdz)
+      const minDist = pR + v.radius
+      if (vDist < minDist && vDist > 0.001) {
+        const nd = minDist - vDist
+        pos.current.x += (vdx / vDist) * nd
+        pos.current.z += (vdz / vDist) * nd
       }
     }
 
@@ -353,7 +356,9 @@ function TrafficCar({ x, z, rotation, color }: { x: number; z: number; rotation:
     // Building collision for traffic cars
     const tcR = 1.5
     let blocked = false
-    for (const b of LANDSCAPE_CONFIG.buildings) {
+    const nearbyBuildings = getNearbyBuildingsGrid(nx, nz, tcR + 10)
+    for (const bi of nearbyBuildings) {
+      const b = LANDSCAPE_CONFIG.buildings[bi]
       const hx = b.width / 2 + tcR
       const hz = b.depth / 2 + tcR
       const ddx = nx - b.x

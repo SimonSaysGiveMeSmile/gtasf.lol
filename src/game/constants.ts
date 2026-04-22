@@ -68,8 +68,8 @@ export const VEHICLES: VehicleSpec[] = [
   },
   {
     type: 'sports',
-    name: 'Velocity GT',
-    brand: 'Unknown',
+    name: 'Porsche 911',
+    brand: 'Porsche',
     color: '#cc0000',
     maxSpeed: 140,
     acceleration: 90,
@@ -79,25 +79,36 @@ export const VEHICLES: VehicleSpec[] = [
   },
   {
     type: 'suv',
-    name: 'Terra Runner',
-    brand: 'Unknown',
-    color: '#1a4a1a',
-    maxSpeed: 90,
-    acceleration: 50,
-    handling: 0.75,
-    mass: 2800,
-    dimensions: { x: 2.2, y: 1.8, z: 4.6 },
+    name: 'Tesla Model X',
+    brand: 'Tesla',
+    color: '#2a2a2a',
+    maxSpeed: 95,
+    acceleration: 65,
+    handling: 0.8,
+    mass: 2600,
+    dimensions: { x: 2.2, y: 1.75, z: 5.0 },
   },
   {
     type: 'sedan',
-    name: 'Urban Cruiser',
-    brand: 'Unknown',
-    color: '#334488',
-    maxSpeed: 95,
-    acceleration: 55,
-    handling: 0.85,
+    name: 'Tesla Model 3',
+    brand: 'Tesla',
+    color: '#e8e8e8',
+    maxSpeed: 105,
+    acceleration: 80,
+    handling: 0.9,
     mass: 1800,
-    dimensions: { x: 1.9, y: 1.5, z: 4.4 },
+    dimensions: { x: 1.9, y: 1.45, z: 4.7 },
+  },
+  {
+    type: 'semi',
+    name: 'Tesla Semi',
+    brand: 'Tesla',
+    color: '#b8b8b8',
+    maxSpeed: 80,
+    acceleration: 35,
+    handling: 0.5,
+    mass: 8000,
+    dimensions: { x: 2.5, y: 2.5, z: 9.0 },
   },
   {
     type: 'plane',
@@ -121,6 +132,28 @@ export const VEHICLES: VehicleSpec[] = [
     mass: 1500,
     dimensions: { x: 2.4, y: 1.0, z: 5.0 },
   },
+  {
+    type: 'scooter',
+    name: 'E-Scooter',
+    brand: 'Unknown',
+    color: '#333333',
+    maxSpeed: 30,
+    acceleration: 20,
+    handling: 1.2,
+    mass: 120,
+    dimensions: { x: 0.25, y: 1.1, z: 1.0 },
+  },
+  {
+    type: 'caltrain',
+    name: 'Caltrain',
+    brand: 'Caltrain',
+    color: '#cc4422',
+    maxSpeed: 80,
+    acceleration: 50,
+    handling: 0.3,
+    mass: 50000,
+    dimensions: { x: 2.8, y: 2.0, z: 8.0 },
+  },
 ]
 
 export const PLAYER_CONFIG = {
@@ -134,12 +167,12 @@ export const PLAYER_CONFIG = {
   interactRange: 3,
 }
 
-export const MAP_SIZE = 400
-export const BUILDING_COUNT = 120
-export const TREE_COUNT = 80
-export const NPC_COUNT = 40
-export const TRAFFIC_COUNT = 15
-export const VEHICLE_COUNT = 20
+export const MAP_SIZE = 1600
+export const BUILDING_COUNT = 480
+export const TREE_COUNT = 320
+export const NPC_COUNT = 80
+export const TRAFFIC_COUNT = 30
+export const VEHICLE_COUNT = 40
 
 export const NPC_COLORS = [
   '#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff6bd6',

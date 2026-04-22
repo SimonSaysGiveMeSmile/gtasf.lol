@@ -36,6 +36,7 @@ interface GameState {
  isFalling: boolean
  isFlying: boolean
  altitude: number
+  fps: number
 
  // Actions
  takeDamage: (amount: number) => void
@@ -59,6 +60,7 @@ interface GameState {
  setVehicleSpeed: (speed: number) => void
  setIsFlying: (flying: boolean) => void
  setAltitude: (altitude: number) => void
+  setFps: (fps: number) => void
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -82,6 +84,7 @@ export const useGameStore = create<GameState>((set, get) => ({
  isFalling: false,
  isFlying: false,
  altitude: 0,
+  fps: 60,
 
  takeDamage: (amount) => {
   const state = get()
@@ -148,5 +151,6 @@ export const useGameStore = create<GameState>((set, get) => ({
  setVehicleSpeed: (speed) => set({ vehicleSpeed: speed }),
  setIsFlying: (flying) => set({ isFlying: flying }),
  setAltitude: (altitude) => set({ altitude }),
+  setFps: (fps) => set({ fps }),
  exitVehiclePosition: null,
 }))

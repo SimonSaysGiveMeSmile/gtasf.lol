@@ -6,6 +6,7 @@ import { useGameStore } from '../game/store'
 import type { VehicleType } from '../game/types'
 import { VEHICLES, MAP_SIZE, VEHICLE_COUNT } from '../game/constants'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
+import { getNearbyBuildingsGrid } from '../world/World'
 
 // Seeded random for deterministic spawns
 function seededRandom(seed: number): number {
@@ -54,7 +55,10 @@ function findSplineSpawnPoint(seed: number): { x: number; z: number } | null {
 }
 
 function checkBuildingCollision(px: number, pz: number, r: number) {
-  for (const b of LANDSCAPE_CONFIG.buildings) {
+  const nearby = getNearbyBuildingsGrid(px, pz, r)
+  const buildings = LANDSCAPE_CONFIG.buildings
+  for (const i of nearby) {
+    const b = buildings[i]
     const hx = b.width / 2 + r
     const hz = b.depth / 2 + r
     const dx = px - b.x
@@ -290,38 +294,43 @@ function Scooter({ color }: { color: string }) {
   return (
     <group>
       {/* Deck */}
-      <mesh position={[0, 0.15, 0]}>
+      <mesh castShadow position={[0, 0.15, 0]}>
         <boxGeometry args={[0.25, 0.08, 1.0]} />
         <meshStandardMaterial color="#1a1a1a" roughness={0.9} />
       </mesh>
       {/* Stem */}
-      <mesh position={[0, 0.55, -0.3]}>
+      <mesh castShadow position={[0, 0.55, -0.3]}>
         <cylinderGeometry args={[0.03, 0.03, 0.8, 6]} />
         <meshStandardMaterial color="#333333" metalness={0.6} roughness={0.4} />
       </mesh>
       {/* Handlebars */}
-      <mesh position={[0, 0.95, -0.3]} rotation={[0, 0, Math.PI / 2]}>
+      <mesh castShadow position={[0, 0.95, -0.3]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.025, 0.025, 0.6, 6]} />
         <meshStandardMaterial color="#333333" metalness={0.6} roughness={0.4} />
       </mesh>
       {/* Grips */}
-      <mesh position={[0.3, 0.95, -0.3]}>
+      <mesh castShadow position={[0.3, 0.95, -0.3]}>
         <cylinderGeometry args={[0.04, 0.04, 0.15, 6]} />
         <meshStandardMaterial color="#ff4444" roughness={0.9} />
       </mesh>
-      <mesh position={[-0.3, 0.95, -0.3]}>
+      <mesh castShadow position={[-0.3, 0.95, -0.3]}>
         <cylinderGeometry args={[0.04, 0.04, 0.15, 6]} />
         <meshStandardMaterial color="#ff4444" roughness={0.9} />
       </mesh>
       {/* Front wheel */}
-      <mesh position={[0, 0.15, -0.35]} rotation={[0, 0, Math.PI / 2]}>
+      <mesh position={[0, 0.15, -0.35]} rotation={[0, 0, Math.PI / 2]} castShadow>
         <cylinderGeometry args={[0.18, 0.18, 0.08, 10]} />
         <meshStandardMaterial color="#222222" roughness={0.9} />
       </mesh>
       {/* Rear wheel */}
-      <mesh position={[0, 0.15, 0.4]} rotation={[0, 0, Math.PI / 2]}>
+      <mesh position={[0, 0.15, 0.4]} rotation={[0, 0, Math.PI / 2]} castShadow>
         <cylinderGeometry args={[0.18, 0.18, 0.08, 10]} />
         <meshStandardMaterial color="#222222" roughness={0.9} />
+      </mesh>
+      {/* Platform body */}
+      <mesh castShadow position={[0, 0.08, 0]}>
+        <boxGeometry args={[0.24, 0.05, 0.9]} />
+        <meshStandardMaterial color={color} metalness={0.5} roughness={0.4} />
       </mesh>
       {/* Headlight */}
       <mesh position={[0, 0.85, -0.32]}>
@@ -488,9 +497,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
   const isPlane = type === 'plane'
   const isBoat = type === 'boat'
   const isCaltrain = type === 'caltrain'
-  const isScooter = type === 'scooter'
   const isGround = !isPlane && !isBoat && !isCaltrain
-  const isRail = isCaltrain
 
   const spec = VEHICLES.find(v => v.type === type) || VEHICLES[0]
 
@@ -536,9 +543,9 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       : spec.acceleration
 
     if (isGround) {
-      // Ground vehicle physics
-      if (playerInThis && fwd) vel.current.z += accel * dt
-      if (playerInThis && bwd) vel.current.z -= accel * dt
+      // Ground vehicle physics — negated so W moves forward (toward camera direction behind player)
+      if (playerInThis && fwd) vel.current.z -= accel * dt
+      if (playerInThis && bwd) vel.current.z += accel * dt
       if (playerInThis && lft) angle.current += spec.handling * dt * 2
       if (playerInThis && rgt) angle.current -= spec.handling * dt * 2
 
@@ -602,9 +609,9 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       if (playerInThis) setVehicleSpeed(Math.abs(vel.current.z) * 3.6)
 
     } else if (isBoat) {
-      // Boat physics — 180 flip applied
-      if (playerInThis && fwd) vel.current.z += accel * dt
-      if (playerInThis && bwd) vel.current.z -= accel * dt
+      // Boat physics — W moves forward toward camera
+      if (playerInThis && fwd) vel.current.z -= accel * dt
+      if (playerInThis && bwd) vel.current.z += accel * dt
       if (playerInThis && lft) angle.current += spec.handling * dt * 1.5
       if (playerInThis && rgt) angle.current -= spec.handling * dt * 1.5
 
@@ -730,16 +737,16 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       // Camera follow
       if (isPlane) {
         const camDist = 15
-        const tx = pos.current.x + Math.sin(angle.current) * camDist
+        const tx = pos.current.x - Math.sin(angle.current) * camDist
         const ty = pos.current.y + 5
-        const tz = pos.current.z + Math.cos(angle.current) * camDist
+        const tz = pos.current.z - Math.cos(angle.current) * camDist
         camera.position.lerp(new THREE.Vector3(tx, ty, tz), 0.08)
         camera.lookAt(pos.current.x, pos.current.y, pos.current.z)
       } else {
         const camDist = 8
-        const tx = pos.current.x + Math.sin(angle.current) * camDist
+        const tx = pos.current.x - Math.sin(angle.current) * camDist
         const ty = pos.current.y + 3
-        const tz = pos.current.z + Math.cos(angle.current) * camDist
+        const tz = pos.current.z - Math.cos(angle.current) * camDist
         camera.position.lerp(new THREE.Vector3(tx, ty, tz), 0.1)
         camera.lookAt(pos.current.x, pos.current.y + 0.5, pos.current.z)
       }
@@ -752,7 +759,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       const dist = Math.sqrt(dx * dx + dz * dz)
 
       if (dist < 4) {
-        setNearbyInteractable({ type: 'vehicle', id }, 'Press E to enter')
+        setNearbyInteractable({ type: 'vehicle', id }, 'Press F to enter')
       } else {
         const current = useGameStore.getState()
         if (current.nearbyInteractable?.id === id) {
@@ -781,7 +788,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
 
     // Show interaction prompt when in vehicle
     if (playerInThis) {
-      setNearbyInteractable({ type: 'vehicle', id }, 'Press E to exit')
+      setNearbyInteractable({ type: 'vehicle', id }, 'Press F to exit')
     }
   })
 
@@ -820,8 +827,8 @@ export default function VehicleSpawner() {
       })
     }
 
-    // E-scooters scattered around pedestrian areas (not on roads)
-    for (let i = 0; i < 15; i++) {
+    // E-scooters scattered around pedestrian areas (reduced)
+    for (let i = 0; i < 5; i++) {
       const sx = (seededRandom(1000 + i * 41) - 0.5) * MAP_SIZE * 0.7
       const sz = (seededRandom(1100 + i * 37) - 0.5) * MAP_SIZE * 0.7
       if (isClearOfBuildings(sx, sz, 1.5)) {
@@ -836,13 +843,13 @@ export default function VehicleSpawner() {
       }
     }
 
-    // Caltrain cars — spawned along rail lines
+    // Caltrain cars — spawned along rail lines (reduced count)
     const railPaths = LANDSCAPE_CONFIG.caltransPaths
     for (let t = 0; t < railPaths.length; t++) {
       const path = railPaths[t]
       if (!path || path.length === 0) continue
-      for (let i = 0; i < 3; i++) {
-        const idx = Math.floor((i / 3) * path.length) % path.length
+      for (let i = 0; i < 2; i++) {
+        const idx = Math.floor((i / 2) * path.length) % path.length
         const pt = path[idx]
         const nextIdx = (idx + 1) % path.length
         const nextPt = path[nextIdx]

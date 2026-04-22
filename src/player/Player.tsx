@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { useGameStore } from '../game/store'
 import { PLAYER_CONFIG, MAP_SIZE } from '../game/constants'
 import { BUILDING_LAYOUT } from '../world/buildings'
+import { getNearbyBuildingsGrid } from '../world/World'
 
 // Module-level refs for gyro (not component state, so they persist)
 const gyroEnabled = { current: false }
@@ -360,24 +361,10 @@ export default function Player() {
           <meshStandardMaterial color="#e8c090" roughness={0.8} />
         </mesh>
 
-        {/* Head */}
+        {/* Head — simple smooth sphere */}
         <mesh position={[0, HEAD_Y, 0]}>
           <sphereGeometry args={[0.18, 12, 12]} />
-          <meshStandardMaterial color="#e8c090" roughness={0.7} />
-        </mesh>
-        {/* Hair — short styled cap */}
-        <mesh position={[0, HEAD_Y + 0.04, 0]} scale={[1.0, 0.38, 1.0]}>
-          <sphereGeometry args={[0.19, 8, 6]} />
-          <meshStandardMaterial color="#1a0f05" roughness={0.95} />
-        </mesh>
-        {/* Hair — side fade */}
-        <mesh position={[-0.12, HEAD_Y - 0.02, 0]} scale={[0.6, 0.25, 0.7]}>
-          <sphereGeometry args={[0.16, 6, 4]} />
-          <meshStandardMaterial color="#1a0f05" roughness={0.95} />
-        </mesh>
-        <mesh position={[0.12, HEAD_Y - 0.02, 0]} scale={[0.6, 0.25, 0.7]}>
-          <sphereGeometry args={[0.16, 6, 4]} />
-          <meshStandardMaterial color="#1a0f05" roughness={0.95} />
+          <meshStandardMaterial color="#d4a574" roughness={0.8} />
         </mesh>
 
         {/* Left Arm */}
