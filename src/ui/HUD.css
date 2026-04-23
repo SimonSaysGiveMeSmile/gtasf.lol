@@ -1,7 +1,48 @@
-/* Text drop shadow for readability over game world */
-.gta-text {
+/* Global text styling for HUD — white text with black outline for visibility over 3D */
+.gta-text,
+.hud-topbar,
+.menu-button,
+.time-toggle,
+.hud-coords,
+.minimap-container,
+.minimap-title,
+.minimap-scale span,
+.health-container,
+.vehicle-indicator,
+.vehicle-name,
+.speed-readout,
+.speed-value,
+.speed-unit,
+.interaction-prompt,
+.interact-key,
+.interact-text,
+.falling-indicator,
+.fps-counter,
+.fps-value,
+.fps-label,
+.death-text,
+.death-killed,
+.death-sub,
+.respawn-text,
+.respawn-label,
+.death-screen * {
   color: #fff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 0 8px rgba(0, 0, 0, 0.3);
+  text-shadow:
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000,
+    0 1px 3px rgba(0, 0, 0, 0.5);
+  -webkit-text-stroke: 0.3px rgba(0, 0, 0, 0.4);
+  paint-order: stroke fill;
+}
+
+/* Subtle text — lower opacity, same outline */
+.coord-label,
+.coord-value,
+.minimap-scale span,
+.fps-label {
+  color: rgba(255, 255, 255, 0.7);
 }
 
 /* === HUD TOP BAR === */

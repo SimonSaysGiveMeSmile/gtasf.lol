@@ -43,6 +43,7 @@ interface GameState {
   qualityPreset: 'low' | 'med' | 'high' | 'ultra' | '8k'
   qualityNpcCount: number
   qualityVehicleCount: number
+  qualityBuildingCount: number
 
   // Actions
   takeDamage: (amount: number) => void
@@ -70,7 +71,7 @@ interface GameState {
   setFps: (fps: number) => void
   setIsLoading: (loading: boolean) => void
   setQualityPreset: (preset: 'low' | 'med' | 'high' | 'ultra' | '8k') => void
-  setQualityCounts: (npc: number, vehicle: number) => void
+  setQualityCounts: (npc: number, vehicle: number, building: number) => void
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
