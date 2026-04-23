@@ -194,6 +194,13 @@ const CALTRANS_PATHS: { x: number; z: number; angle: number }[][] = CALTRANS_LIN
 interface BuildingData { x: number; z: number; width: number; depth: number; height: number; color?: string }
 interface TreeData { x: number; z: number }
 interface LampData { x: number; z: number }
+interface TrafficLightData { x: number; z: number; angle: number }
+interface BusStopData { x: number; z: number; angle: number; name: string }
+interface CrosswalkData { x: number; z: number; angle: number }
+interface SidewalkData { x: number; z: number; angle: number; len: number }
+interface ParkingData { x: number; z: number; angle: number }
+interface BenchData { x: number; z: number; angle: number }
+interface HydrantData { x: number; z: number }
 
 const BUILDING_COLORS_ARRAY = [
   '#1a1a3a', '#151535', '#202050', '#0f0f2a', '#1e1e40',
@@ -223,12 +230,12 @@ for (let i = 0; i < 800; i++) {
     x, z, width, depth, height,
     color: BUILDING_COLORS_ARRAY[Math.floor(rng4 * BUILDING_COLORS_ARRAY.length)],
   })
-  if (buildings.length >= 480) break
+  if (buildings.length >= 200) break
 }
 
 // ─── Trees ────────────────────────────────────────────────────────────────────
 const trees: TreeData[] = []
-for (let i = 0; i < 320; i++) {
+for (let i = 0; i < 120; i++) {
   const rng = seededRandom(i * 23 + 5)
   const angle = rng * Math.PI * 2
   const dist = 30 + rng * MAP_SIZE * 0.44
@@ -251,6 +258,104 @@ for (const path of ROAD_PATHS) {
   }
 }
 
+// ─── Traffic Lights ───────────────────────────────────────────────────────────
+interface TrafficLightData { x: number; z: number; angle: number }
+const trafficLights: TrafficLightData[] = []
+for (const path of ROAD_PATHS) {
+  for (let i = 0; i < path.length; i += 20) {
+    const pt = path[i]
+    trafficLights.push({ x: pt.x, z: pt.z, angle: pt.angle })
+  }
+}
+
+// ─── Bus Stops ────────────────────────────────────────────────────────────────
+interface BusStopData { x: number; z: number; angle: number; name: string }
+const BUS_STOP_NAMES = ['Market & 4th', 'Powell St', 'Van Ness', 'Castro', 'Mission', 'Embarcadero', 'Civic Center', '16th St', '24th St', 'Glen Park', 'BART', 'Ferry Bldg']
+const busStops: BusStopData[] = []
+for (let i = 0; i < 30; i++) {
+  const path = ROAD_PATHS[i % ROAD_PATHS.length]
+  if (!path || path.length === 0) continue
+  const pt = path[Math.floor(path.length / 2)]
+  const perpAngle = pt.angle + Math.PI / 2
+  const side = i % 2 === 0 ? 1 : -1
+  busStops.push({
+    x: pt.x + Math.cos(perpAngle) * 10 * side,
+    z: pt.z + Math.sin(perpAngle) * 10 * side,
+    angle: pt.angle,
+    name: BUS_STOP_NAMES[i % BUS_STOP_NAMES.length],
+  })
+}
+
+// ─── Crosswalks ───────────────────────────────────────────────────────────────
+interface CrosswalkData { x: number; z: number; angle: number }
+const crosswalks: CrosswalkData[] = []
+for (const path of ROAD_PATHS) {
+  for (let i = 0; i < path.length; i += 20) {
+    const pt = path[i]
+    const nextPt = path[Math.min(i + 1, path.length - 1)]
+    crosswalks.push({ x: pt.x, z: pt.z, angle: Math.atan2(nextPt.x - pt.x, nextPt.z - pt.z) })
+  }
+}
+
+// ─── Sidewalks ───────────────────────────────────────────────────────────────
+interface SidewalkData { x: number; z: number; angle: number; len: number }
+const sidewalks: SidewalkData[] = []
+for (const path of ROAD_PATHS) {
+  for (let i = 0; i < path.length; i += 6) {
+    const pt = path[i]
+    const nextPt = path[Math.min(i + 1, path.length - 1)]
+    const angle = Math.atan2(nextPt.x - pt.x, nextPt.z - pt.z)
+    const perpAngle = angle + Math.PI / 2
+    sidewalks.push({
+      x: pt.x + Math.cos(perpAngle) * 8,
+      z: pt.z + Math.sin(perpAngle) * 8,
+      angle,
+      len: 8,
+    })
+    sidewalks.push({
+      x: pt.x - Math.cos(perpAngle) * 8,
+      z: pt.z - Math.sin(perpAngle) * 8,
+      angle,
+      len: 8,
+    })
+  }
+}
+
+// ─── Parking Lots ─────────────────────────────────────────────────────────────
+interface ParkingData { x: number; z: number; angle: number }
+const parkingLots: ParkingData[] = []
+for (let i = 0; i < 15; i++) {
+  const path = ROAD_PATHS[i % ROAD_PATHS.length]
+  if (!path || path.length < 5) continue
+  const pt = path[Math.floor(path.length * 0.3)]
+  const perpAngle = (pt.angle || 0) + Math.PI / 2
+  parkingLots.push({
+    x: pt.x + Math.cos(perpAngle) * 20,
+    z: pt.z + Math.sin(perpAngle) * 20,
+    angle: pt.angle || 0,
+  })
+}
+
+// ─── Benches ─────────────────────────────────────────────────────────────────
+interface BenchData { x: number; z: number; angle: number }
+const benches: BenchData[] = []
+for (let i = 0; i < 40; i++) {
+  const path = ROAD_PATHS[i % ROAD_PATHS.length]
+  if (!path || path.length === 0) continue
+  const pt = path[Math.floor(path.length * 0.6)]
+  benches.push({ x: pt.x, z: pt.z, angle: pt.angle || 0 })
+}
+
+// ─── Fire Hydrants ────────────────────────────────────────────────────────────
+interface HydrantData { x: number; z: number }
+const hydrants: HydrantData[] = []
+for (let i = 0; i < 60; i++) {
+  const path = ROAD_PATHS[i % ROAD_PATHS.length]
+  if (!path || path.length === 0) continue
+  const pt = path[Math.floor(path.length * 0.5)]
+  hydrants.push({ x: pt.x + (seededRandom(i * 97) - 0.5) * 12, z: pt.z + (seededRandom(i * 113) - 0.5) * 12 })
+}
+
 // ─── Water ───────────────────────────────────────────────────────────────────
 const WATER_X = -MAP_SIZE * 0.72
 const WATER_WIDTH = MAP_SIZE * 0.56
@@ -263,6 +368,13 @@ export const LANDSCAPE_CONFIG = {
   buildings,
   trees,
   streetLamps,
+  trafficLights,
+  busStops,
+  crosswalks,
+  sidewalks,
+  parkingLots,
+  benches,
+  hydrants,
   caltransLines: CALTRANS_LINES,
   caltransPaths: CALTRANS_PATHS,
   water: {

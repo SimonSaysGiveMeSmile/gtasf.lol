@@ -6,7 +6,7 @@ import { useGameStore } from '../game/store'
 import type { VehicleType } from '../game/types'
 import { VEHICLES, MAP_SIZE, VEHICLE_COUNT } from '../game/constants'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
-import { vehiclePositions } from '../game/vehicleState'
+import { vehiclePositions, vehicleRadius, OBSTACLE_RADIUS } from '../game/vehicleState'
 import { getNearbyBuildingsGrid } from '../world/World'
 import { VehicleAdWrap } from '../systems/billboards/VehicleAdWraps'
 import CaltrainAdWrap from '../systems/billboards/CaltrainAdWrap'
@@ -17,9 +17,8 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x)
 }
 
-// ── Collision helpers ────────────────────────────────────────────────────────
+// ── Obstacle collision helpers ───────────────────────────────────────────────
 const TREE_RADIUS = 0.4
-const VEHICLE_RADIUS = 2.2
 
 function isClearOfBuildings(x: number, z: number, r: number): boolean {
   for (const b of LANDSCAPE_CONFIG.buildings) {
@@ -50,7 +49,7 @@ function findSplineSpawnPoint(seed: number): { x: number; z: number } | null {
 
   // Try to find a clear spot
   for (const pt of allPoints) {
-    if (isClearOfBuildings(pt.x, pt.z, VEHICLE_RADIUS)) {
+    if (isClearOfBuildings(pt.x, pt.z, vehicleRadius('sedan'))) {
       return pt
     }
   }
@@ -119,8 +118,6 @@ function TeslaCybertruck({ color }: { color: string }) {
         <boxGeometry args={[2.25, 0.05, 4.85]} />
         <meshStandardMaterial color="#00e5ff" emissive="#00e5ff" emissiveIntensity={2} />
       </mesh>
-      <pointLight position={[0.7, 0.6, 2.4]} color="#00e5ff" intensity={2} distance={10} />
-      <pointLight position={[-0.7, 0.6, 2.4]} color="#00e5ff" intensity={2} distance={10} />
       <mesh position={[0.9, 0.7, -2.4]}>
         <boxGeometry args={[0.3, 0.1, 0.05]} />
         <meshStandardMaterial color="#ff0040" emissive="#ff0040" emissiveIntensity={3} />
@@ -156,8 +153,6 @@ function TeslaModelS({ color }: { color: string }) {
         <boxGeometry args={[1.75, 0.02, 1.0]} />
         <meshStandardMaterial color="#002233" metalness={0.9} transparent opacity={0.5} />
       </mesh>
-      <pointLight position={[0.6, 0.5, 2.2]} color="#aaeeff" intensity={1.5} distance={8} />
-      <pointLight position={[-0.6, 0.5, 2.2]} color="#aaeeff" intensity={1.5} distance={8} />
       <Wheel position={[0.8, 0.35, 1.3]} />
       <Wheel position={[-0.8, 0.35, 1.3]} />
       <Wheel position={[0.8, 0.35, -1.3]} />
@@ -227,8 +222,6 @@ function Sedan({ color }: { color: string }) {
         <boxGeometry args={[1.65, 0.02, 1.0]} />
         <meshStandardMaterial color="#001122" metalness={0.9} transparent opacity={0.5} />
       </mesh>
-      <pointLight position={[0.55, 0.5, 2.0]} color="#aaeeff" intensity={1.5} distance={8} />
-      <pointLight position={[-0.55, 0.5, 2.0]} color="#aaeeff" intensity={1.5} distance={8} />
       <Wheel position={[0.78, 0.33, 1.2]} />
       <Wheel position={[-0.78, 0.33, 1.2]} />
       <Wheel position={[0.78, 0.33, -1.2]} />
@@ -297,41 +290,41 @@ function Scooter({ color }: { color: string }) {
   return (
     <group>
       {/* Deck */}
-      <mesh castShadow position={[0, 0.15, 0]}>
+      <mesh position={[0, 0.15, 0]}>
         <boxGeometry args={[0.25, 0.08, 1.0]} />
         <meshStandardMaterial color="#1a1a1a" roughness={0.9} />
       </mesh>
       {/* Stem */}
-      <mesh castShadow position={[0, 0.55, -0.3]}>
+      <mesh position={[0, 0.55, -0.3]}>
         <cylinderGeometry args={[0.03, 0.03, 0.8, 6]} />
         <meshStandardMaterial color="#333333" metalness={0.6} roughness={0.4} />
       </mesh>
       {/* Handlebars */}
-      <mesh castShadow position={[0, 0.95, -0.3]} rotation={[0, 0, Math.PI / 2]}>
+      <mesh position={[0, 0.95, -0.3]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.025, 0.025, 0.6, 6]} />
         <meshStandardMaterial color="#333333" metalness={0.6} roughness={0.4} />
       </mesh>
       {/* Grips */}
-      <mesh castShadow position={[0.3, 0.95, -0.3]}>
+      <mesh position={[0.3, 0.95, -0.3]}>
         <cylinderGeometry args={[0.04, 0.04, 0.15, 6]} />
         <meshStandardMaterial color="#ff4444" roughness={0.9} />
       </mesh>
-      <mesh castShadow position={[-0.3, 0.95, -0.3]}>
+      <mesh position={[-0.3, 0.95, -0.3]}>
         <cylinderGeometry args={[0.04, 0.04, 0.15, 6]} />
         <meshStandardMaterial color="#ff4444" roughness={0.9} />
       </mesh>
       {/* Front wheel */}
-      <mesh position={[0, 0.15, -0.35]} rotation={[0, 0, Math.PI / 2]} castShadow>
+      <mesh position={[0, 0.15, -0.35]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.18, 0.18, 0.08, 10]} />
         <meshStandardMaterial color="#222222" roughness={0.9} />
       </mesh>
       {/* Rear wheel */}
-      <mesh position={[0, 0.15, 0.4]} rotation={[0, 0, Math.PI / 2]} castShadow>
+      <mesh position={[0, 0.15, 0.4]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.18, 0.18, 0.08, 10]} />
         <meshStandardMaterial color="#222222" roughness={0.9} />
       </mesh>
       {/* Platform body */}
-      <mesh castShadow position={[0, 0.08, 0]}>
+      <mesh position={[0, 0.08, 0]}>
         <boxGeometry args={[0.24, 0.05, 0.9]} />
         <meshStandardMaterial color={color} metalness={0.5} roughness={0.4} />
       </mesh>
@@ -457,7 +450,7 @@ function Boat({ color }: { color: string }) {
   )
 }
 
-function VehicleMesh({ type, color }: { type: VehicleType; color: string }) {
+export function VehicleMesh({ type, color }: { type: VehicleType; color: string }) {
   switch (type) {
     case 'cybertruck': return <TeslaCybertruck color={color} />
     case 'modelS': return <TeslaModelS color={color} />
@@ -521,7 +514,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
   useEffect(() => {
     if (!isPlane) return
     const handleMouseMove = (e: MouseEvent) => {
-      pitchRef.current = Math.max(-1.2, Math.min(1.2, pitchRef.current + e.movementY * 0.002))
+      pitchRef.current = Math.max(-1.2, Math.min(1.2, pitchRef.current - e.movementY * 0.002))
     }
     window.addEventListener('mousemove', handleMouseMove)
     return () => window.removeEventListener('mousemove', handleMouseMove)
@@ -549,8 +542,8 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       // Ground vehicle physics — W/S inverted so W moves backward, S moves forward
       if (playerInThis && fwd) vel.current.z += accel * dt
       if (playerInThis && bwd) vel.current.z -= accel * dt
-      if (playerInThis && lft) angle.current += spec.handling * dt * 2
-      if (playerInThis && rgt) angle.current -= spec.handling * dt * 2
+      if (playerInThis && lft) angle.current -= spec.handling * dt * 2
+      if (playerInThis && rgt) angle.current += spec.handling * dt * 2
 
       // Drag
       vel.current.z *= 0.97
@@ -562,7 +555,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       if (playerInThis && brk) vel.current.z *= 0.9
 
       // Pre-movement collision: try each axis independently, slide along walls
-      const vR = 2.5
+      const vR = vehicleRadius(type)
       const dx = Math.sin(angle.current) * vel.current.z * dt * 60
       const dz = Math.cos(angle.current) * vel.current.z * dt * 60
       const px = pos.current.x + dx
@@ -609,14 +602,75 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
         vel.current.z *= 0.4
       }
 
+      // Vehicle-vehicle collision — push this vehicle away from all other vehicles
+      for (const [otherId, other] of vehiclePositions) {
+        if (otherId === id) continue
+        const dvx = pos.current.x - other.x
+        const dvz = pos.current.z - other.z
+        const dvDist = Math.sqrt(dvx * dvx + dvz * dvz)
+        const minV = vR + other.radius + 0.1
+        if (dvDist < minV && dvDist > 0.001) {
+          const nd = minV - dvDist
+          pos.current.x += (dvx / dvDist) * nd
+          pos.current.z += (dvz / dvDist) * nd
+          vel.current.z *= 0.3
+        }
+      }
+
+      // Light pole collision
+      for (const lamp of LANDSCAPE_CONFIG.streetLamps) {
+        const lx = lamp.x - pos.current.x
+        const lz = lamp.z - pos.current.z
+        const lDist = Math.sqrt(lx * lx + lz * lz)
+        const minL = vR + OBSTACLE_RADIUS.lightPole + 0.1
+        if (lDist < minL && lDist > 0.001) {
+          const nd = minL - lDist
+          pos.current.x += (lx / lDist) * nd
+          pos.current.z += (lz / lDist) * nd
+          vel.current.z *= 0.4
+        }
+      }
+
+      // Traffic light / bench / hydrant collision
+      for (const tl of LANDSCAPE_CONFIG.trafficLights) {
+        const tx = tl.x - pos.current.x; const tz = tl.z - pos.current.z
+        const tDist = Math.sqrt(tx * tx + tz * tz)
+        const minT = vR + OBSTACLE_RADIUS.trafficLight + 0.1
+        if (tDist < minT && tDist > 0.001) {
+          const nd = minT - tDist
+          pos.current.x += (tx / tDist) * nd; pos.current.z += (tz / tDist) * nd
+          vel.current.z *= 0.4
+        }
+      }
+      for (const bs of LANDSCAPE_CONFIG.busStops) {
+        const bx = bs.x - pos.current.x; const bz = bs.z - pos.current.z
+        const bDist = Math.sqrt(bx * bx + bz * bz)
+        const minB = vR + OBSTACLE_RADIUS.busStop + 0.1
+        if (bDist < minB && bDist > 0.001) {
+          const nd = minB - bDist
+          pos.current.x += (bx / bDist) * nd; pos.current.z += (bz / bDist) * nd
+          vel.current.z *= 0.4
+        }
+      }
+      for (const h of LANDSCAPE_CONFIG.hydrants) {
+        const hx = h.x - pos.current.x; const hz = h.z - pos.current.z
+        const hDist = Math.sqrt(hx * hx + hz * hz)
+        const minH = vR + OBSTACLE_RADIUS.hydrant + 0.1
+        if (hDist < minH && hDist > 0.001) {
+          const nd = minH - hDist
+          pos.current.x += (hx / hDist) * nd; pos.current.z += (hz / hDist) * nd
+          vel.current.z *= 0.4
+        }
+      }
+
       if (playerInThis) setVehicleSpeed(Math.abs(vel.current.z) * 3.6)
 
     } else if (isBoat) {
       // Boat physics — W moves forward toward camera
       if (playerInThis && fwd) vel.current.z -= accel * dt
       if (playerInThis && bwd) vel.current.z += accel * dt
-      if (playerInThis && lft) angle.current += spec.handling * dt * 1.5
-      if (playerInThis && rgt) angle.current -= spec.handling * dt * 1.5
+      if (playerInThis && lft) angle.current -= spec.handling * dt * 1.5
+      if (playerInThis && rgt) angle.current += spec.handling * dt * 1.5
 
       vel.current.z *= 0.96
       const maxSpd = Math.min(spec.maxSpeed * 0.0004, MAX_SPEED)
@@ -632,6 +686,19 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
         setVehicleSpeed(Math.abs(vel.current.z) * 3.6)
         setIsFlying(false)
         setAltitude(0)
+      }
+
+      // Boat-vehicle collision
+      const boatR = vehicleRadius(type)
+      for (const [otherId, other] of vehiclePositions) {
+        if (otherId === id) continue
+        const dvx = pos.current.x - other.x; const dvz = pos.current.z - other.z
+        const dvDist = Math.sqrt(dvx * dvx + dvz * dvz)
+        const minV = boatR + other.radius + 0.1
+        if (dvDist < minV && dvDist > 0.001) {
+          const nd = minV - dvDist
+          pos.current.x += (dvx / dvDist) * nd; pos.current.z += (dvz / dvDist) * nd
+        }
       }
 
     } else if (isCaltrain) {
@@ -708,8 +775,8 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
 
       // Pitch/yaw
       pitchRef.current *= 0.92
-      if (playerInThis && lft) angle.current += spec.handling * dt
-      if (playerInThis && rgt) angle.current -= spec.handling * dt
+      if (playerInThis && lft) angle.current -= spec.handling * dt
+      if (playerInThis && rgt) angle.current += spec.handling * dt
 
       const hSpeed = Math.sqrt(vel.current.x ** 2 + vel.current.z ** 2)
       if (playerInThis) {
@@ -791,7 +858,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
 
 
       // Register vehicle position for NPC/pedestrian collision
-      vehiclePositions.set(id, { x: pos.current.x, z: pos.current.z, radius: 2.5 })
+      vehiclePositions.set(id, { x: pos.current.x, z: pos.current.z, radius: vehicleRadius(type) })
 
     // Show interaction prompt when in vehicle
     if (playerInThis) {

@@ -39,6 +39,7 @@ interface GameState {
   altitude: number
   fps: number
   isLoading: boolean
+  qualityPreset: 'low' | 'med' | 'high' | 'ultra' | '8k'
 
   // Actions
   takeDamage: (amount: number) => void
@@ -49,7 +50,7 @@ interface GameState {
   setPlayerMode: (mode: PlayerMode) => void
   setInVehicle: (id: string | null) => void
   setRunning: (running: boolean) => void
-  enterVehicle: (id: string) => void
+  enterVehicle: (id: string, vehicleType?: VehicleType) => void
   exitVehicle: (exitPos?: [number, number, number]) => void
   die: () => void
   respawn: () => void
@@ -65,6 +66,7 @@ interface GameState {
   setAltitude: (altitude: number) => void
   setFps: (fps: number) => void
   setIsLoading: (loading: boolean) => void
+  setQualityPreset: (preset: 'low' | 'med' | 'high' | 'ultra' | '8k') => void
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -91,6 +93,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   altitude: 0,
   fps: 60,
   isLoading: true,
+  qualityPreset: 'high',
 
   takeDamage: (amount) => {
     const state = get()
@@ -161,5 +164,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   setAltitude: (altitude) => set({ altitude }),
   setFps: (fps) => set({ fps }),
   setIsLoading: (loading) => set({ isLoading: loading }),
+  setQualityPreset: (preset) => set({ qualityPreset: preset }),
   exitVehiclePosition: null,
 }))

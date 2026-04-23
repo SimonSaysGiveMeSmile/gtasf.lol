@@ -16,7 +16,7 @@ interface VehicleProps {
 
 function Wheel({ position }: { position: [number, number, number] }) {
   return (
-    <mesh position={position} rotation={[0, 0, Math.PI / 2]} castShadow>
+    <mesh position={position} rotation={[0, 0, Math.PI / 2]}>
       <cylinderGeometry args={[0.35, 0.35, 0.25, 12]} />
       <meshStandardMaterial color="#1a1a1a" roughness={0.9} />
     </mesh>
@@ -26,11 +26,11 @@ function Wheel({ position }: { position: [number, number, number] }) {
 function TeslaCybertruck({ color }: { color: string }) {
   return (
     <group>
-      <mesh castShadow position={[0, 0.7, 0]}>
+      <mesh position={[0, 0.7, 0]}>
         <boxGeometry args={[2.2, 0.8, 4.8]} />
         <meshStandardMaterial color={color} metalness={0.8} roughness={0.2} />
       </mesh>
-      <mesh castShadow position={[0, 1.15, -0.3]}>
+      <mesh position={[0, 1.15, -0.3]}>
         <boxGeometry args={[2.0, 0.5, 2.8]} />
         <meshStandardMaterial color={color} metalness={0.8} roughness={0.2} />
       </mesh>
@@ -46,8 +46,6 @@ function TeslaCybertruck({ color }: { color: string }) {
         <boxGeometry args={[2.25, 0.05, 4.85]} />
         <meshStandardMaterial color="#00e5ff" emissive="#00e5ff" emissiveIntensity={2} />
       </mesh>
-      <pointLight position={[0.7, 0.6, 2.4]} color="#00e5ff" intensity={2} distance={10} />
-      <pointLight position={[-0.7, 0.6, 2.4]} color="#00e5ff" intensity={2} distance={10} />
       <mesh position={[0.9, 0.7, -2.4]}>
         <boxGeometry args={[0.3, 0.1, 0.05]} />
         <meshStandardMaterial color="#ff0040" emissive="#ff0040" emissiveIntensity={3} />
@@ -67,15 +65,15 @@ function TeslaCybertruck({ color }: { color: string }) {
 function TeslaModelS({ color }: { color: string }) {
   return (
     <group>
-      <mesh castShadow position={[0, 0.55, 0]}>
+      <mesh position={[0, 0.55, 0]}>
         <boxGeometry args={[1.9, 0.6, 4.4]} />
         <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
       </mesh>
-      <mesh castShadow position={[0, 0.7, 1.4]} rotation={[-0.15, 0, 0]}>
+      <mesh position={[0, 0.7, 1.4]} rotation={[-0.15, 0, 0]}>
         <boxGeometry args={[1.85, 0.3, 1.2]} />
         <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
       </mesh>
-      <mesh castShadow position={[0, 0.9, -0.2]}>
+      <mesh position={[0, 0.9, -0.2]}>
         <boxGeometry args={[1.8, 0.5, 2.2]} />
         <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
       </mesh>
@@ -83,8 +81,6 @@ function TeslaModelS({ color }: { color: string }) {
         <boxGeometry args={[1.75, 0.02, 1.0]} />
         <meshStandardMaterial color="#002233" metalness={0.9} transparent opacity={0.5} />
       </mesh>
-      <pointLight position={[0.6, 0.5, 2.2]} color="#aaeeff" intensity={1.5} distance={8} />
-      <pointLight position={[-0.6, 0.5, 2.2]} color="#aaeeff" intensity={1.5} distance={8} />
       <Wheel position={[0.8, 0.35, 1.3]} />
       <Wheel position={[-0.8, 0.35, 1.3]} />
       <Wheel position={[0.8, 0.35, -1.3]} />
@@ -96,11 +92,11 @@ function TeslaModelS({ color }: { color: string }) {
 function SportsCar({ color }: { color: string }) {
   return (
     <group>
-      <mesh castShadow position={[0, 0.4, 0]}>
+      <mesh position={[0, 0.4, 0]}>
         <boxGeometry args={[1.9, 0.4, 4.2]} />
         <meshStandardMaterial color={color} metalness={0.7} roughness={0.2} />
       </mesh>
-      <mesh castShadow position={[0, 0.65, -0.1]}>
+      <mesh position={[0, 0.65, -0.1]}>
         <boxGeometry args={[1.7, 0.35, 2.5]} />
         <meshStandardMaterial color={color} metalness={0.7} roughness={0.2} />
       </mesh>
@@ -119,11 +115,11 @@ function SportsCar({ color }: { color: string }) {
 function SUV({ color }: { color: string }) {
   return (
     <group>
-      <mesh castShadow position={[0, 0.7, 0]}>
+      <mesh position={[0, 0.7, 0]}>
         <boxGeometry args={[2.0, 0.8, 4.3]} />
         <meshStandardMaterial color={color} metalness={0.5} roughness={0.5} />
       </mesh>
-      <mesh castShadow position={[0, 1.25, 0]}>
+      <mesh position={[0, 1.25, 0]}>
         <boxGeometry args={[1.9, 0.6, 2.5]} />
         <meshStandardMaterial color={color} metalness={0.5} roughness={0.5} />
       </mesh>
@@ -138,11 +134,11 @@ function SUV({ color }: { color: string }) {
 function Sedan({ color }: { color: string }) {
   return (
     <group>
-      <mesh castShadow position={[0, 0.5, 0]}>
+      <mesh position={[0, 0.5, 0]}>
         <boxGeometry args={[1.85, 0.55, 4.0]} />
         <meshStandardMaterial color={color} metalness={0.5} roughness={0.4} />
       </mesh>
-      <mesh castShadow position={[0, 0.85, -0.1]}>
+      <mesh position={[0, 0.85, -0.1]}>
         <boxGeometry args={[1.7, 0.45, 2.0]} />
         <meshStandardMaterial color={color} metalness={0.5} roughness={0.4} />
       </mesh>
@@ -157,23 +153,23 @@ function Sedan({ color }: { color: string }) {
 function Plane({ color }: { color: string }) {
   return (
     <group>
-      <mesh castShadow position={[0, 0.6, 0]}>
+      <mesh position={[0, 0.6, 0]}>
         <boxGeometry args={[1.2, 1.0, 7.0]} />
         <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
       </mesh>
-      <mesh castShadow position={[0, 1.0, 2.8]}>
+      <mesh position={[0, 1.0, 2.8]}>
         <boxGeometry args={[1.1, 0.6, 2.0]} />
         <meshStandardMaterial color="#001133" metalness={0.8} transparent opacity={0.6} />
       </mesh>
-      <mesh castShadow position={[0, 0.5, 0]}>
+      <mesh position={[0, 0.5, 0]}>
         <boxGeometry args={[10.0, 0.15, 2.5]} />
         <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
       </mesh>
-      <mesh castShadow position={[0, 1.2, -3.2]}>
+      <mesh position={[0, 1.2, -3.2]}>
         <boxGeometry args={[0.15, 1.2, 1.5]} />
         <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
       </mesh>
-      <mesh castShadow position={[0, 0.7, -3.5]}>
+      <mesh position={[0, 0.7, -3.5]}>
         <boxGeometry args={[3.5, 0.1, 1.0]} />
         <meshStandardMaterial color={color} metalness={0.6} roughness={0.3} />
       </mesh>
@@ -184,11 +180,11 @@ function Plane({ color }: { color: string }) {
 function Boat({ color }: { color: string }) {
   return (
     <group>
-      <mesh castShadow position={[0, 0.3, 0]}>
+      <mesh position={[0, 0.3, 0]}>
         <boxGeometry args={[2.2, 0.6, 4.8]} />
         <meshStandardMaterial color={color} roughness={0.6} />
       </mesh>
-      <mesh castShadow position={[0, 0.8, -0.3]}>
+      <mesh position={[0, 0.8, -0.3]}>
         <boxGeometry args={[1.8, 0.8, 2.2]} />
         <meshStandardMaterial color="#f0f0f0" roughness={0.5} />
       </mesh>
@@ -200,7 +196,7 @@ function Boat({ color }: { color: string }) {
   )
 }
 
-function VehicleMesh({ type, color }: { type: VehicleType; color: string }) {
+export function VehicleMesh({ type, color }: { type: VehicleType; color: string }) {
   switch (type) {
     case 'cybertruck': return <TeslaCybertruck color={color} />
     case 'modelS': return <TeslaModelS color={color} />

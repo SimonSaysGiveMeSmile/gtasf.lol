@@ -25,11 +25,11 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
       <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
         {/* Background grid rings */}
         {[0, 1, 2, 3, 4].map((i) => (
-          <circle key={`grid-${i}`} cx={CENTER} cy={CENTER} r={(i / 5) * (SIZE / 2)} fill="none" stroke="var(--color-border)" strokeWidth={0.5} />
+          <circle key={`grid-${i}`} cx={CENTER} cy={CENTER} r={(i / 5) * (SIZE / 2)} fill="none" stroke="var(--minimap-stroke)" strokeWidth={0.5} />
         ))}
         {/* Cardinal lines */}
-        <line x1={CENTER} y1={0} x2={CENTER} y2={SIZE} stroke="var(--color-border)" strokeWidth={0.3} />
-        <line x1={0} y1={CENTER} x2={SIZE} y2={CENTER} stroke="var(--color-border)" strokeWidth={0.3} />
+        <line x1={CENTER} y1={0} x2={CENTER} y2={SIZE} stroke="var(--minimap-stroke)" strokeWidth={0.3} />
+        <line x1={0} y1={CENTER} x2={SIZE} y2={CENTER} stroke="var(--minimap-stroke)" strokeWidth={0.3} />
 
         {/* Roads from spline paths */}
         {LANDSCAPE_CONFIG.roadPaths.map((path, pi) =>
@@ -103,8 +103,8 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
               y={sy - h / 2}
               width={w}
               height={h}
-              fill="rgba(0, 229, 255, 0.15)"
-              stroke="rgba(0, 229, 255, 0.25)"
+              fill="rgba(0, 113, 227, 0.12)"
+              stroke="rgba(0, 113, 227, 0.2)"
               strokeWidth={0.3}
             />
           )
@@ -113,7 +113,7 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
         {/* Player indicator — triangle arrow */}
         <polygon
           points={`${CENTER},${CENTER - 6} ${CENTER - 4},${CENTER + 4} ${CENTER + 4},${CENTER + 4}`}
-          fill="var(--color-cyan)"
+          fill="var(--minimap-accent)"
           opacity="0.9"
         />
 
@@ -146,6 +146,8 @@ export default function HUD() {
   const setCity = useGameStore((s) => s.setCity)
   const timeOfDay = useGameStore((s) => s.timeOfDay)
   const setTimeOfDay = useGameStore((s) => s.setTimeOfDay)
+  const qualityPreset = useGameStore((s) => s.qualityPreset)
+  const setQualityPreset = useGameStore((s) => s.setQualityPreset)
   const vehicleSpeed = useGameStore((s) => s.vehicleSpeed)
   const currentVehicleType = useGameStore((s) => s.currentVehicleType)
   const vehicleName = currentVehicleType ? (VEHICLES.find(v => v.type === currentVehicleType)?.name || 'VEHICLE') : 'VEHICLE'
@@ -159,14 +161,14 @@ export default function HUD() {
   const speedPercent = Math.min(100, (vehicleSpeed / 200) * 100)
 
   const healthColor =
-    health > 50 ? 'var(--color-green)' : health > 25 ? 'var(--color-amber)' : 'var(--color-magenta)'
+    health > 50 ? 'var(--accent-green)' : health > 25 ? 'var(--accent-amber)' : 'var(--accent-red)'
 
   const healthSegments = Array.from({ length: 10 }, (_, i) => {
     const threshold = (i + 1) * 10
     return health >= threshold
   })
 
-  const fpsColor = fps > 55 ? 'var(--color-green)' : fps > 30 ? 'var(--color-amber)' : 'var(--color-magenta)'
+  const fpsColor = fps > 55 ? 'var(--accent-green)' : fps > 30 ? 'var(--accent-amber)' : 'var(--accent-red)'
 
   return (
     <>
@@ -235,6 +237,20 @@ export default function HUD() {
               </button>
             </div>
             <div className="settings-section">
+              <label className="settings-label">QUALITY</label>
+              <select
+                value={qualityPreset}
+                onChange={(e) => setQualityPreset(e.target.value as typeof qualityPreset)}
+                className="settings-select"
+              >
+                <option value="low">Low (720p)</option>
+                <option value="med">Med (1080p)</option>
+                <option value="high">High (1440p)</option>
+                <option value="ultra">Ultra (4K)</option>
+                <option value="8k">8K (may crash)</option>
+              </select>
+            </div>
+            <div className="settings-section">
               <label className="settings-label">SHOW COORDS</label>
               <button
                 className={`settings-toggle-btn ${showCoords ? 'active' : ''}`}
@@ -262,7 +278,7 @@ export default function HUD() {
       {/* Health bar */}
       <div className={`health-container ${isTouchDevice ? 'hud-topright' : ''}`}>
         <div className="health-label">
-          <span style={{ fontFamily: 'var(--font-display)', fontSize: 10, color: 'var(--color-muted)', letterSpacing: 2 }}>
+          <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: 1 }}>
             HEALTH
           </span>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: healthColor }}>
@@ -293,9 +309,7 @@ export default function HUD() {
       {inVehicle && (
         <div className="vehicle-indicator">
           <div className="vehicle-name-row">
-            <span className="vehicle-name">
-              {VEHICLES.find(v => v.type === 'cybertruck')?.name || 'VEHICLE'}
-            </span>
+            <span className="vehicle-name">{vehicleName}</span>
           </div>
           <div className="speedometer">
             <div className="speed-gauge-track">
@@ -350,8 +364,8 @@ export default function HUD() {
       {isFalling && !inVehicle && (
         <div className="falling-indicator">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-            <path d="M7 1L7 10M7 10L4 7M7 10L10 7" stroke="var(--color-magenta)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M2 12H12" stroke="var(--color-magenta)" strokeWidth="1.5" strokeLinecap="round" />
+            <path d="M7 1L7 10M7 10L4 7M7 10L10 7" stroke="rgba(255,255,255,0.9)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M2 12H12" stroke="rgba(255,255,255,0.9)" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
           <span className="falling-text">FALLING</span>
         </div>

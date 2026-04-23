@@ -34,9 +34,8 @@ const PROGRESS_MESSAGES = [
   'Spawning more vehicles than SF has parking spots...',
 ]
 
-function PixelBlock({ cyan, magenta, w, h }: { cyan?: boolean; magenta?: boolean; w: number; h: number }) {
-  const cls = cyan ? 'ls-block-cyan' : magenta ? 'ls-block-magenta' : 'ls-block-transparent'
-  return <div className={`ls-block ${cls}`} style={{ width: w, height: h }} />
+function PixelBlock({ w, h }: { w: number; h: number }) {
+  return <div className="ls-block ls-block-accent" style={{ width: w, height: h }} />
 }
 
 // 5x7 pixel letter definitions (1 = filled, 0 = empty)
@@ -158,7 +157,7 @@ export default function LoadingScreen() {
                   {rows.map((row, ri) =>
                     row.map((filled, bi) =>
                       filled ? (
-                        <PixelBlock key={`${ci}-${ri}-${bi}`} cyan w={px} h={px} />
+                        <PixelBlock key={`${ci}-${ri}-${bi}`} w={px} h={px} />
                       ) : (
                         <div key={`${ci}-${ri}-${bi}`} style={{ width: px, height: px }} />
                       )
@@ -170,7 +169,7 @@ export default function LoadingScreen() {
             {/* The dash as a magenta block column */}
             <div className="ls-dash-block">
               {[0, 1, 2, 3, 4, 5, 6].map((r) => (
-                <PixelBlock key={r} magenta w={px * 2} h={px} />
+                <PixelBlock key={r} w={px * 2} h={px} />
               ))}
             </div>
             {SECOND_PART.split('').map((char, ci) => {
@@ -180,7 +179,7 @@ export default function LoadingScreen() {
                   {rows.map((row, ri) =>
                     row.map((filled, bi) =>
                       filled ? (
-                        <PixelBlock key={`s-${ci}-${ri}-${bi}`} magenta w={px} h={px} />
+                        <PixelBlock key={`s-${ci}-${ri}-${bi}`} w={px} h={px} />
                       ) : (
                         <div key={`s-${ci}-${ri}-${bi}`} style={{ width: px, height: px }} />
                       )
@@ -215,7 +214,7 @@ export default function LoadingScreen() {
                 className="ls-spinner-pixel"
                 style={{
                   animationDelay: `${i * 80}ms`,
-                  backgroundColor: i % 2 === 0 ? 'var(--color-cyan)' : 'var(--color-magenta)',
+                  backgroundColor: 'var(--accent)',
                 }}
               />
             ))}
@@ -239,7 +238,7 @@ export default function LoadingScreen() {
           <div className="ls-tip-header">
             <div className="ls-pixel-icon">
               {Array.from({ length: 9 }, (_, i) => (
-                <PixelBlock key={i} cyan w={4} h={4} />
+                <PixelBlock key={i} w={4} h={4} />
               ))}
             </div>
             <span className="ls-tip-category">{tip.category}</span>

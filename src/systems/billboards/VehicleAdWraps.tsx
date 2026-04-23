@@ -45,7 +45,12 @@ function AdWrapMesh({ ad, style }: { ad: typeof VEHICLE_ADS[0]; style: 'side' | 
         </mesh>
         {/* Night glow */}
         {isNight && (
-          <pointLight position={[0, 0.6, 0]} color={ad.primaryColor} intensity={1.5} distance={6} />
+          <pointLight
+            position={[0, 0.6, 0]}
+            color={ad.primaryColor}
+            intensity={0.8}
+            distance={5}
+          />
         )}
       </group>
     )

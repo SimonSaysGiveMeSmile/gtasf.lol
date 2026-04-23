@@ -168,11 +168,11 @@ export const PLAYER_CONFIG = {
 }
 
 export const MAP_SIZE = 1600
-export const BUILDING_COUNT = 480
-export const TREE_COUNT = 320
-export const NPC_COUNT = 200
-export const TRAFFIC_COUNT = 80
-export const VEHICLE_COUNT = 80
+export const BUILDING_COUNT = 200
+export const TREE_COUNT = 120
+export const NPC_COUNT = 50
+export const TRAFFIC_COUNT = 30
+export const VEHICLE_COUNT = 30
 
 export const NPC_COLORS = [
   '#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff6bd6',

@@ -32,7 +32,7 @@ function BillboardStructure({ x, z, height, ad }: { x: number; z: number; height
       <mesh
         position={[0, POLE_H - 0.5, BOARD_W / 2]}
         rotation={[0, 0, 0]}
-        castShadow
+       
       >
         <boxGeometry args={[BOARD_W, BOARD_H, 0.15]} />
         <meshStandardMaterial color={ad.primaryColor} metalness={0.1} roughness={0.9} />

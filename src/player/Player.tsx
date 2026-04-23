@@ -6,6 +6,7 @@ import { useGameStore } from '../game/store'
 import { PLAYER_CONFIG, MAP_SIZE } from '../game/constants'
 import { BUILDING_LAYOUT } from '../world/buildings'
 import { getNearbyBuildingsGrid } from '../world/World'
+import { soundManager } from '../systems/audio/SoundManager'
 
 // Module-level refs for gyro (not component state, so they persist)
 const gyroEnabled = { current: false }
@@ -59,6 +60,7 @@ export default function Player() {
   const autoDragEnabled = useRef(false)
   const lastClickTime = useRef(0)
   const lastJumpTime = useRef(0)
+  const lastFootstepTime = useRef(0)
 
   const CAM_PHI_MIN = -1.3
   const CAM_PHI_MAX = 0.9
@@ -213,6 +215,7 @@ export default function Player() {
       isGrounded.current = false
       peakHeight.current = position.current.y
       lastJumpTime.current = now
+      soundManager.play('jump', { volume: 0.7 })
     }
 
     // Gravity
@@ -263,6 +266,9 @@ export default function Player() {
         const fallDist = peakHeight.current - position.current.y
         if (fallDist > 2.5) {
           takeDamage(Math.floor(fallDist * 4))
+          soundManager.play('metal_impact', { volume: 0.8 })
+        } else {
+          soundManager.play('land_thud', { volume: fallDist > 1.5 ? 0.6 : 0.35 })
         }
       }
       position.current.y = FOOT_Y
@@ -333,9 +339,17 @@ export default function Player() {
 
     // Jump pose
     if (!isGrounded.current) {
-      // Arms up slightly when jumping
       if (leftArmRef.current) leftArmRef.current.rotation.x = -0.4
       if (rightArmRef.current) rightArmRef.current.rotation.x = -0.4
+    }
+
+    // Footstep sounds
+    if (isMoving && isGrounded.current) {
+      const stepInterval = rn ? 280 : 420
+      if (now - lastFootstepTime.current >= stepInterval) {
+        lastFootstepTime.current = now
+        soundManager.play('footstep_walk', { volume: rn ? 0.7 : 0.45 })
+      }
     }
 
     if (meshRef.current) {
@@ -467,7 +481,6 @@ export default function Player() {
       </group>
 
       {/* Player glow light */}
-      <pointLight color="#00e5ff" intensity={4} distance={15} position={[0, HEAD_Y + 0.2, 0]} />
     </group>
   )
 }

@@ -197,7 +197,12 @@ export default function CaltrainAdWrap({ index, seedX = 0, seedZ = 0 }: Caltrain
 
       {/* Night glow */}
       {isNight && (
-        <pointLight position={[0, 2.2, 0]} color={ad.primaryColor} intensity={3} distance={10} />
+        <pointLight
+          position={[0, 2.2, 0]}
+          color={ad.primaryColor}
+          intensity={1}
+          distance={8}
+        />
       )}
     </group>
   )

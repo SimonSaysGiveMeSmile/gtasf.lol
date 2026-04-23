@@ -7,6 +7,7 @@ import { NPC_COUNT, TRAFFIC_COUNT, NPC_COLORS, MAP_SIZE } from '../game/constant
 import { LANDSCAPE_CONFIG } from '../game/landscape'
 import { vehiclePositions } from '../game/vehicleState'
 import { getNearbyBuildingsGrid } from '../world/World'
+import { VehicleMesh } from '../vehicles/Vehicle'
 
 function seededRandom(seed: number) {
   const x = Math.sin(seed + 1) * 10000
@@ -22,6 +23,9 @@ function isClearOfBuildings(x: number, z: number, r: number): boolean {
   }
   return true
 }
+
+// NPC spawn registry — prevents overlapping NPCs at spawn time
+const _spawnedNPCs: { x: number; z: number }[] = []
 
 function findNPCSpawn(seed: number): { x: number; z: number } | null {
   const allPoints: { x: number; z: number }[] = []
@@ -39,6 +43,18 @@ function findNPCSpawn(seed: number): { x: number; z: number } | null {
   }
   for (const pt of allPoints) {
     if (isClearOfBuildings(pt.x, pt.z, 0.3)) {
+      let clearOfVehicles = true
+      for (const [, v] of vehiclePositions) {
+        const dx = pt.x - v.x; const dz = pt.z - v.z
+        if (Math.sqrt(dx * dx + dz * dz) < 0.8 + v.radius) { clearOfVehicles = false; break }
+      }
+      if (!clearOfVehicles) continue
+      let clearOfNPCs = true
+      for (const np of _spawnedNPCs) {
+        const dx = pt.x - np.x; const dz = pt.z - np.z
+        if (Math.sqrt(dx * dx + dz * dz) < 1.0) { clearOfNPCs = false; break }
+      }
+      if (!clearOfNPCs) continue
       return pt
     }
   }
@@ -66,6 +82,11 @@ function findCarSpawn(seed: number): { x: number; z: number } | null {
       const hx = b.width / 2 + vR + 3
       const hz = b.depth / 2 + vR + 3
       if (Math.abs(pt.x - b.x) < hx && Math.abs(pt.z - b.z) < hz) { clear = false; break }
+    }
+    if (!clear) continue
+    for (const [, v] of vehiclePositions) {
+      const dx = pt.x - v.x; const dz = pt.z - v.z
+      if (Math.sqrt(dx * dx + dz * dz) < vR + v.radius + 1.5) { clear = false; break }
     }
     if (clear) return pt
   }
@@ -350,12 +371,14 @@ function PedestrianNPC({ x, z, color, shirt, pants, hair: _hair, seed }: PedProp
 }
 
 // ── Traffic Car NPC ─────────────────────────────────────────────────────────
-function TrafficCar({ x, z, rotation, color }: { x: number; z: number; rotation: number; color: string }) {
+// Traffic cars are real vehicles: enterable, have NPC drivers, register in vehiclePositions
+function TrafficCar({ x, z, rotation, color, id }: { x: number; z: number; rotation: number; color: string; id: string }) {
   const meshRef = useRef<THREE.Group>(null)
   const carAngle = useRef(rotation)
   const timer = useRef(0)
   const speed = 8 + seededRandom(x * 19 + z * 43 + rotation * 7) * 6
   const pos = useRef(new THREE.Vector3(x, 0, z))
+  const driverRef = useRef<THREE.Group>(null!)
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05)
@@ -367,7 +390,7 @@ function TrafficCar({ x, z, rotation, color }: { x: number; z: number; rotation:
     const nz = pos.current.z + dz
 
     // Building collision for traffic cars
-    const tcR = 1.5
+    const tcR = 1.8
     let blocked = false
     const nearbyBuildings = getNearbyBuildingsGrid(nx, nz, tcR + 10)
     for (const bi of nearbyBuildings) {
@@ -379,6 +402,20 @@ function TrafficCar({ x, z, rotation, color }: { x: number; z: number; rotation:
       if (Math.abs(ddx) < hx && Math.abs(ddz) < hz) {
         blocked = true
         break
+      }
+    }
+
+    // Vehicle-vehicle collision — push traffic cars away from other vehicles
+    for (const [otherId, other] of vehiclePositions) {
+      if (otherId === id) continue
+      const dvx = pos.current.x - other.x
+      const dvz = pos.current.z - other.z
+      const dvDist = Math.sqrt(dvx * dvx + dvz * dvz)
+      const minV = 1.8 + other.radius + 0.15
+      if (dvDist < minV && dvDist > 0.001) {
+        const nd = minV - dvDist
+        pos.current.x += (dvx / dvDist) * nd
+        pos.current.z += (dvz / dvDist) * nd
       }
     }
 
@@ -396,25 +433,41 @@ function TrafficCar({ x, z, rotation, color }: { x: number; z: number; rotation:
     if (pos.current.z < -half) pos.current.z = half
     if (pos.current.z > half) pos.current.z = -half
 
+    // Register position for collisions (NPC vehicles share same registry)
+    vehiclePositions.set(id, { x: pos.current.x, z: pos.current.z, radius: 1.8 })
+
     if (meshRef.current) {
       meshRef.current.position.set(pos.current.x, 0, pos.current.z)
       meshRef.current.rotation.y = carAngle.current
     }
+
+    // Driver head rotation — looks forward in direction of travel
+    if (driverRef.current) {
+      driverRef.current.rotation.y = carAngle.current
+    }
   })
 
   return (
-    <group ref={meshRef}>
-      <mesh>
-        <boxGeometry args={[1.7, 0.7, 3.8]} />
-        <meshStandardMaterial color={color} metalness={0.5} roughness={0.4} />
-      </mesh>
-      <mesh position={[0, 0.45, -0.2]}>
-        <boxGeometry args={[1.5, 0.4, 2.0]} />
-        <meshStandardMaterial color={color} metalness={0.5} roughness={0.4} />
-      </mesh>
+    <group ref={meshRef} position={[x, 0, z]}>
+      {/* Vehicle body */}
+      <VehicleMesh type="sports" color={color} />
+      {/* NPC driver in the car — visible through windows */}
+      <group position={[0, 0.6, -0.3]} ref={driverRef}>
+        {/* Head */}
+        <mesh>
+          <sphereGeometry args={[0.14, 8, 8]} />
+          <meshStandardMaterial color="#d4a574" roughness={0.8} />
+        </mesh>
+        {/* Simple torso */}
+        <mesh position={[0, -0.25, 0]}>
+          <boxGeometry args={[0.25, 0.35, 0.15]} />
+          <meshStandardMaterial color="#333333" roughness={0.8} />
+        </mesh>
+      </group>
     </group>
   )
 }
+
 
 // ── NPC Crowd ───────────────────────────────────────────────────────────────
 export default function NPCCrowd() {
@@ -442,6 +495,7 @@ export default function NPCCrowd() {
         hair: HAIR_COLORS[i % HAIR_COLORS.length],
         seed,
       })
+      _spawnedNPCs.push({ x, z })
     }
 
     for (let i = 0; i < TRAFFIC_COUNT; i++) {
@@ -475,7 +529,7 @@ export default function NPCCrowd() {
         <PedestrianNPC key={p.id} {...p} />
       ))}
       {cars.map(c => (
-        <TrafficCar key={c.id} {...c} />
+        <TrafficCar key={c.id} {...c} id={c.id} />
       ))}
     </>
   )
