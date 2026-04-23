@@ -1,3 +1,4 @@
+// @t1an
 import { useGameStore } from '../../game/store'
 
 // Inlined caltrain ads to avoid barrel re-export runtime issues in Vite dev pre-bundler

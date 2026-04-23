@@ -1,4 +1,4 @@
-import { Canvas } from '@react-three/fiber'
+import { Canvas } from '@react-three/fiber' // @jiahe
 import { KeyboardControls } from '@react-three/drei'
 import { Physics } from '@react-three/cannon'
 import { Suspense } from 'react'

@@ -1,3 +1,4 @@
+// @t1an
 export type CityId = 'sf' | 'la' | 'nyc' | 'miami' | 'london'
 export type PlayerMode = 'onfoot' | 'vehicle' | 'plane' | 'boat'
 export type VehicleType = 'cybertruck' | 'modelS' | 'model3' | 'modelX' | 'semi' | 'sports' | 'suv' | 'sedan' | 'plane' | 'boat' | 'scooter' | 'caltrain'

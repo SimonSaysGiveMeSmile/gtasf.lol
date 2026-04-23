@@ -1,3 +1,4 @@
+// @t1an
 import { useEffect } from 'react'
 import { useGameStore } from '../game/store'
 

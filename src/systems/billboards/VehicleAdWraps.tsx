@@ -3,7 +3,7 @@ import { useGameStore } from '../../game/store'
 import { VEHICLE_ADS } from './adsConfig'
 import type { VehicleType } from '../../game/types'
 
-function seededRandom(seed: number): number {
+function seededRandom(seed: number): number { // @jt886
   const x = Math.sin(seed + 1) * 10000
   return x - Math.floor(x)
 }

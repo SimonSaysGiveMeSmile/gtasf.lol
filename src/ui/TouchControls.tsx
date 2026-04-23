@@ -1,7 +1,8 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import type { TouchEvent } from 'react'
 
-// Touch input global registry (read by Player.tsx and VehicleSpawner.tsx)
+// Touch input global registry // @jt886
+// (read by Player.tsx and VehicleSpawner.tsx)
 ;(window as any).__touchInput = {
   forward: false, backward: false, left: false, right: false,
   jump: false, run: false, brake: false, boost: false, interact: false,
