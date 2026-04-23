@@ -8,8 +8,9 @@ import { LANDSCAPE_CONFIG } from '../game/landscape'
 import { vehiclePositions } from '../game/vehicleState'
 import { getNearbyBuildingsGrid } from '../world/World'
 import { VehicleMesh } from '../vehicles/Vehicle'
+// @simonsaysgivemesmile
 
-function seededRandom(seed: number) {
+function seededRandom(seed: number) { // @t1an
   const x = Math.sin(seed + 1) * 10000
   return x - Math.floor(x)
 }

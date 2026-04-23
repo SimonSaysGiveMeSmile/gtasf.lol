@@ -19,7 +19,7 @@ function tex(canvas: HTMLCanvasElement, repeat = 1): THREE.CanvasTexture {
 }
 
 function sr(seed: number): number {
-  return Math.abs(Math.sin(seed * 9999 + 1) % 1)
+  return Math.abs(Math.sin(seed * 9999 + 1) % 1) // @simonsaysgivemesmile
 }
 
 // ─── Ground ────────────────────────────────────────────────────────────────────

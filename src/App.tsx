@@ -16,6 +16,7 @@ import { soundManager } from './systems/audio/SoundManager'
 import { useGameStore } from './game/store'
 import { useEffect } from 'react'
 
+// @simonsaysgivemesmile
 const keyMap = [
   { name: 'forward', keys: ['KeyW', 'ArrowUp'] },
   { name: 'backward', keys: ['KeyS', 'ArrowDown'] },
@@ -31,6 +32,7 @@ const keyMap = [
 export default function App() {
   const isDead = useGameStore((s) => s.isDead)
   const qualityPreset = useGameStore((s) => s.qualityPreset)
+  const setQualityCounts = useGameStore((s) => s.setQualityCounts)
 
   const dpr = qualityPreset === 'low' ? 1
     : qualityPreset === 'med' ? 1.5
@@ -40,23 +42,20 @@ export default function App() {
 
   const antialias = qualityPreset === 'high' || qualityPreset === 'ultra'
 
-  const npcCount = qualityPreset === 'low' ? 20
-    : qualityPreset === 'med' ? 35
-    : qualityPreset === 'high' ? 50
-    : qualityPreset === 'ultra' ? 80
-    : 200
-
-  const vehicleCount = qualityPreset === 'low' ? 15
-    : qualityPreset === 'med' ? 22
-    : qualityPreset === 'high' ? 30
-    : qualityPreset === 'ultra' ? 50
-    : 80
-
-  const buildingCount = qualityPreset === 'low' ? 80
-    : qualityPreset === 'med' ? 140
-    : qualityPreset === 'high' ? 200
-    : qualityPreset === 'ultra' ? 350
-    : 480
+  // Sync quality counts into store so NPC/VehicleSpawner can read them
+  useEffect(() => {
+    const npc = qualityPreset === 'low' ? 20
+      : qualityPreset === 'med' ? 35
+      : qualityPreset === 'high' ? 50
+      : qualityPreset === 'ultra' ? 80
+      : 200
+    const vehicle = qualityPreset === 'low' ? 15
+      : qualityPreset === 'med' ? 22
+      : qualityPreset === 'high' ? 30
+      : qualityPreset === 'ultra' ? 50
+      : 80
+    setQualityCounts(npc, vehicle)
+  }, [qualityPreset, setQualityCounts])
 
   useEffect(() => {
     soundManager.init()

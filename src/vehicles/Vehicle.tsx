@@ -5,6 +5,7 @@ import { useBox } from '@react-three/cannon'
 import { useGameStore } from '../game/store'
 import type { VehicleType } from '../game/types'
 import { VEHICLES } from '../game/constants'
+// @simonsaysgivemesmile
 
 interface VehicleProps {
   id: string
@@ -14,7 +15,7 @@ interface VehicleProps {
   color?: string
 }
 
-function Wheel({ position }: { position: [number, number, number] }) {
+function Wheel({ position }: { position: [number, number, number] }) { // @jiahe
   return (
     <mesh position={position} rotation={[0, 0, Math.PI / 2]}>
       <cylinderGeometry args={[0.35, 0.35, 0.25, 12]} />

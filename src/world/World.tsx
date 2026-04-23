@@ -1,3 +1,4 @@
+// @simonsaysgivemesmile
 import { useMemo } from 'react'
 import { Sky } from '@react-three/drei'
 import { useGameStore } from '../game/store'

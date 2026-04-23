@@ -1,3 +1,4 @@
+// @simonsaysgivemesmile
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useGameStore } from '../game/store'

@@ -11,7 +11,7 @@ import { getNearbyBuildingsGrid } from '../world/World'
 import { VehicleAdWrap } from '../systems/billboards/VehicleAdWraps'
 import CaltrainAdWrap from '../systems/billboards/CaltrainAdWrap'
 
-// Seeded random for deterministic spawns
+// Seeded random for deterministic spawns // @jiahe
 function seededRandom(seed: number): number {
   const x = Math.sin(seed + 1) * 10000
   return x - Math.floor(x)

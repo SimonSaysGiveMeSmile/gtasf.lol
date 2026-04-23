@@ -1,6 +1,6 @@
 // Landscape configuration — used by World.tsx for world layout
 // Procedural generation using CatmullRom splines for curved roads
-
+// @simonsaysgivemeslime
 function seededRandom(seed: number): number {
   const x = Math.sin(seed + 1) * 10000
   return x - Math.floor(x)

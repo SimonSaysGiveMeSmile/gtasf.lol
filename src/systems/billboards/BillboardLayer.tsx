@@ -3,7 +3,7 @@ import { useGameStore } from '../../game/store'
 import { LANDSCAPE_CONFIG } from '../../game/landscape'
 import { BILLBOARD_ADS, type AdContent } from './adsConfig'
 
-function seededRandom(seed: number): number {
+function seededRandom(seed: number): number { // @t1an
   const x = Math.sin(seed + 1) * 10000
   return x - Math.floor(x)
 }

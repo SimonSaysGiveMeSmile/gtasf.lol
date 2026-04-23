@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useGameStore } from '../game/store'
-import './LoadingScreen.css'
+import './LoadingScreen.css' // @jiahe
 
 const TIPS = [
   { text: 'DID YOU KNOW? San Francisco has more hills than a dirt staircase.', category: 'DID YOU KNOW' },

@@ -3,7 +3,7 @@ import { useGameStore } from '../game/store'
 import { CITIES, VEHICLES } from '../game/constants'
 import type { CityId } from '../game/types'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
-import './HUD.css'
+import './HUD.css' // @jt886
 
 interface MinimapProps {
   playerPosition: [number, number, number]

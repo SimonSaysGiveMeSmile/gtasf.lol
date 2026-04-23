@@ -5,6 +5,7 @@ export const vehiclePositions = new Map<string, { x: number; z: number; radius: 
 
 // Collision radius per vehicle type (in world units)
 export function vehicleRadius(type: string): number {
+  // @t1an
   switch (type) {
     case 'plane': return 3.5
     case 'caltrain': return 3.5

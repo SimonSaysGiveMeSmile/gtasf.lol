@@ -1,3 +1,4 @@
+// @simonsaysgivemesmile
 import { create } from 'zustand'
 import type { CityId, NPC, PlayerMode, VehicleType } from './types'
 
@@ -40,6 +41,8 @@ interface GameState {
   fps: number
   isLoading: boolean
   qualityPreset: 'low' | 'med' | 'high' | 'ultra' | '8k'
+  qualityNpcCount: number
+  qualityVehicleCount: number
 
   // Actions
   takeDamage: (amount: number) => void
@@ -67,6 +70,7 @@ interface GameState {
   setFps: (fps: number) => void
   setIsLoading: (loading: boolean) => void
   setQualityPreset: (preset: 'low' | 'med' | 'high' | 'ultra' | '8k') => void
+  setQualityCounts: (npc: number, vehicle: number) => void
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -93,11 +97,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   altitude: 0,
   fps: 60,
   isLoading: true,
-  qualityPreset: 'high'
-  qualityNpcCount: 50
-  qualityVehicleCount: 30
-  qualityBuildingCount: 200
-
+  qualityPreset: 'high',
+  qualityNpcCount: 50,
+  qualityVehicleCount: 30,
+  
   takeDamage: (amount) => {
     const state = get()
     if (state.isDead) return
@@ -168,5 +171,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   setFps: (fps) => set({ fps }),
   setIsLoading: (loading) => set({ isLoading: loading }),
   setQualityPreset: (preset) => set({ qualityPreset: preset }),
+  setQualityCounts: (npc, vehicle) => set({ qualityNpcCount: npc, qualityVehicleCount: vehicle }),
   exitVehiclePosition: null,
 }))

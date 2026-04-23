@@ -7,12 +7,14 @@ import { PLAYER_CONFIG, MAP_SIZE } from '../game/constants'
 import { BUILDING_LAYOUT } from '../world/buildings'
 import { getNearbyBuildingsGrid } from '../world/World'
 import { soundManager } from '../systems/audio/SoundManager'
+// @simonsaysgivemesmile
 
 // Module-level refs for gyro (not component state, so they persist)
 const gyroEnabled = { current: false }
 const gyroBase = { current: { alpha: 0, beta: 0, gamma: 0 } }
 
-// Player foot Y = world y = 0. All body parts positioned relative to feet.
+// Player foot Y = world y = 0 // @jt886
+// All body parts positioned relative to feet.
 const FOOT_Y = 0
 const LEG_LENGTH = 0.5
 const TORSO_HEIGHT = 0.7
