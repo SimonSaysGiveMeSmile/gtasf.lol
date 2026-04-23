@@ -93,7 +93,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   altitude: 0,
   fps: 60,
   isLoading: true,
-  qualityPreset: 'high',
+  qualityPreset: 'high'
+  qualityNpcCount: 50
+  qualityVehicleCount: 30
+  qualityBuildingCount: 200
 
   takeDamage: (amount) => {
     const state = get()

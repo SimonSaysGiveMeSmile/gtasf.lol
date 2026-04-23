@@ -30,6 +30,33 @@ const keyMap = [
 
 export default function App() {
   const isDead = useGameStore((s) => s.isDead)
+  const qualityPreset = useGameStore((s) => s.qualityPreset)
+
+  const dpr = qualityPreset === 'low' ? 1
+    : qualityPreset === 'med' ? 1.5
+    : qualityPreset === 'high' ? Math.min(window.devicePixelRatio, 2)
+    : qualityPreset === 'ultra' ? Math.min(window.devicePixelRatio, 2.5)
+    : window.devicePixelRatio
+
+  const antialias = qualityPreset === 'high' || qualityPreset === 'ultra'
+
+  const npcCount = qualityPreset === 'low' ? 20
+    : qualityPreset === 'med' ? 35
+    : qualityPreset === 'high' ? 50
+    : qualityPreset === 'ultra' ? 80
+    : 200
+
+  const vehicleCount = qualityPreset === 'low' ? 15
+    : qualityPreset === 'med' ? 22
+    : qualityPreset === 'high' ? 30
+    : qualityPreset === 'ultra' ? 50
+    : 80
+
+  const buildingCount = qualityPreset === 'low' ? 80
+    : qualityPreset === 'med' ? 140
+    : qualityPreset === 'high' ? 200
+    : qualityPreset === 'ultra' ? 350
+    : 480
 
   useEffect(() => {
     soundManager.init()
@@ -52,10 +79,10 @@ export default function App() {
           <Canvas
             shadows={false}
             camera={{ fov: 60, near: 0.1, far: 8000 }}
-            gl={{ antialias: false, alpha: false, powerPreference: 'high-performance' }}
+            gl={{ antialias, alpha: false, powerPreference: 'high-performance' }}
             style={{ background: '#87CEEB' }}
             frameloop="always"
-            dpr={1}
+            dpr={dpr}
           >
             <Suspense fallback={null}>
               <Physics gravity={[0, -25, 0]} defaultContactMaterial={{ friction: 0.5, restitution: 0.1 }}>
