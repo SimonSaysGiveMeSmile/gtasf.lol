@@ -172,8 +172,9 @@ export default function Player() {
     if (exitVehiclePosition && !inVehicle) {
       position.current.set(exitVehiclePosition[0], exitVehiclePosition[1], exitVehiclePosition[2])
       velocity.current.set(0, 0, 0)
+      setPlayerPosition([exitVehiclePosition[0], exitVehiclePosition[1], exitVehiclePosition[2]])
     }
-  }, [exitVehiclePosition, inVehicle])
+  }, [exitVehiclePosition, inVehicle, setPlayerPosition])
 
   useFrame((_, delta) => {
     if (inVehicle || isDead) return

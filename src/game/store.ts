@@ -133,7 +133,14 @@ export const useGameStore = create<GameState>((set, get) => ({
   setRunning: (running) => set({ isRunning: running }),
 
   enterVehicle: (id: string, vehicleType?: VehicleType) => set({ inVehicle: id, playerMode: 'vehicle', currentVehicleType: vehicleType || null }),
-  exitVehicle: (exitPos) => set({ inVehicle: null, playerMode: 'onfoot', vehicleSpeed: 0, currentVehicleType: null, exitVehiclePosition: exitPos || null }),
+  exitVehicle: (exitPos) => set((s) => ({
+    inVehicle: null,
+    playerMode: 'onfoot',
+    vehicleSpeed: 0,
+    currentVehicleType: null,
+    exitVehiclePosition: exitPos ? [...exitPos] : null,
+    playerPosition: exitPos ? [exitPos[0], exitPos[1], exitPos[2]] : s.playerPosition,
+  })),
   setInVehicle: (id) => set({ inVehicle: id }),
 
   die: () => {

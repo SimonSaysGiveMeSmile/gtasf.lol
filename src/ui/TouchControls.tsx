@@ -73,13 +73,13 @@ export default function TouchControls() {
       knobRef.current.style.transform = `translate(${dx}px, ${dy}px)`
     }
 
-    // Map joystick to direction inputs
+    // Map joystick to direction inputs (left/right inverted to match inverted mouse)
     const threshold = 0.3
     const ti = (window as any).__touchInput
     ti.forward = joystick.current.dy < -threshold
     ti.backward = joystick.current.dy > threshold
-    ti.left = joystick.current.dx < -threshold
-    ti.right = joystick.current.dx > threshold
+    ti.left = joystick.current.dx > threshold
+    ti.right = joystick.current.dx < -threshold
   }, [])
 
   const handleTouchEnd = useCallback((e: TouchEvent<HTMLDivElement>) => {

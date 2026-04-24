@@ -494,6 +494,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
   const isPlane = type === 'plane'
   const isBoat = type === 'boat'
   const isCaltrain = type === 'caltrain'
+  const isScooter = type === 'scooter'
   const isGround = !isPlane && !isBoat && !isCaltrain
 
   const spec = VEHICLES.find(v => v.type === type) || VEHICLES[0]
@@ -540,9 +541,11 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       : spec.acceleration
 
     if (isGround) {
-      // Ground vehicle physics — W/S inverted so W moves backward, S moves forward
-      if (playerInThis && fwd) vel.current.z += accel * dt
-      if (playerInThis && bwd) vel.current.z -= accel * dt
+      // Ground vehicle physics — W/S inverted so W moves backward, S moves forward (car-style)
+      // Scooters: W=forward, S=backward (normal direction)
+      const accelMod = isScooter ? -1 : 1
+      if (playerInThis && fwd) vel.current.z += accel * dt * accelMod
+      if (playerInThis && bwd) vel.current.z -= accel * dt * accelMod
       if (playerInThis && lft) angle.current -= spec.handling * dt * 2
       if (playerInThis && rgt) angle.current += spec.handling * dt * 2
 
@@ -664,7 +667,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
         }
       }
 
-      if (playerInThis) setVehicleSpeed(Math.abs(vel.current.z) * 3.6)
+      if (playerInThis) setVehicleSpeed(Math.abs(vel.current.z) * 216)
 
     } else if (isBoat) {
       // Boat physics — W moves forward toward camera
@@ -684,7 +687,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       pos.current.y = Math.sin(Date.now() * 0.002) * 0.1
 
       if (playerInThis) {
-        setVehicleSpeed(Math.abs(vel.current.z) * 3.6)
+        setVehicleSpeed(Math.abs(vel.current.z) * 216)
         setIsFlying(false)
         setAltitude(0)
       }
@@ -741,7 +744,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
         pos.current.y = 0
 
         if (playerInThis) {
-          setVehicleSpeed(Math.abs(vel.current.z) * 3.6)
+          setVehicleSpeed(Math.abs(vel.current.z) * 216)
           setIsFlying(false)
           setAltitude(0)
         }
