@@ -99,11 +99,11 @@ export default function Player() {
         isMouseDown.current = false
         return
       }
-      // Inverted: right = turn left (negative theta), down = look up (positive phi)
-      cameraAngle.current.theta -= e.movementX * 0.004
+      // Right = turn right (positive theta), down = look down (negative phi)
+      cameraAngle.current.theta += e.movementX * 0.004
       cameraAngle.current.phi = Math.max(
         CAM_PHI_MIN,
-        Math.min(CAM_PHI_MAX, cameraAngle.current.phi + e.movementY * 0.004)
+        Math.min(CAM_PHI_MAX, cameraAngle.current.phi - e.movementY * 0.004)
       )
     }
     const handleContextMenu = (e: MouseEvent) => e.preventDefault()

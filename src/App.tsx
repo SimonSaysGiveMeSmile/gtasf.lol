@@ -54,7 +54,7 @@ export default function App() {
       : qualityPreset === 'high' ? 30
       : qualityPreset === 'ultra' ? 50
       : 80
-    setQualityCounts(npc, vehicle)
+    setQualityCounts(npc, vehicle, 200)
   }, [qualityPreset, setQualityCounts])
 
   useEffect(() => {

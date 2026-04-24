@@ -61,7 +61,7 @@ class SoundManager {
   // Helper to get current volume from store (reads live values)
   private getVolumeScale(soundId: SoundId): number {
     try {
-      const state = (require('../game/store') as typeof import('../game/store')).useGameStore.getState()
+      const state = (require('../../game/store') as typeof import('../../game/store')).useGameStore.getState()
       const { masterVolume, sfxVolume, ambientVolume } = state
       if (soundId === 'traffic_ambient') return masterVolume * ambientVolume
       return masterVolume * sfxVolume
