@@ -411,7 +411,7 @@
 .vehicle-indicator {
   position: fixed;
   bottom: 16px;
-  left: 172px;
+  right: 172px;
   z-index: 100;
 }
 

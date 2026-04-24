@@ -18,12 +18,13 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
   const CENTER = SIZE / 2
   const MAP_SCALE = (SIZE / 2) / RANGE
 
-  const cosR = Math.cos(-playerRotation)
-  const sinR = Math.sin(-playerRotation)
+  // Rotate map so "north" on the map always corresponds to camera facing direction
+  // playerRotation is the camera theta (horizontal angle), negated for SVG rotation
+  const rotationDeg = (playerRotation * 180) / Math.PI
 
   return (
     <div className="minimap-view">
-      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ transform: `rotate(${rotationDeg}deg)` }}>
         {/* Background grid rings */}
         {[0, 1, 2, 3, 4].map((i) => (
           <circle key={`grid-${i}`} cx={CENTER} cy={CENTER} r={(i / 5) * (SIZE / 2)} fill="none" stroke="var(--minimap-stroke)" strokeWidth={0.5} />
@@ -37,8 +38,8 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
           path.map((pt, i) => {
             const dx = (pt.x - playerPosition[0]) * MAP_SCALE
             const dy = (pt.z - playerPosition[2]) * MAP_SCALE
-            const sx = CENTER - dx * cosR + dy * sinR
-            const sy = CENTER - dx * sinR - dy * cosR
+            const sx = CENTER + dx
+            const sy = CENTER + dy
             if (Math.abs(sx - CENTER) > CENTER || Math.abs(sy - CENTER) > CENTER) return null
             return <circle key={`road-${pi}-${i}`} cx={sx} cy={sy} r={1.5} fill="rgba(80,80,80,0.6)" />
           })
@@ -49,8 +50,8 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
           path.map((pt, i) => {
             const dx = (pt.x - playerPosition[0]) * MAP_SCALE
             const dy = (pt.z - playerPosition[2]) * MAP_SCALE
-            const sx = CENTER - dx * cosR + dy * sinR
-            const sy = CENTER - dx * sinR - dy * cosR
+            const sx = CENTER + dx
+            const sy = CENTER + dy
             if (Math.abs(sx - CENTER) > CENTER || Math.abs(sy - CENTER) > CENTER) return null
             return <circle key={`rail-${pi}-${i}`} cx={sx} cy={sy} r={1.2} fill="rgba(255,140,0,0.6)" />
           })
@@ -60,8 +61,8 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
         {LANDSCAPE_CONFIG.trees.map((t, i) => {
           const dx = (t.x - playerPosition[0]) * MAP_SCALE
           const dy = (t.z - playerPosition[2]) * MAP_SCALE
-          const sx = CENTER - dx * cosR + dy * sinR
-          const sy = CENTER - dx * sinR - dy * cosR
+          const sx = CENTER + dx
+          const sy = CENTER + dy
           if (Math.abs(sx - CENTER) > CENTER || Math.abs(sy - CENTER) > CENTER) return null
           return <circle key={`tree-${i}`} cx={sx} cy={sy} r={1} fill="rgba(40,140,40,0.5)" />
         })}
@@ -70,8 +71,8 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
         {LANDSCAPE_CONFIG.streetLamps.map((l, i) => {
           const dx = (l.x - playerPosition[0]) * MAP_SCALE
           const dy = (l.z - playerPosition[2]) * MAP_SCALE
-          const sx = CENTER - dx * cosR + dy * sinR
-          const sy = CENTER - dx * sinR - dy * cosR
+          const sx = CENTER + dx
+          const sy = CENTER + dy
           if (Math.abs(sx - CENTER) > CENTER || Math.abs(sy - CENTER) > CENTER) return null
           return <circle key={`lamp-${i}`} cx={sx} cy={sy} r={1.2} fill="rgba(255,200,50,0.6)" />
         })}
@@ -83,17 +84,15 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
           const wy = (w.z - playerPosition[2]) * MAP_SCALE
           const wW = w.width * MAP_SCALE
           const wH = w.height * MAP_SCALE
-          const rx = CENTER - wx + wW / 2
-          const ry = CENTER - wy + wH / 2
-          return <rect x={rx - wW / 2} y={ry - wH / 2} width={wW} height={wH} fill="rgba(0,100,200,0.2)" stroke="rgba(0,150,255,0.3)" strokeWidth={0.5} />
+          return <rect x={CENTER + wx - wW / 2} y={CENTER + wy - wH / 2} width={wW} height={wH} fill="rgba(0,100,200,0.2)" stroke="rgba(0,150,255,0.3)" strokeWidth={0.5} />
         })()}
 
         {/* Buildings as small rectangles */}
         {LANDSCAPE_CONFIG.buildings.slice(0, 80).map((b, i) => {
           const dx = (b.x - playerPosition[0]) * MAP_SCALE
           const dy = (b.z - playerPosition[2]) * MAP_SCALE
-          const sx = CENTER - dx * cosR + dy * sinR
-          const sy = CENTER - dx * sinR - dy * cosR
+          const sx = CENTER + dx
+          const sy = CENTER + dy
           if (Math.abs(sx - CENTER) > CENTER || Math.abs(sy - CENTER) > CENTER) return null
           const w = Math.max(1, b.width * MAP_SCALE * 0.5)
           const h = Math.max(1, b.depth * MAP_SCALE * 0.5)
@@ -111,7 +110,7 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
           )
         })}
 
-        {/* Player indicator — triangle arrow */}
+        {/* Player indicator — triangle arrow pointing up (north) */}
         <polygon
           points={`${CENTER},${CENTER - 6} ${CENTER - 4},${CENTER + 4} ${CENTER + 4},${CENTER + 4}`}
           fill="var(--minimap-accent)"
@@ -122,8 +121,8 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
         {npcs.slice(0, 20).map((npc) => {
           const dx = (npc.position[0] - playerPosition[0]) * MAP_SCALE
           const dy = (npc.position[2] - playerPosition[2]) * MAP_SCALE
-          const sx = CENTER - dx * cosR + dy * sinR
-          const sy = CENTER - dx * sinR - dy * cosR
+          const sx = CENTER + dx
+          const sy = CENTER + dy
           if (Math.abs(sx - CENTER) > CENTER || Math.abs(sy - CENTER) > CENTER) return null
           return <circle key={npc.id} cx={sx} cy={sy} r={1.5} fill="rgba(255,255,255,0.4)" />
         })}
@@ -380,12 +379,6 @@ export default function HUD() {
           <span className="interact-text">{interactionPrompt}</span>
         </div>
       )}
-
-      {/* Crosshair */}
-      <div className={`crosshair ${interactionPrompt ? 'active' : ''}`}>
-        <div className="crosshair-dot" />
-        <div className="crosshair-ring" />
-      </div>
 
       {/* Damage flash */}
       {damageFlash && <div className="damage-flash" />}

@@ -78,6 +78,8 @@ interface GameState {
   setMasterVolume: (v: number) => void
   setSfxVolume: (v: number) => void
   setAmbientVolume: (v: number) => void
+  // Cheat system
+  spawnVehicle: (type: VehicleType) => void
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -193,5 +195,15 @@ export const useGameStore = create<GameState>((set, get) => ({
   setMasterVolume: (v) => set({ masterVolume: v }),
   setSfxVolume: (v) => set({ sfxVolume: v }),
   setAmbientVolume: (v) => set({ ambientVolume: v }),
+  spawnVehicle: (type: VehicleType) => {
+    const { playerPosition, playerRotation } = get()
+    // Spawn 8 units in front of player
+    const dist = 8
+    const x = playerPosition[0] + Math.sin(playerRotation) * dist
+    const z = playerPosition[2] + Math.cos(playerRotation) * dist
+    const id = `cheat-${type}-${Date.now()}`
+    // Emit a custom event that VehicleSpawner can listen to
+    window.dispatchEvent(new CustomEvent('cheat-spawn', { detail: { id, type, x, z, rotation: playerRotation } }))
+  },
   exitVehiclePosition: null,
 }))

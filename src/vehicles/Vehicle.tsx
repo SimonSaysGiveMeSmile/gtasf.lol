@@ -286,8 +286,8 @@ export default function Vehicle({ id, type, position, rotation = 0, color }: Veh
 
     if (isPlane) {
       // Throttle
-      if (forward) throttleRef.current = Math.min(1.0, throttleRef.current + 0.03)
-      if (backward) throttleRef.current = Math.max(0, throttleRef.current - 0.02)
+      if (backward) throttleRef.current = Math.min(1.0, throttleRef.current + 0.03)
+      if (forward) throttleRef.current = Math.max(0, throttleRef.current - 0.02)
       if (!forward && !backward) throttleRef.current = Math.max(0, throttleRef.current - 0.01)
 
       if (throttleRef.current > 0) {
