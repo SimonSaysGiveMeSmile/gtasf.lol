@@ -180,12 +180,12 @@ const HAIR_COLORS = ['#0a0505', '#1a0f08', '#2a1a10', '#3a2515', '#8a6030', '#c0
 
 interface PedProps {
   x: number; z: number; color: string; shirt: string; pants: string; hair: string; seed: number
-  buildings: typeof LANDSCAPE_CONFIG.buildings
-  trees: typeof LANDSCAPE_CONFIG.trees
+  buildings: { x: number; z: number; width: number; depth: number }[]
+  trees: { x: number; z: number }[]
   playerPosition: [number, number, number]
 }
 
-function PedestrianNPC({ x, z, color, shirt, pants, hair: _hair, seed, buildings, trees, playerPosition }: PedProps) {
+function PedestrianNPC({ x, z, color, shirt, pants, hair: _hair, seed, buildings, trees, playerPosition: _playerPosition }: PedProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const bodyGroupRef = useRef<THREE.Group>(null!)
   const leftLegRef = useRef<THREE.Group>(null!)
@@ -229,7 +229,7 @@ function PedestrianNPC({ x, z, color, shirt, pants, hair: _hair, seed, buildings
       const pR = 0.3
       const nearbyBuildings = getNearbyBuildingsGrid(pos.current.x, pos.current.z, pR + 10)
       for (const bi of nearbyBuildings) {
-        const b = LANDSCAPE_CONFIG.buildings[bi]
+        const b = buildings[bi]
         const hx = b.width / 2 + pR
         const hz = b.depth / 2 + pR
         const ddx = pos.current.x - b.x
@@ -247,7 +247,7 @@ function PedestrianNPC({ x, z, color, shirt, pants, hair: _hair, seed, buildings
 
       // Tree collision for pedestrians
       const tR = 0.25
-      for (const t of LANDSCAPE_CONFIG.trees) {
+      for (const t of trees) {
         const tdx = pos.current.x - t.x
         const tdz = pos.current.z - t.z
         const tDist = Math.sqrt(tdx * tdx + tdz * tdz)
@@ -378,7 +378,7 @@ function PedestrianNPC({ x, z, color, shirt, pants, hair: _hair, seed, buildings
 
 // ── Traffic Car NPC ─────────────────────────────────────────────────────────
 // Traffic cars are real vehicles: enterable, have NPC drivers, register in vehiclePositions
-function TrafficCar({ x, z, rotation, color, id }: { x: number; z: number; rotation: number; color: string; id: string }) {
+function TrafficCar({ x, z, rotation, color, id, buildings }: { x: number; z: number; rotation: number; color: string; id: string; buildings: { x: number; z: number; width: number; depth: number }[] }) {
   const meshRef = useRef<THREE.Group>(null)
   const carAngle = useRef(rotation)
   const timer = useRef(0)
@@ -400,7 +400,7 @@ function TrafficCar({ x, z, rotation, color, id }: { x: number; z: number; rotat
     let blocked = false
     const nearbyBuildings = getNearbyBuildingsGrid(nx, nz, tcR + 10)
     for (const bi of nearbyBuildings) {
-      const b = LANDSCAPE_CONFIG.buildings[bi]
+      const b = buildings[bi]
       const hx = b.width / 2 + tcR
       const hz = b.depth / 2 + tcR
       const ddx = nx - b.x
@@ -477,6 +477,7 @@ function TrafficCar({ x, z, rotation, color, id }: { x: number; z: number; rotat
 
 // ── NPC Crowd ───────────────────────────────────────────────────────────────
 export default function NPCCrowd() {
+  const data = useLandscapeData()
   const setNPCs = useGameStore((s) => s.setNPCs)
   const qualityNpcCount = useGameStore((s) => s.qualityNpcCount)
   const qualityVehicleCount = useGameStore((s) => s.qualityVehicleCount)
@@ -490,7 +491,7 @@ export default function NPCCrowd() {
       const seed = i * 17
       const ang = seededRandom(seed * 13) * Math.PI * 2
       const dist = 15 + seededRandom(seed * 29) * MAP_SIZE * 0.35
-      const spawn = findNPCSpawn(seed)
+      const spawn = findNPCSpawn(seed, data.roadPaths, data.buildings)
       const x = spawn ? spawn.x : Math.cos(ang) * dist
       const z = spawn ? spawn.z : Math.sin(ang) * dist
       peds.push({
@@ -507,7 +508,7 @@ export default function NPCCrowd() {
     }
 
     for (let i = 0; i < qualityVehicleCount; i++) {
-      const carSpawn = findCarSpawn(i * 41 + 100)
+      const carSpawn = findCarSpawn(i * 41 + 100, data.roadPaths, data.buildings)
       cars.push({
         id: `traffic-${i}`,
         x: carSpawn ? carSpawn.x : (seededRandom(i * 23) - 0.5) * MAP_SIZE * 0.8,
@@ -529,15 +530,15 @@ export default function NPCCrowd() {
     setNPCs(npcData)
 
     return { pedestrians: peds, cars }
-  }, [setNPCs, qualityNpcCount, qualityVehicleCount])
+  }, [data, setNPCs, qualityNpcCount, qualityVehicleCount])
 
   return (
     <>
       {pedestrians.map(p => (
-        <PedestrianNPC key={p.id} {...p} />
+        <PedestrianNPC key={p.id} {...p} buildings={data.buildings} trees={data.trees} playerPosition={[0, 0, 0]} />
       ))}
       {cars.map(c => (
-        <TrafficCar key={c.id} {...c} id={c.id} />
+        <TrafficCar key={c.id} {...c} id={c.id} buildings={data.buildings} />
       ))}
     </>
   )
