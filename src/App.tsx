@@ -90,11 +90,11 @@ export default function App() {
                 <LandscapeProvider>
                   <World />
                   <Player />
+                  <VehicleSpawner />
+                  <NPCCrowd />
+                  <FPSTracker />
                 </LandscapeProvider>
               </Physics>
-              <VehicleSpawner />
-              <NPCCrowd />
-              <FPSTracker />
             </Suspense>
           </Canvas>
           <HUD />
