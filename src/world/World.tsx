@@ -5,6 +5,7 @@ import { useGameStore } from '../game/store'
 import { MAP_SIZE } from '../game/constants'
 import { default as BillboardLayer } from '../systems/billboards/BillboardLayer'
 import { useLandscapeData } from '../game/LandscapeContext'
+import { LANDSCAPE_CONFIG } from '../game/landscape'
 import type { BuildingData } from '../game/landscape.types'
 
 // ─── Spatial Grid for Collision Detection ─────────────────────────────────────

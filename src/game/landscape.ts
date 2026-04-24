@@ -76,28 +76,6 @@ function sampleSpline(points: Point[], segments: number): PathPoint[] {
   return result
 }
 
-// Distance from point to line segment
-function distToSegment(px: number, pz: number, ax: number, az: number, bx: number, bz: number): number {
-  const dx = bx - ax
-  const dz = bz - az
-  const len2 = dx * dx + dz * dz
-  if (len2 === 0) return Math.sqrt((px - ax) ** 2 + (pz - az) ** 2)
-  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / len2))
-  return Math.sqrt((px - (ax + t * dx)) ** 2 + (pz - (az + t * dz)) ** 2)
-}
-
-// Check if a point is near any road
-function isNearRoads(roadPaths: PathPoint[][], x: number, z: number, minDist: number): boolean {
-  for (const path of roadPaths) {
-    for (let i = 0; i < path.length - 1; i++) {
-      if (distToSegment(x, z, path[i].x, path[i].z, path[i + 1].x, path[i + 1].z) < minDist) {
-        return true
-      }
-    }
-  }
-  return false
-}
-
 // ─── Road Generation ───────────────────────────────────────────────────────────
 function generateRoadControlPoints(
   seed: number,
@@ -208,27 +186,47 @@ const BUILDING_COLORS_ARRAY = [
 
 function generateBuildings(): BuildingData[] {
   const result: BuildingData[] = []
+  const seen = new Set<string>()
+
   for (let i = 0; i < 800; i++) {
     const rng = seededRandom(i * 17 + 3)
     const rng2 = seededRandom(i * 31 + 7)
     const rng3 = seededRandom(i * 53 + 11)
     const rng4 = seededRandom(i * 97 + 13)
-    const width = 6 + rng * 18
-    const depth = 6 + rng2 * 18
-    const height = 10 + rng3 * 80
-    const angle = rng * Math.PI * 2
-    const dist = 30 + rng2 * MAP_SIZE * 0.44
+    const rng5 = seededRandom(i * 113 + 17)
 
-    const x = Math.cos(angle) * dist
-    const z = Math.sin(angle) * dist
+    // Pick a random road path
+    const pathIdx = Math.floor(rng * ROAD_PATHS.length)
+    const path = ROAD_PATHS[pathIdx]
+    if (!path || path.length === 0) continue
 
-    if (isNearRoads(ROAD_PATHS, x, z, 12)) continue
-    if (isNearRoads(CALTRANS_PATHS, x, z, 10)) continue
-    if (x < -MAP_SIZE * 0.48) continue
+    // Pick a point along the road
+    const ptIdx = Math.floor(rng2 * path.length)
+    const pt = path[ptIdx]
+
+    // Offset perpendicular to the road direction (both sides of the street)
+    const perpAngle = pt.angle + (rng3 < 0.5 ? Math.PI / 2 : -Math.PI / 2)
+    const distFromCenter = (roadColors.indexOf(ROAD_CONTROL_POINTS[pathIdx]?.color ?? '#333344') >= 0 ? 12 : 10) + rng4 * 14
+    const x = pt.x + Math.cos(perpAngle) * distFromCenter
+    const z = pt.z + Math.sin(perpAngle) * distFromCenter
+
+    // Deduplicate: don't stack buildings on the same spot
+    const cellX = Math.round(x / 8)
+    const cellZ = Math.round(z / 8)
+    const key = `${cellX},${cellZ}`
+    if (seen.has(key)) continue
+    seen.add(key)
+
+    // Keep within map bounds
+    if (x < -MAP_SIZE * 0.48 || x > MAP_SIZE * 0.5 || z < -MAP_SIZE * 0.5 || z > MAP_SIZE * 0.5) continue
+
+    const width = 6 + rng2 * 18
+    const depth = 6 + rng3 * 18
+    const height = 10 + rng4 * 80
 
     result.push({
       x, z, width, depth, height,
-      color: BUILDING_COLORS_ARRAY[Math.floor(rng4 * BUILDING_COLORS_ARRAY.length)],
+      color: BUILDING_COLORS_ARRAY[Math.floor(rng5 * BUILDING_COLORS_ARRAY.length)],
     })
     if (result.length >= 200) break
   }
@@ -238,14 +236,34 @@ function generateBuildings(): BuildingData[] {
 // ─── Trees ─────────────────────────────────────────────────────────────────────
 function generateTrees(): TreeData[] {
   const result: TreeData[] = []
-  for (let i = 0; i < 120; i++) {
+  const seen = new Set<string>()
+
+  for (let i = 0; i < 200; i++) {
     const rng = seededRandom(i * 23 + 5)
-    const angle = rng * Math.PI * 2
-    const dist = 30 + rng * MAP_SIZE * 0.44
-    const x = Math.cos(angle) * dist + (seededRandom(i * 41) - 0.5) * 40
-    const z = Math.sin(angle) * dist + (seededRandom(i * 59) - 0.5) * 40
-    if (isNearRoads(ROAD_PATHS, x, z, 6)) continue
-    if (isNearRoads(CALTRANS_PATHS, x, z, 5)) continue
+    const rng2 = seededRandom(i * 41)
+    const rng3 = seededRandom(i * 59)
+
+    // Pick a road and a point along it
+    const path = ROAD_PATHS[i % ROAD_PATHS.length]
+    if (!path || path.length === 0) continue
+    const pt = path[Math.floor(rng * path.length)]
+
+    // Offset perpendicular to road, farther out (near sidewalks/parks)
+    const perpAngle = pt.angle + (rng2 < 0.5 ? Math.PI / 2 : -Math.PI / 2)
+    const distFromCenter = 8 + rng3 * 10
+    let x = pt.x + Math.cos(perpAngle) * distFromCenter
+    let z = pt.z + Math.sin(perpAngle) * distFromCenter
+
+    // Add some scatter around road-adjacent areas
+    x += (seededRandom(i * 47 + 1) - 0.5) * 8
+    z += (seededRandom(i * 61 + 3) - 0.5) * 8
+
+    const cellX = Math.round(x / 6)
+    const cellZ = Math.round(z / 6)
+    const key = `${cellX},${cellZ}`
+    if (seen.has(key)) continue
+    seen.add(key)
+
     if (x < -MAP_SIZE * 0.48) continue
     result.push({ x, z })
   }
