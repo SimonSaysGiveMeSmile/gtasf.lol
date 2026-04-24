@@ -167,7 +167,7 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
         ))}
         {/* Cardinal lines */}
         <line x1={CENTER} y1={0} x2={CENTER} y2={SIZE} stroke="var(--minimap-stroke)" strokeWidth={0.3} />
-        <line x1={0} y1={CENTER} x2={SIZE} y2={CENTER} stroke="var(--minimap-stroke}" strokeWidth={0.3} />
+        <line x1={0} y1={CENTER} x2={SIZE} y2={CENTER} stroke="var(--minimap-stroke)" strokeWidth={0.3} />
 
         {/* Roads */}
         {roadPolylines.map((pts, pi) => pts ? <polyline key={`road-${pi}`} points={pts} fill="none" stroke="rgba(100,100,120,0.7)" strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" /> : null)}

@@ -96,16 +96,58 @@
   background: rgba(20, 20, 22, 0.92);
   border-radius: 4px;
   overflow: hidden;
-  min-width: 260px;
+  min-width: 280px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
+}
+
+.settings-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0 12px;
+  gap: 2px;
+}
+
+.settings-tab {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  padding: 10px 8px 8px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+  text-transform: uppercase;
+}
+
+.settings-tab:hover {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.settings-tab.active {
+  color: #fff;
+  border-bottom-color: var(--accent);
+}
+
+.settings-body {
+  overflow-y: auto;
+  flex: 1;
+  padding-bottom: 8px;
 }
 
 .settings-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
+  padding: 14px 18px 10px;
+  flex-shrink: 0;
 }
 
 .settings-title {

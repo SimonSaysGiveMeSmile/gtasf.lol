@@ -9,6 +9,7 @@ import { LANDSCAPE_CONFIG } from '../game/landscape'
 import { vehiclePositions } from '../game/vehicleState'
 import { getNearbyBuildingsGrid } from '../world/World'
 import { VehicleMesh } from '../vehicles/Vehicle'
+import { useLandscapeData } from '../game/LandscapeContext'
 // @simonsaysgivemesmile
 
 function seededRandom(seed: number) { // @t1an
@@ -17,8 +18,8 @@ function seededRandom(seed: number) { // @t1an
 }
 
 // NPC spawn helpers — use road paths
-function isClearOfBuildings(x: number, z: number, r: number): boolean {
-  for (const b of LANDSCAPE_CONFIG.buildings) {
+function isClearOfBuildings(x: number, z: number, r: number, buildings: typeof LANDSCAPE_CONFIG.buildings): boolean {
+  for (const b of buildings) {
     const hx = b.width / 2 + r + 2
     const hz = b.depth / 2 + r + 2
     if (Math.abs(x - b.x) < hx && Math.abs(z - b.z) < hz) return false
@@ -29,9 +30,9 @@ function isClearOfBuildings(x: number, z: number, r: number): boolean {
 // NPC spawn registry — prevents overlapping NPCs at spawn time
 const _spawnedNPCs: { x: number; z: number }[] = []
 
-function findNPCSpawn(seed: number): { x: number; z: number } | null {
+function findNPCSpawn(seed: number, roadPaths: typeof LANDSCAPE_CONFIG.roadPaths, buildings: typeof LANDSCAPE_CONFIG.buildings): { x: number; z: number } | null {
   const allPoints: { x: number; z: number }[] = []
-  for (const path of LANDSCAPE_CONFIG.roadPaths) {
+  for (const path of roadPaths) {
     for (let i = 0; i < path.length; i += 12) {
       allPoints.push({ x: path[i].x, z: path[i].z })
     }
@@ -44,7 +45,7 @@ function findNPCSpawn(seed: number): { x: number; z: number } | null {
     allPoints[j] = tmp
   }
   for (const pt of allPoints) {
-    if (isClearOfBuildings(pt.x, pt.z, 0.3)) {
+    if (isClearOfBuildings(pt.x, pt.z, 0.3, buildings)) {
       let clearOfVehicles = true
       for (const [, v] of vehiclePositions) {
         const dx = pt.x - v.x; const dz = pt.z - v.z
@@ -63,9 +64,9 @@ function findNPCSpawn(seed: number): { x: number; z: number } | null {
   return null
 }
 
-function findCarSpawn(seed: number): { x: number; z: number } | null {
+function findCarSpawn(seed: number, roadPaths: typeof LANDSCAPE_CONFIG.roadPaths, buildings: typeof LANDSCAPE_CONFIG.buildings): { x: number; z: number } | null {
   const allPoints: { x: number; z: number }[] = []
-  for (const path of LANDSCAPE_CONFIG.roadPaths) {
+  for (const path of roadPaths) {
     for (let i = 0; i < path.length; i += 8) {
       allPoints.push({ x: path[i].x, z: path[i].z })
     }
@@ -80,7 +81,7 @@ function findCarSpawn(seed: number): { x: number; z: number } | null {
   const vR = 2.0
   for (const pt of allPoints) {
     let clear = true
-    for (const b of LANDSCAPE_CONFIG.buildings) {
+    for (const b of buildings) {
       const hx = b.width / 2 + vR + 3
       const hz = b.depth / 2 + vR + 3
       if (Math.abs(pt.x - b.x) < hx && Math.abs(pt.z - b.z) < hz) { clear = false; break }
@@ -179,9 +180,12 @@ const HAIR_COLORS = ['#0a0505', '#1a0f08', '#2a1a10', '#3a2515', '#8a6030', '#c0
 
 interface PedProps {
   x: number; z: number; color: string; shirt: string; pants: string; hair: string; seed: number
+  buildings: typeof LANDSCAPE_CONFIG.buildings
+  trees: typeof LANDSCAPE_CONFIG.trees
+  playerPosition: [number, number, number]
 }
 
-function PedestrianNPC({ x, z, color, shirt, pants, hair: _hair, seed }: PedProps) {
+function PedestrianNPC({ x, z, color, shirt, pants, hair: _hair, seed, buildings, trees, playerPosition }: PedProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const bodyGroupRef = useRef<THREE.Group>(null!)
   const leftLegRef = useRef<THREE.Group>(null!)
