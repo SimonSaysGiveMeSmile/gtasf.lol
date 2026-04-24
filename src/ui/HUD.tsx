@@ -4,12 +4,28 @@ import { useGameStore } from '../game/store'
 import { CITIES, VEHICLES } from '../game/constants'
 import type { CityId } from '../game/types'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
+import type { PathPoint } from '../game/landscape.types'
 import './HUD.css' // @jt886
 
 interface MinimapProps {
   playerPosition: [number, number, number]
   npcs: import('../game/types').NPC[]
   playerRotation: number
+}
+
+function roadToPolyline(path: PathPoint[], playerPos: [number, number, number], scale: number, cx: number, cy: number): string {
+  return path.map((pt) => {
+    const dx = (pt.x - playerPos[0]) * scale
+    const dy = (pt.z - playerPos[2]) * scale
+    return `${cx + dx},${cy + dy}`
+  }).join(' ')
+}
+
+function clipPolyline(pts: string[], cx: number, cy: number, size: number): string {
+  return pts.filter((pt) => {
+    const [x, y] = pt.split(',').map(Number)
+    return Math.abs(x - cx) <= size / 2 && Math.abs(y - cy) <= size / 2
+  }).join(' ')
 }
 
 function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
@@ -19,12 +35,11 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
   const MAP_SCALE = (SIZE / 2) / RANGE
 
   // Rotate map so "north" on the map always corresponds to camera facing direction
-  // playerRotation is the camera theta (horizontal angle), negated for SVG rotation
   const rotationDeg = (playerRotation * 180) / Math.PI
 
   return (
     <div className="minimap-view">
-      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ transform: `rotate(${rotationDeg}deg)` }}>
+      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ transform: `rotate(${rotationDeg + 180}deg)` }}>
         {/* Background grid rings */}
         {[0, 1, 2, 3, 4].map((i) => (
           <circle key={`grid-${i}`} cx={CENTER} cy={CENTER} r={(i / 5) * (SIZE / 2)} fill="none" stroke="var(--minimap-stroke)" strokeWidth={0.5} />
@@ -33,29 +48,21 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
         <line x1={CENTER} y1={0} x2={CENTER} y2={SIZE} stroke="var(--minimap-stroke)" strokeWidth={0.3} />
         <line x1={0} y1={CENTER} x2={SIZE} y2={CENTER} stroke="var(--minimap-stroke)" strokeWidth={0.3} />
 
-        {/* Roads from spline paths */}
-        {LANDSCAPE_CONFIG.roadPaths.map((path, pi) =>
-          path.map((pt, i) => {
-            const dx = (pt.x - playerPosition[0]) * MAP_SCALE
-            const dy = (pt.z - playerPosition[2]) * MAP_SCALE
-            const sx = CENTER + dx
-            const sy = CENTER + dy
-            if (Math.abs(sx - CENTER) > CENTER || Math.abs(sy - CENTER) > CENTER) return null
-            return <circle key={`road-${pi}-${i}`} cx={sx} cy={sy} r={1.5} fill="rgba(80,80,80,0.6)" />
-          })
-        )}
+        {/* Roads — draw as connected line segments */}
+        {LANDSCAPE_CONFIG.roadPaths.map((path, pi) => {
+          const pts = roadToPolyline(path, playerPosition, MAP_SCALE, CENTER, CENTER)
+          const clipped = clipPolyline(pts.split(' '), CENTER, CENTER, SIZE)
+          if (!clipped) return null
+          return <polyline key={`road-${pi}`} points={clipped} fill="none" stroke="rgba(100,100,120,0.7)" strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" />
+        })}
 
         {/* Caltrain rail tracks */}
-        {LANDSCAPE_CONFIG.caltransPaths.map((path, pi) =>
-          path.map((pt, i) => {
-            const dx = (pt.x - playerPosition[0]) * MAP_SCALE
-            const dy = (pt.z - playerPosition[2]) * MAP_SCALE
-            const sx = CENTER + dx
-            const sy = CENTER + dy
-            if (Math.abs(sx - CENTER) > CENTER || Math.abs(sy - CENTER) > CENTER) return null
-            return <circle key={`rail-${pi}-${i}`} cx={sx} cy={sy} r={1.2} fill="rgba(255,140,0,0.6)" />
-          })
-        )}
+        {LANDSCAPE_CONFIG.caltransPaths.map((path, pi) => {
+          const pts = roadToPolyline(path, playerPosition, MAP_SCALE, CENTER, CENTER)
+          const clipped = clipPolyline(pts.split(' '), CENTER, CENTER, SIZE)
+          if (!clipped) return null
+          return <polyline key={`rail-${pi}`} points={clipped} fill="none" stroke="rgba(255,140,0,0.8)" strokeWidth={1.0} strokeLinejoin="round" strokeLinecap="round" />
+        })}
 
         {/* Trees as small green dots */}
         {LANDSCAPE_CONFIG.trees.map((t, i) => {
@@ -87,8 +94,8 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
           return <rect x={CENTER + wx - wW / 2} y={CENTER + wy - wH / 2} width={wW} height={wH} fill="rgba(0,100,200,0.2)" stroke="rgba(0,150,255,0.3)" strokeWidth={0.5} />
         })()}
 
-        {/* Buildings as small rectangles */}
-        {LANDSCAPE_CONFIG.buildings.slice(0, 80).map((b, i) => {
+        {/* Buildings as small rectangles — all buildings */}
+        {LANDSCAPE_CONFIG.buildings.map((b, i) => {
           const dx = (b.x - playerPosition[0]) * MAP_SCALE
           const dy = (b.z - playerPosition[2]) * MAP_SCALE
           const sx = CENTER + dx
@@ -148,6 +155,8 @@ export default function HUD() {
   const setTimeOfDay = useGameStore((s) => s.setTimeOfDay)
   const qualityPreset = useGameStore((s) => s.qualityPreset)
   const setQualityPreset = useGameStore((s) => s.setQualityPreset)
+  const qualityNpcCount = useGameStore((s) => s.qualityNpcCount)
+  const setQualityNpcCount = useGameStore((s) => s.setQualityNpcCount)
   const currentMapName = useGameStore((s) => s.currentMapName)
   const setCurrentMapName = useGameStore((s) => s.setCurrentMapName)
   const vehicleSpeed = useGameStore((s) => s.vehicleSpeed)
@@ -279,6 +288,21 @@ export default function HUD() {
               >
                 {showCoords ? 'ON' : 'OFF'}
               </button>
+            </div>
+            <div className="settings-divider" />
+            {/* NPC count slider */}
+            <div className="settings-section">
+              <label className="settings-label">NPC COUNT</label>
+              <input
+                type="range"
+                min="10"
+                max="200"
+                step="5"
+                value={qualityNpcCount}
+                onChange={(e) => setQualityNpcCount(parseInt(e.target.value))}
+                className="settings-slider"
+              />
+              <span className="settings-value">{qualityNpcCount}</span>
             </div>
             <div className="settings-divider" />
             <div className="settings-section credits">

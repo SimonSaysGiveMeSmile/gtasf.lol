@@ -76,6 +76,7 @@ interface GameState {
   setIsLoading: (loading: boolean) => void
   setQualityPreset: (preset: 'low' | 'med' | 'high' | 'ultra' | '8k') => void
   setQualityCounts: (npc: number, vehicle: number, building: number) => void
+  setQualityNpcCount: (count: number) => void
   setMasterVolume: (v: number) => void
   setSfxVolume: (v: number) => void
   setAmbientVolume: (v: number) => void
@@ -195,6 +196,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setIsLoading: (loading) => set({ isLoading: loading }),
   setQualityPreset: (preset) => set({ qualityPreset: preset }),
   setQualityCounts: (npc, vehicle, building) => set({ qualityNpcCount: npc, qualityVehicleCount: vehicle, qualityBuildingCount: building }),
+  setQualityNpcCount: (count) => set({ qualityNpcCount: count }),
   setMasterVolume: (v) => set({ masterVolume: v }),
   setSfxVolume: (v) => set({ sfxVolume: v }),
   setAmbientVolume: (v) => set({ ambientVolume: v }),

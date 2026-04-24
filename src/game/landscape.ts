@@ -17,8 +17,12 @@ import type {
   BenchData,
   HydrantData,
   PathPoint,
-  WaterData,
   LandscapeData,
+} from './landscape.types'
+
+// Re-export types for consumers that import from here
+export type {
+  WaterData,
 } from './landscape.types'
 
 // ─── Constants ────────────────────────────────────────────────────────────────

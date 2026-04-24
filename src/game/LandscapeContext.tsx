@@ -1,5 +1,5 @@
-// Landscape data context — provides the active LANDSCAPE_CONFIG to all world consumers
-// When currentMapName changes in the store, the provider re-loads the map data
+// Landscape data context — provides the active landscape data to all world consumers
+// When currentMapName changes in the store, the provider re-loads map data
 
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useGameStore } from './store'
@@ -10,7 +10,7 @@ const LandscapeContext = createContext<LandscapeData | null>(null)
 
 export function LandscapeProvider({ children }: { children: React.ReactNode }) {
   const currentMapName = useGameStore((s) => s.currentMapName)
-  const [data, setData] = useState<LandscapeData>(() => loadLandscapeData(currentMapName))
+  const [data, setData] = useState<LandscapeData | null>(null)
 
   useEffect(() => {
     setData(loadLandscapeData(currentMapName))

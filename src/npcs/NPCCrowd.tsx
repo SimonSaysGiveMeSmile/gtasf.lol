@@ -474,13 +474,15 @@ function TrafficCar({ x, z, rotation, color, id }: { x: number; z: number; rotat
 // ── NPC Crowd ───────────────────────────────────────────────────────────────
 export default function NPCCrowd() {
   const setNPCs = useGameStore((s) => s.setNPCs)
+  const qualityNpcCount = useGameStore((s) => s.qualityNpcCount)
+  const qualityVehicleCount = useGameStore((s) => s.qualityVehicleCount)
 
   const { pedestrians, cars } = useMemo(() => {
     const peds: { id: string; x: number; z: number; color: string; shirt: string; pants: string; hair: string; seed: number }[] = []
     const cars: { id: string; x: number; z: number; rotation: number; color: string }[] = []
     const carColors = ['#334488', '#883333', '#338833', '#aaaaaa', '#444444', '#665522']
 
-    for (let i = 0; i < NPC_COUNT; i++) {
+    for (let i = 0; i < qualityNpcCount; i++) {
       const seed = i * 17
       const ang = seededRandom(seed * 13) * Math.PI * 2
       const dist = 15 + seededRandom(seed * 29) * MAP_SIZE * 0.35
@@ -500,7 +502,7 @@ export default function NPCCrowd() {
       _spawnedNPCs.push({ x, z })
     }
 
-    for (let i = 0; i < TRAFFIC_COUNT; i++) {
+    for (let i = 0; i < qualityVehicleCount; i++) {
       const carSpawn = findCarSpawn(i * 41 + 100)
       cars.push({
         id: `traffic-${i}`,
@@ -523,7 +525,7 @@ export default function NPCCrowd() {
     setNPCs(npcData)
 
     return { pedestrians: peds, cars }
-  }, [setNPCs])
+  }, [setNPCs, qualityNpcCount, qualityVehicleCount])
 
   return (
     <>

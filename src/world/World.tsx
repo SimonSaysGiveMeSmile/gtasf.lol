@@ -3,8 +3,9 @@ import { useMemo } from 'react'
 import { Sky } from '@react-three/drei'
 import { useGameStore } from '../game/store'
 import { MAP_SIZE } from '../game/constants'
-import { LANDSCAPE_CONFIG } from '../game/landscape'
 import { default as BillboardLayer } from '../systems/billboards/BillboardLayer'
+import { useLandscapeData } from '../game/LandscapeContext'
+import type { BuildingData } from '../game/landscape.types'
 
 // ─── Spatial Grid for Collision Detection ─────────────────────────────────────
 // Divide the map into a grid; each cell stores building indices
@@ -16,7 +17,7 @@ interface SpatialGrid {
   buildings: Map<string, number[]> // "cx,cz" -> building indices
 }
 
-function buildSpatialGrid(buildings: typeof LANDSCAPE_CONFIG.buildings): SpatialGrid {
+function buildSpatialGrid(buildings: BuildingData[]): SpatialGrid {
   const cells = new Map<string, number[]>()
   for (let i = 0; i < buildings.length; i++) {
     const b = buildings[i]
@@ -82,8 +83,7 @@ function Building({ x, z, width, depth, height, colorIdx }: {
 }
 
 // ─── Buildings Layer ───────────────────────────────────────────────────────────
-function BuildingsLayer() {
-  const buildings = useMemo(() => LANDSCAPE_CONFIG.buildings, [])
+function BuildingsLayer({ buildings }: { buildings: BuildingData[] }) {
   return (
     <>
       {buildings.map((b, i) => (
@@ -129,8 +129,7 @@ function Tree({ x, z, idx }: { x: number; z: number; idx: number }) {
 }
 
 // ─── Trees Layer ─────────────────────────────────────────────────────────────
-function TreesLayer() {
-  const trees = useMemo(() => LANDSCAPE_CONFIG.trees, [])
+function TreesLayer({ trees }: { trees: { x: number; z: number }[] }) {
   return (
     <>
       {trees.map((t, i) => (
@@ -152,33 +151,30 @@ function RoadSegment({ x, z, angle, width, color, len }: {
   )
 }
 
-function RoadLayer() {
+function RoadLayer({ roadPaths }: { roadPaths: { x: number; z: number; angle: number }[][] }) {
   const timeOfDay = useGameStore((s) => s.timeOfDay)
   const isNight = timeOfDay === "night"
 
   const roads = useMemo(() => {
     const segments: { x: number; z: number; angle: number; width: number; color: string; len: number }[] = []
     const ROAD_WIDTH = 14
-    const SEG_LEN = 12 // longer segments = fewer gaps
-    const STEP = 2 // overlap by stepping every 2 points (50% overlap)
+    const SEG_LEN = 12
+    const STEP = 2
 
-    for (const road of LANDSCAPE_CONFIG.roadPaths) {
+    for (const road of roadPaths) {
       for (let i = 0; i < road.length; i += STEP) {
         const pt = road[i]
         const nextPt = road[Math.min(i + 1, road.length - 1)]
         const angle = Math.atan2(nextPt.x - pt.x, nextPt.z - pt.z)
-
-        // Road surface
         segments.push({ x: pt.x, z: pt.z, angle, width: ROAD_WIDTH, len: SEG_LEN, color: '#404050' })
       }
     }
     return segments
-  }, [])
+  }, [roadPaths])
 
-  // Road center lines (dashed yellow)
   const roadLines = useMemo(() => {
     const lines: { x: number; z: number; angle: number }[] = []
-    for (const road of LANDSCAPE_CONFIG.roadPaths) {
+    for (const road of roadPaths) {
       for (let i = 0; i < road.length; i += 4) {
         const pt = road[i]
         const nextPt = road[Math.min(i + 1, road.length - 1)]
@@ -187,7 +183,7 @@ function RoadLayer() {
       }
     }
     return lines
-  }, [])
+  }, [roadPaths])
 
   const lineColor = isNight ? '#ffdd00' : '#ffcc00'
   const lineEmissive = isNight ? '#ffaa00' : '#000000'
@@ -198,7 +194,6 @@ function RoadLayer() {
       {roads.map((seg, i) => (
         <RoadSegment key={`r-${i}`} {...seg} />
       ))}
-      {/* Road center lines */}
       {roadLines.map((line, i) => (
         <mesh key={`l-${i}`} position={[line.x, 0.03, line.z]} rotation={[-Math.PI / 2, 0, -line.angle]}>
           <planeGeometry args={[0.3, 4]} />
@@ -214,11 +209,11 @@ function RoadLayer() {
 }
 
 // ─── Rail Track ───────────────────────────────────────────────────────────────
-function RailLayer() {
+function RailLayer({ caltransPaths }: { caltransPaths: { x: number; z: number; angle: number }[][] }) {
   const tracks = useMemo(() => {
     const segments: { x: number; z: number; angle: number }[] = []
-    for (const path of LANDSCAPE_CONFIG.caltransPaths) {
-      for (let i = 0; i < path.length; i += 3) { // denser for better coverage
+    for (const path of caltransPaths) {
+      for (let i = 0; i < path.length; i += 3) {
         const pt = path[i]
         const nextPt = path[Math.min(i + 1, path.length - 1)]
         const angle = Math.atan2(nextPt.x - pt.x, nextPt.z - pt.z)
@@ -226,23 +221,20 @@ function RailLayer() {
       }
     }
     return segments
-  }, [])
+  }, [caltransPaths])
 
   return (
     <>
       {tracks.map((seg, i) => (
         <group key={i}>
-          {/* Rail bed */}
           <mesh position={[seg.x, 0.03, seg.z]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
             <planeGeometry args={[5, 14]} />
             <meshStandardMaterial color="#555555" roughness={0.95} />
           </mesh>
-          {/* Left rail */}
           <mesh position={[seg.x, 0.06, seg.z]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
             <planeGeometry args={[0.25, 14]} />
             <meshStandardMaterial color="#999999" metalness={0.8} roughness={0.3} />
           </mesh>
-          {/* Right rail */}
           <mesh position={[seg.x, 0.06, seg.z]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
             <planeGeometry args={[0.25, 14]} />
             <meshStandardMaterial color="#999999" metalness={0.8} roughness={0.3} />
@@ -284,11 +276,10 @@ function StreetLamp({ x, z }: { x: number; z: number }) {
   )
 }
 
-function StreetLampsLayer() {
-  const lamps = useMemo(() => LANDSCAPE_CONFIG.streetLamps, [])
+function StreetLampsLayer({ streetLamps }: { streetLamps: { x: number; z: number }[] }) {
   return (
     <>
-      {lamps.map((lamp, i) => (
+      {streetLamps.map((lamp, i) => (
         <StreetLamp key={i} x={lamp.x} z={lamp.z} />
       ))}
     </>
@@ -342,12 +333,11 @@ function TrafficLight({ x, z }: { x: number; z: number; angle?: number }) {
   )
 }
 
-function TrafficLightsLayer() {
-  const lights = useMemo(() => LANDSCAPE_CONFIG.trafficLights, [])
+function TrafficLightsLayer({ trafficLights }: { trafficLights: { x: number; z: number; angle: number }[] }) {
   return (
     <>
-      {lights.map((l, i) => (
-        <TrafficLight key={i} x={l.x} z={l.z}  />
+      {trafficLights.map((l, i) => (
+        <TrafficLight key={i} x={l.x} z={l.z} />
       ))}
     </>
   )
@@ -370,11 +360,10 @@ function Crosswalk({ x, z, angle }: { x: number; z: number; angle: number }) {
   )
 }
 
-function CrosswalksLayer() {
-  const crosses = useMemo(() => LANDSCAPE_CONFIG.crosswalks, [])
+function CrosswalksLayer({ crosswalks }: { crosswalks: { x: number; z: number; angle: number }[] }) {
   return (
     <>
-      {crosses.map((c, i) => (
+      {crosswalks.map((c, i) => (
         <Crosswalk key={i} x={c.x} z={c.z} angle={c.angle} />
       ))}
     </>
@@ -391,12 +380,11 @@ function SidewalkSegment({ x, z, len }: { x: number; z: number; len: number }) {
   )
 }
 
-function SidewalksLayer() {
-  const walks = useMemo(() => LANDSCAPE_CONFIG.sidewalks, [])
+function SidewalksLayer({ sidewalks }: { sidewalks: { x: number; z: number; angle: number; len: number }[] }) {
   return (
     <>
-      {walks.map((s, i) => (
-        <SidewalkSegment key={i} x={s.x} z={s.z}  len={s.len} />
+      {sidewalks.map((s, i) => (
+        <SidewalkSegment key={i} x={s.x} z={s.z} len={s.len} />
       ))}
     </>
   )
@@ -439,12 +427,11 @@ function BusStop({ x, z }: { x: number; z: number; angle?: number }) {
   )
 }
 
-function BusStopsLayer() {
-  const stops = useMemo(() => LANDSCAPE_CONFIG.busStops, [])
+function BusStopsLayer({ busStops }: { busStops: { x: number; z: number; angle: number; name: string }[] }) {
   return (
     <>
-      {stops.map((s, i) => (
-        <BusStop key={i} x={s.x} z={s.z}  />
+      {busStops.map((s, i) => (
+        <BusStop key={i} x={s.x} z={s.z} />
       ))}
     </>
   )
@@ -460,12 +447,11 @@ function ParkingLot({ x, z }: { x: number; z: number }) {
   )
 }
 
-function ParkingLotsLayer() {
-  const lots = useMemo(() => LANDSCAPE_CONFIG.parkingLots, [])
+function ParkingLotsLayer({ parkingLots }: { parkingLots: { x: number; z: number; angle: number }[] }) {
   return (
     <>
-      {lots.map((l, i) => (
-        <ParkingLot key={i} x={l.x} z={l.z}  />
+      {parkingLots.map((l, i) => (
+        <ParkingLot key={i} x={l.x} z={l.z} />
       ))}
     </>
   )
@@ -497,8 +483,7 @@ function FireHydrant({ x, z }: { x: number; z: number }) {
   )
 }
 
-function FireHydrantsLayer() {
-  const hydrants = useMemo(() => LANDSCAPE_CONFIG.hydrants, [])
+function FireHydrantsLayer({ hydrants }: { hydrants: { x: number; z: number }[] }) {
   return (
     <>
       {hydrants.map((h, i) => (
@@ -533,11 +518,10 @@ function Bench({ x, z }: { x: number; z: number }) {
   )
 }
 
-function BenchesLayer() {
-  const benchList = useMemo(() => LANDSCAPE_CONFIG.benches, [])
+function BenchesLayer({ benches }: { benches: { x: number; z: number; angle: number }[] }) {
   return (
     <>
-      {benchList.map((b, i) => (
+      {benches.map((b, i) => (
         <Bench key={i} x={b.x} z={b.z} />
       ))}
     </>
@@ -545,8 +529,7 @@ function BenchesLayer() {
 }
 
 // ─── Ground ───────────────────────────────────────────────────────────────────
-function Ground() {
-  const water = LANDSCAPE_CONFIG.water
+function Ground({ water }: { water: { x: number; z: number; width: number; height: number } }) {
   const groundColor = '#2a3a20'
   const waterColor = '#1a3a5a'
 
@@ -568,13 +551,13 @@ function Ground() {
 
 // ─── Main World ───────────────────────────────────────────────────────────────
 export default function World() {
-  // Build spatial grid once
-  _spatialGrid = useMemo(() => buildSpatialGrid(LANDSCAPE_CONFIG.buildings), [])
-
+  const data = useLandscapeData()
   const timeOfDay = useGameStore((s) => s.timeOfDay)
   const isNight = timeOfDay === 'night'
 
-  // Sky settings change with time of day
+  // Build spatial grid once
+  _spatialGrid = useMemo(() => buildSpatialGrid(data.buildings), [data])
+
   const skyProps = isNight
     ? { sunPosition: [-100, 20, -50] as [number,number,number], turbidity: 10, rayleigh: 0.5, mieCoefficient: 0.005, mieDirectionalG: 0.8 }
     : { sunPosition: [100, 80, -50] as [number,number,number], turbidity: 3, rayleigh: 0.5, mieCoefficient: 0.002, mieDirectionalG: 0.8 }
@@ -594,20 +577,20 @@ export default function World() {
       />
       <Sky {...skyProps} />
 
-      <Ground />
-      <RoadLayer />
-      <RailLayer />
-      <BuildingsLayer />
-      <TreesLayer />
-      <StreetLampsLayer />
-      <SidewalksLayer />
-    <CrosswalksLayer />
-    <BusStopsLayer />
-    <ParkingLotsLayer />
-    <FireHydrantsLayer />
-    <BenchesLayer />
-    <TrafficLightsLayer />
-    <BillboardLayer />
+      <Ground water={data.water} />
+      <RoadLayer roadPaths={data.roadPaths} />
+      <RailLayer caltransPaths={data.caltransPaths} />
+      <BuildingsLayer buildings={data.buildings} />
+      <TreesLayer trees={data.trees} />
+      <StreetLampsLayer streetLamps={data.streetLamps} />
+      <SidewalksLayer sidewalks={data.sidewalks} />
+      <CrosswalksLayer crosswalks={data.crosswalks} />
+      <BusStopsLayer busStops={data.busStops} />
+      <ParkingLotsLayer parkingLots={data.parkingLots} />
+      <FireHydrantsLayer hydrants={data.hydrants} />
+      <BenchesLayer benches={data.benches} />
+      <TrafficLightsLayer trafficLights={data.trafficLights} />
+      <BillboardLayer />
     </>
   )
 }

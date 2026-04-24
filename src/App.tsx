@@ -16,6 +16,7 @@ import AudioManager from './systems/audio/AudioManager'
 import { soundManager } from './systems/audio/SoundManager'
 import { useGameStore } from './game/store'
 import { useEffect } from 'react'
+import { LandscapeProvider } from './game/LandscapeContext'
 
 // @simonsaysgivemesmile
 const keyMap = [
@@ -45,16 +46,16 @@ export default function App() {
 
   // Sync quality counts into store so NPC/VehicleSpawner can read them
   useEffect(() => {
-    const npc = qualityPreset === 'low' ? 20
-      : qualityPreset === 'med' ? 35
-      : qualityPreset === 'high' ? 50
-      : qualityPreset === 'ultra' ? 80
-      : 200
-    const vehicle = qualityPreset === 'low' ? 15
-      : qualityPreset === 'med' ? 22
-      : qualityPreset === 'high' ? 30
-      : qualityPreset === 'ultra' ? 50
-      : 80
+    const npc = qualityPreset === 'low' ? 30
+      : qualityPreset === 'med' ? 50
+      : qualityPreset === 'high' ? 80
+      : qualityPreset === 'ultra' ? 120
+      : 300
+    const vehicle = qualityPreset === 'low' ? 20
+      : qualityPreset === 'med' ? 30
+      : qualityPreset === 'high' ? 40
+      : qualityPreset === 'ultra' ? 70
+      : 120
     setQualityCounts(npc, vehicle, 200)
   }, [qualityPreset, setQualityCounts])
 
@@ -86,8 +87,10 @@ export default function App() {
           >
             <Suspense fallback={null}>
               <Physics gravity={[0, -25, 0]} defaultContactMaterial={{ friction: 0.5, restitution: 0.1 }}>
-                <World />
-                <Player />
+                <LandscapeProvider>
+                  <World />
+                  <Player />
+                </LandscapeProvider>
               </Physics>
               <VehicleSpawner />
               <NPCCrowd />
