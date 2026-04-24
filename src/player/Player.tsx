@@ -99,8 +99,8 @@ export default function Player() {
         isMouseDown.current = false
         return
       }
-      // Right = turn right (positive theta), down = look down (negative phi)
-      cameraAngle.current.theta += e.movementX * 0.004
+      // Left = turn right (negative theta — horizontal is inverted), down = look down (negative phi)
+      cameraAngle.current.theta -= e.movementX * 0.004
       cameraAngle.current.phi = Math.max(
         CAM_PHI_MIN,
         Math.min(CAM_PHI_MAX, cameraAngle.current.phi - e.movementY * 0.004)

@@ -571,13 +571,20 @@ export default function World() {
   // Build spatial grid once
   _spatialGrid = useMemo(() => buildSpatialGrid(LANDSCAPE_CONFIG.buildings), [])
 
+  const timeOfDay = useGameStore((s) => s.timeOfDay)
+  const isNight = timeOfDay === 'night'
+
+  // Sky settings change with time of day
+  const skyProps = isNight
+    ? { sunPosition: [-100, 20, -50] as [number,number,number], turbidity: 10, rayleigh: 0.5, mieCoefficient: 0.005, mieDirectionalG: 0.8 }
+    : { sunPosition: [100, 80, -50] as [number,number,number], turbidity: 3, rayleigh: 0.5, mieCoefficient: 0.002, mieDirectionalG: 0.8 }
+
   return (
     <>
-      <ambientLight intensity={3.0} />
+      <ambientLight intensity={isNight ? 0.4 : 3.0} />
       <directionalLight
         position={[100, 200, 80]}
-        intensity={7.5}
-       
+        intensity={isNight ? 0.5 : 7.5}
         shadow-mapSize={[2048, 2048]}
         shadow-camera-far={5000}
         shadow-camera-left={-MAP_SIZE}
@@ -585,7 +592,7 @@ export default function World() {
         shadow-camera-top={MAP_SIZE}
         shadow-camera-bottom={-MAP_SIZE}
       />
-      <Sky sunPosition={[100, 80, -50]} turbidity={3} rayleigh={0.5} />
+      <Sky {...skyProps} />
 
       <Ground />
       <RoadLayer />

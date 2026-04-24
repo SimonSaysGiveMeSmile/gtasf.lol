@@ -256,7 +256,7 @@ export default function HUD() {
                 <option value="med">Med (1080p)</option>
                 <option value="high">High (1440p)</option>
                 <option value="ultra">Ultra (4K)</option>
-                <option value="8k">8K (may crash)</option>
+                <option value="8k">8K (sixseven might crash)</option>
               </select>
             </div>
             <div className="settings-section">

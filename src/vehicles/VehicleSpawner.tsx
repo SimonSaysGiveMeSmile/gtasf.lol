@@ -5,7 +5,7 @@ import { useKeyboardControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '../game/store'
 import type { VehicleType } from '../game/types'
-import { VEHICLES, MAP_SIZE, VEHICLE_COUNT } from '../game/constants'
+import { VEHICLES, MAP_SIZE, VEHICLE_COUNT, SCOOTER_COUNT, PLANE_COUNT, BOAT_COUNT } from '../game/constants'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
 import { vehiclePositions, vehicleRadius, OBSTACLE_RADIUS } from '../game/vehicleState'
 import { getNearbyBuildingsGrid } from '../world/World'
@@ -904,8 +904,8 @@ export default function VehicleSpawner() {
       })
     }
 
-    // E-scooters scattered around pedestrian areas (reduced)
-    for (let i = 0; i < 5; i++) {
+    // E-scooters scattered around pedestrian areas
+    for (let i = 0; i < SCOOTER_COUNT; i++) {
       const sx = (seededRandom(1000 + i * 41) - 0.5) * MAP_SIZE * 0.7
       const sz = (seededRandom(1100 + i * 37) - 0.5) * MAP_SIZE * 0.7
       if (isClearOfBuildings(sx, sz, 1.5)) {
@@ -920,12 +920,12 @@ export default function VehicleSpawner() {
       }
     }
 
-    // Caltrain cars — spawned along rail lines (reduced count)
+    // Caltrain cars — spawned along rail lines
     const railPaths = LANDSCAPE_CONFIG.caltransPaths
     for (let t = 0; t < railPaths.length; t++) {
       const path = railPaths[t]
       if (!path || path.length === 0) continue
-      for (let i = 0; i < 2; i++) {
+      for (let i = 0; i < 4; i++) {
         const idx = Math.floor((i / 2) * path.length) % path.length
         const pt = path[idx]
         const nextIdx = (idx + 1) % path.length
@@ -944,7 +944,7 @@ export default function VehicleSpawner() {
     }
 
     // Boats in water region
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < BOAT_COUNT; i++) {
       const spec = VEHICLES.find(v => v.type === 'boat')!
       const angle = seededRandom(200 + i) * Math.PI * 2
       const dist = MAP_SIZE * 0.55 + seededRandom(300 + i) * 60
@@ -958,15 +958,17 @@ export default function VehicleSpawner() {
       })
     }
 
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < PLANE_COUNT; i++) {
       const spec = VEHICLES.find(v => v.type === 'plane')!
+      const angle = seededRandom(500 + i) * Math.PI * 2
+      const dist = MAP_SIZE * 0.3 + seededRandom(600 + i) * MAP_SIZE * 0.4
       air.push({
         id: `plane-${i}`,
         type: 'plane',
-        x: seededRandom(500 + i) * MAP_SIZE - MAP_SIZE / 2,
-        z: seededRandom(600 + i) * MAP_SIZE - MAP_SIZE / 2,
+        x: Math.cos(angle) * dist,
+        z: Math.sin(angle) * dist,
         rotation: seededRandom(700 + i) * Math.PI * 2,
-        color: spec.color,
+        color: i % 2 === 0 ? spec.color : '#d0d0e0',
       })
     }
 
