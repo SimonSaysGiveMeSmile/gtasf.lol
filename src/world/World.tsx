@@ -1,5 +1,5 @@
 // @simonsaysgivemesmile
-import { useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import { Sky } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '../game/store'

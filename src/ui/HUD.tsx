@@ -230,6 +230,7 @@ export default function HUD() {
   const playerRotation = useGameStore((s) => s.playerRotation)
   const fps = useGameStore((s) => s.fps)
   const [showMenu, setShowMenu] = useState(false)
+  const [activeTab, setActiveTab] = useState<'gameplay' | 'visual' | 'audio' | 'debugging'>('gameplay')
   const [showCoords, setShowCoords] = useState(true)
   const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
   const speedPercent = Math.min(100, (vehicleSpeed / 200) * 100)
@@ -297,128 +298,204 @@ export default function HUD() {
                 </svg>
               </button>
             </div>
-            <div className="settings-section">
-              <label className="settings-label">CITY</label>
-              <select
-                value={city}
-                onChange={(e) => setCity(e.target.value as CityId)}
-                className="settings-select"
-              >
-                {CITIES.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+
+            {/* Tab bar */}
+            <div className="settings-tabs">
+              {(['gameplay', 'visual', 'audio', 'debugging'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  className={`settings-tab ${activeTab === tab ? 'active' : ''}`}
+                  onClick={() => setActiveTab(tab)}
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
             </div>
-            <div className="settings-section">
-              <label className="settings-label">TIME</label>
-              <button
-                className={`settings-toggle ${timeOfDay}`}
-                onClick={() => setTimeOfDay(timeOfDay === 'night' ? 'day' : 'night')}
-              >
-                {timeOfDay === 'night' ? 'Night' : 'Day'}
-              </button>
-            </div>
-            <div className="settings-section">
-              <label className="settings-label">QUALITY</label>
-              <select
-                value={qualityPreset}
-                onChange={(e) => setQualityPreset(e.target.value as typeof qualityPreset)}
-                className="settings-select"
-              >
-                <option value="low">Low (720p)</option>
-                <option value="med">Med (1080p)</option>
-                <option value="high">High (1440p)</option>
-                <option value="ultra">Ultra (4K)</option>
-                <option value="8k">8K (sixseven might crash)</option>
-              </select>
-            </div>
-            <div className="settings-section">
-              <label className="settings-label">MAP</label>
-              <select
-                value={currentMapName}
-                onChange={(e) => setCurrentMapName(e.target.value)}
-                className="settings-select"
-              >
-                <option value="procedural">Procedural City</option>
-                <option value="test_map">Test Map</option>
-              </select>
-            </div>
-            <div className="settings-section">
-              <label className="settings-label">SHOW COORDS</label>
-              <button
-                className={`settings-toggle-btn ${showCoords ? 'active' : ''}`}
-                onClick={() => setShowCoords(!showCoords)}
-              >
-                {showCoords ? 'ON' : 'OFF'}
-              </button>
-            </div>
-            <div className="settings-divider" />
-            {/* NPC count slider */}
-            <div className="settings-section">
-              <label className="settings-label">NPC COUNT</label>
-              <input
-                type="range"
-                min="10"
-                max="200"
-                step="5"
-                value={qualityNpcCount}
-                onChange={(e) => setQualityNpcCount(parseInt(e.target.value))}
-                className="settings-slider"
-              />
-              <span className="settings-value">{qualityNpcCount}</span>
-            </div>
-            <div className="settings-divider" />
-            <div className="settings-section credits">
-              <span className="credits-text">@realsimontian 2026</span>
-              <a
-                href="https://github.com/SimonSaysGiveMeSmile/gtasf.lol"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="credits-link"
-              >
-                github.com/realsimontian/gtasf.lol
-              </a>
-            </div>
-            <div className="settings-divider" />
-            {/* Volume controls */}
-            <div className="settings-section">
-              <label className="settings-label">MASTER</label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={masterVolume}
-                onChange={(e) => setMasterVolume(parseFloat(e.target.value))}
-                className="settings-slider"
-              />
-              <span className="settings-value">{Math.round(masterVolume * 100)}%</span>
-            </div>
-            <div className="settings-section">
-              <label className="settings-label">SFX</label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={sfxVolume}
-                onChange={(e) => setSfxVolume(parseFloat(e.target.value))}
-                className="settings-slider"
-              />
-              <span className="settings-value">{Math.round(sfxVolume * 100)}%</span>
-            </div>
-            <div className="settings-section">
-              <label className="settings-label">AMBIENT</label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={ambientVolume}
-                onChange={(e) => setAmbientVolume(parseFloat(e.target.value))}
-                className="settings-slider"
-              />
-              <span className="settings-value">{Math.round(ambientVolume * 100)}%</span>
+
+            <div className="settings-body">
+              {activeTab === 'gameplay' && (
+                <>
+                  <div className="settings-section">
+                    <label className="settings-label">CITY</label>
+                    <select
+                      value={city}
+                      onChange={(e) => setCity(e.target.value as CityId)}
+                      className="settings-select"
+                    >
+                      {CITIES.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="settings-section">
+                    <label className="settings-label">TIME</label>
+                    <button
+                      className={`settings-toggle ${timeOfDay}`}
+                      onClick={() => setTimeOfDay(timeOfDay === 'night' ? 'day' : 'night')}
+                    >
+                      {timeOfDay === 'night' ? 'Night' : 'Day'}
+                    </button>
+                  </div>
+                  <div className="settings-section">
+                    <label className="settings-label">MAP</label>
+                    <select
+                      value={currentMapName}
+                      onChange={(e) => setCurrentMapName(e.target.value)}
+                      className="settings-select"
+                    >
+                      <option value="procedural">Procedural City</option>
+                      <option value="test_map">Test Map</option>
+                    </select>
+                  </div>
+                  <div className="settings-section">
+                    <label className="settings-label">NPC COUNT</label>
+                    <input
+                      type="range"
+                      min="10"
+                      max="200"
+                      step="5"
+                      value={qualityNpcCount}
+                      onChange={(e) => setQualityNpcCount(parseInt(e.target.value))}
+                      className="settings-slider"
+                    />
+                    <span className="settings-value">{qualityNpcCount}</span>
+                  </div>
+                  <div className="settings-section">
+                    <label className="settings-label">SHOW COORDS</label>
+                    <button
+                      className={`settings-toggle-btn ${showCoords ? 'active' : ''}`}
+                      onClick={() => setShowCoords(!showCoords)}
+                    >
+                      {showCoords ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+                  <div className="settings-divider" />
+                  <div className="settings-section credits">
+                    <span className="credits-text">@realsimontian 2026</span>
+                    <a
+                      href="https://github.com/SimonSaysGiveMeSmile/gtasf.lol"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="credits-link"
+                    >
+                      github.com/realsimontian/gtasf.lol
+                    </a>
+                  </div>
+                </>
+              )}
+
+              {activeTab === 'visual' && (
+                <>
+                  <div className="settings-section">
+                    <label className="settings-label">QUALITY</label>
+                    <select
+                      value={qualityPreset}
+                      onChange={(e) => setQualityPreset(e.target.value as typeof qualityPreset)}
+                      className="settings-select"
+                    >
+                      <option value="low">Low (720p)</option>
+                      <option value="med">Med (1080p)</option>
+                      <option value="high">High (1440p)</option>
+                      <option value="ultra">Ultra (4K)</option>
+                      <option value="8k">8K (sixseven might crash)</option>
+                    </select>
+                  </div>
+                  <div className="settings-section">
+                    <label className="settings-label">TIME OF DAY</label>
+                    <button
+                      className={`settings-toggle ${timeOfDay}`}
+                      onClick={() => setTimeOfDay(timeOfDay === 'night' ? 'day' : 'night')}
+                    >
+                      {timeOfDay === 'night' ? 'Night' : 'Day'}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {activeTab === 'audio' && (
+                <>
+                  <div className="settings-section">
+                    <label className="settings-label">MASTER</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={masterVolume}
+                      onChange={(e) => setMasterVolume(parseFloat(e.target.value))}
+                      className="settings-slider"
+                    />
+                    <span className="settings-value">{Math.round(masterVolume * 100)}%</span>
+                  </div>
+                  <div className="settings-section">
+                    <label className="settings-label">SFX</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={sfxVolume}
+                      onChange={(e) => setSfxVolume(parseFloat(e.target.value))}
+                      className="settings-slider"
+                    />
+                    <span className="settings-value">{Math.round(sfxVolume * 100)}%</span>
+                  </div>
+                  <div className="settings-section">
+                    <label className="settings-label">AMBIENT</label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={ambientVolume}
+                      onChange={(e) => setAmbientVolume(parseFloat(e.target.value))}
+                      className="settings-slider"
+                    />
+                    <span className="settings-value">{Math.round(ambientVolume * 100)}%</span>
+                  </div>
+                </>
+              )}
+
+              {activeTab === 'debugging' && (
+                <>
+                  <div className="settings-section">
+                    <label className="settings-label">QUALITY PRESET</label>
+                    <select
+                      value={qualityPreset}
+                      onChange={(e) => setQualityPreset(e.target.value as typeof qualityPreset)}
+                      className="settings-select"
+                    >
+                      <option value="low">Low (720p)</option>
+                      <option value="med">Med (1080p)</option>
+                      <option value="high">High (1440p)</option>
+                      <option value="ultra">Ultra (4K)</option>
+                      <option value="8k">8K (sixseven might crash)</option>
+                    </select>
+                  </div>
+                  <div className="settings-section">
+                    <label className="settings-label">NPC COUNT</label>
+                    <input
+                      type="range"
+                      min="10"
+                      max="200"
+                      step="5"
+                      value={qualityNpcCount}
+                      onChange={(e) => setQualityNpcCount(parseInt(e.target.value))}
+                      className="settings-slider"
+                    />
+                    <span className="settings-value">{qualityNpcCount}</span>
+                  </div>
+                  <div className="settings-section">
+                    <label className="settings-label">SHOW COORDS</label>
+                    <button
+                      className={`settings-toggle-btn ${showCoords ? 'active' : ''}`}
+                      onClick={() => setShowCoords(!showCoords)}
+                    >
+                      {showCoords ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
