@@ -161,6 +161,14 @@ export default function HUD() {
   const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
   const speedPercent = Math.min(100, (vehicleSpeed / 200) * 100)
 
+  // @jiahe
+  const masterVolume = useGameStore((s) => s.masterVolume)
+  const sfxVolume = useGameStore((s) => s.sfxVolume)
+  const ambientVolume = useGameStore((s) => s.ambientVolume)
+  const setMasterVolume = useGameStore((s) => s.setMasterVolume)
+  const setSfxVolume = useGameStore((s) => s.setSfxVolume)
+  const setAmbientVolume = useGameStore((s) => s.setAmbientVolume)
+
   const healthColor =
     health > 50 ? 'var(--accent-green)' : health > 25 ? 'var(--accent-amber)' : 'var(--accent-red)'
 
@@ -271,6 +279,47 @@ export default function HUD() {
               >
                 github.com/realsimontian/gtasf.lol
               </a>
+            </div>
+            <div className="settings-divider" />
+            {/* Volume controls */}
+            <div className="settings-section">
+              <label className="settings-label">MASTER</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={masterVolume}
+                onChange={(e) => setMasterVolume(parseFloat(e.target.value))}
+                className="settings-slider"
+              />
+              <span className="settings-value">{Math.round(masterVolume * 100)}%</span>
+            </div>
+            <div className="settings-section">
+              <label className="settings-label">SFX</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={sfxVolume}
+                onChange={(e) => setSfxVolume(parseFloat(e.target.value))}
+                className="settings-slider"
+              />
+              <span className="settings-value">{Math.round(sfxVolume * 100)}%</span>
+            </div>
+            <div className="settings-section">
+              <label className="settings-label">AMBIENT</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={ambientVolume}
+                onChange={(e) => setAmbientVolume(parseFloat(e.target.value))}
+                className="settings-slider"
+              />
+              <span className="settings-value">{Math.round(ambientVolume * 100)}%</span>
             </div>
           </div>
         </div>

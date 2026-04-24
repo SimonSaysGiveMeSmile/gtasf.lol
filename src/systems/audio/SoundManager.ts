@@ -22,6 +22,8 @@ class SoundManager {
   private ambientGain: GainNode | null = null
   private initialized = false
 
+  // Helper to get current volume from store (reads live values) // @jt886
+
   async init(): Promise<void> {
     if (this.initialized) return
     this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
@@ -56,6 +58,18 @@ class SoundManager {
     return this.audioContext
   }
 
+  // Helper to get current volume from store (reads live values)
+  private getVolumeScale(soundId: SoundId): number {
+    try {
+      const state = (require('../game/store') as typeof import('../game/store')).useGameStore.getState()
+      const { masterVolume, sfxVolume, ambientVolume } = state
+      if (soundId === 'traffic_ambient') return masterVolume * ambientVolume
+      return masterVolume * sfxVolume
+    } catch {
+      return 0.24 // master * sfx defaults
+    }
+  }
+
   // Play a sound once (fire and forget), returning the source node id
   play(
     id: SoundId,
@@ -73,15 +87,18 @@ class SoundManager {
     const ctx = this.ensureContext()
     const { volume = 1, spatialPosition, listenerPosition, loop = false, detune = 0 } = opts
 
+    // @jiahe
+    const finalVolume = volume * this.getVolumeScale(id)
+
     const source = ctx.createBufferSource()
     source.buffer = buffer
     source.loop = loop
     source.detune.value = detune
 
     const gainNode = ctx.createGain()
-    gainNode.gain.value = volume
+    gainNode.gain.value = finalVolume
 
-    
+    // @t1an
     // Spatial audio
     if (spatialPosition) {
       const panner = ctx.createPanner()
