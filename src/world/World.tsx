@@ -568,12 +568,14 @@ function BenchesLayer({ benches }: { benches: { x: number; z: number; angle: num
 function Ground({ water }: { water: { x: number; z: number; width: number; height: number } }) {
   const groundColor = '#2a3a20'
   const waterColor = '#1a3a5a'
+  // Large enough to cover the camera's 8000-unit far plane at any position
+  const GROUND_SIZE = 20000
 
   return (
     <>
       {/* Main ground */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
-        <planeGeometry args={[MAP_SIZE * 2.2, MAP_SIZE * 2.2]} />
+        <planeGeometry args={[GROUND_SIZE, GROUND_SIZE]} />
         <meshStandardMaterial color={groundColor} roughness={0.95} />
       </mesh>
       {/* Water */}
