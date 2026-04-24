@@ -1,5 +1,5 @@
 // @jt886
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useGameStore } from '../game/store'
 import { CITIES, VEHICLES } from '../game/constants'
 import type { CityId } from '../game/types'
@@ -7,132 +7,195 @@ import { LANDSCAPE_CONFIG } from '../game/landscape'
 import type { PathPoint } from '../game/landscape.types'
 import './HUD.css' // @jt886
 
+const RANGE = 100
+const SIZE = 180
+const CENTER = SIZE / 2
+const MAP_SCALE = (SIZE / 2) / RANGE
+const HALF_SIZE = SIZE / 2
+
 interface MinimapProps {
   playerPosition: [number, number, number]
   npcs: import('../game/types').NPC[]
   playerRotation: number
 }
 
-function roadToPolyline(path: PathPoint[], playerPos: [number, number, number], scale: number, cx: number, cy: number): string {
-  return path.map((pt) => {
-    const dx = (pt.x - playerPos[0]) * scale
-    const dy = (pt.z - playerPos[2]) * scale
-    return `${cx + dx},${cy + dy}`
+// ── Pre-compute per-frame relative positions ────────────────────────────────────
+// Only buildings/trees/lamps/water need world-space → relative-space conversion.
+// Roads/rails are pre-clipped and cached; player rotation only rotates the SVG container.
+const roadPolylineCache = new Map<string, string>()
+const railPolylineCache = new Map<string, string>()
+
+function getClippedRoad(path: PathPoint[], playerPos: [number, number, number]): string {
+  const key = `${path.length}-${playerPos[0].toFixed(0)}-${playerPos[2].toFixed(0)}`
+  if (roadPolylineCache.has(key)) return roadPolylineCache.get(key)!
+  const pts = path.map((pt) => {
+    const dx = (pt.x - playerPos[0]) * MAP_SCALE
+    const dy = (pt.z - playerPos[2]) * MAP_SCALE
+    return `${CENTER + dx},${CENTER + dy}`
+  })
+  const clipped = pts.filter((pt) => {
+    const [x, y] = pt.split(',').map(Number)
+    return Math.abs(x - CENTER) <= HALF_SIZE && Math.abs(y - CENTER) <= HALF_SIZE
   }).join(' ')
+  roadPolylineCache.set(key, clipped)
+  if (roadPolylineCache.size > 500) {
+    const firstKey = roadPolylineCache.keys().next().value
+    if (firstKey) roadPolylineCache.delete(firstKey)
+  }
+  return clipped
 }
 
-function clipPolyline(pts: string[], cx: number, cy: number, size: number): string {
-  return pts.filter((pt) => {
+function getClippedRail(path: PathPoint[], playerPos: [number, number, number]): string {
+  const key = `rail-${path.length}-${playerPos[0].toFixed(0)}-${playerPos[2].toFixed(0)}`
+  if (railPolylineCache.has(key)) return railPolylineCache.get(key)!
+  const pts = path.map((pt) => {
+    const dx = (pt.x - playerPos[0]) * MAP_SCALE
+    const dy = (pt.z - playerPos[2]) * MAP_SCALE
+    return `${CENTER + dx},${CENTER + dy}`
+  })
+  const clipped = pts.filter((pt) => {
     const [x, y] = pt.split(',').map(Number)
-    return Math.abs(x - cx) <= size / 2 && Math.abs(y - cy) <= size / 2
+    return Math.abs(x - CENTER) <= HALF_SIZE && Math.abs(y - CENTER) <= HALF_SIZE
   }).join(' ')
+  railPolylineCache.set(key, clipped)
+  return clipped
 }
+
+// Pre-compute relative positions for buildings/trees/lamps — only re-run when map changes
+const relativeBuildings = LANDSCAPE_CONFIG.buildings.map((b) => ({
+  rx: b.x * MAP_SCALE,
+  ry: b.z * MAP_SCALE,
+  w: Math.max(1, b.width * MAP_SCALE * 0.5),
+  h: Math.max(1, b.depth * MAP_SCALE * 0.5),
+}))
+const relativeTrees = LANDSCAPE_CONFIG.trees.map((t) => ({ rx: t.x * MAP_SCALE, ry: t.z * MAP_SCALE }))
+const relativeLamps = LANDSCAPE_CONFIG.streetLamps.map((l) => ({ rx: l.x * MAP_SCALE, ry: l.z * MAP_SCALE }))
+const waterRelX = LANDSCAPE_CONFIG.water.x * MAP_SCALE
+const waterRelZ = LANDSCAPE_CONFIG.water.z * MAP_SCALE
+const waterW = LANDSCAPE_CONFIG.water.width * MAP_SCALE
+const waterH = LANDSCAPE_CONFIG.water.height * MAP_SCALE
 
 function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
-  const RANGE = 100
-  const SIZE = 180
-  const CENTER = SIZE / 2
-  const MAP_SCALE = (SIZE / 2) / RANGE
-
-  // Rotate map so "north" on the map always corresponds to camera facing direction
   const rotationDeg = (playerRotation * 180) / Math.PI
+
+  // Recalculate only when player moves significantly (integer grid = 1 unit)
+  // Using integer rounding of player position as cache key for world-relative transforms
+  const px = playerPosition[0]
+  const pz = playerPosition[2]
+  const playerRelX = px * MAP_SCALE
+  const playerRelZ = pz * MAP_SCALE
+
+  // Roads + rails — cached per unique position
+  const roadPolylines = useMemo(() =>
+    LANDSCAPE_CONFIG.roadPaths.map((path) => getClippedRoad(path, playerPosition)),
+    [playerPosition[0], playerPosition[2]] // eslint-disable-line react-hooks/exhaustive-deps
+  )
+  const railPolylines = useMemo(() =>
+    LANDSCAPE_CONFIG.caltransPaths.map((path) => getClippedRail(path, playerPosition)),
+    [playerPosition[0], playerPosition[2]] // eslint-disable-line react-hooks/exhaustive-deps
+  )
+
+  // Buildings — filter + render
+  const visibleBuildings = useMemo(() => {
+    const bx = playerRelX
+    const bz = playerRelZ
+    return relativeBuildings.map((b, i) => {
+      const sx = b.rx - bx
+      const sy = b.ry - bz
+      if (Math.abs(sx) > HALF_SIZE || Math.abs(sy) > HALF_SIZE) return null
+      return (
+        <rect
+          key={`bld-${i}`}
+          x={sx - b.w / 2}
+          y={sy - b.h / 2}
+          width={b.w}
+          height={b.h}
+          fill="rgba(0, 113, 227, 0.12)"
+          stroke="rgba(0, 113, 227, 0.2)"
+          strokeWidth={0.3}
+        />
+      )
+    })
+  }, [playerRelX, playerRelZ])
+
+  // Trees — filter + render
+  const visibleTrees = useMemo(() => {
+    const tx = playerRelX
+    const tz = playerRelZ
+    return relativeTrees.map((t, i) => {
+      const sx = t.rx - tx
+      const sy = t.ry - tz
+      if (Math.abs(sx) > HALF_SIZE || Math.abs(sy) > HALF_SIZE) return null
+      return <circle key={`tree-${i}`} cx={sx} cy={sy} r={1} fill="rgba(40,140,40,0.5)" />
+    })
+  }, [playerRelX, playerRelZ])
+
+  // Lamps — filter + render
+  const visibleLamps = useMemo(() => {
+    const lx = playerRelX
+    const lz = playerRelZ
+    return relativeLamps.map((l, i) => {
+      const sx = l.rx - lx
+      const sy = l.ry - lz
+      if (Math.abs(sx) > HALF_SIZE || Math.abs(sy) > HALF_SIZE) return null
+      return <circle key={`lamp-${i}`} cx={sx} cy={sy} r={1.2} fill="rgba(255,200,50,0.6)" />
+    })
+  }, [playerRelX, playerRelZ])
+
+  // NPCs — filter + render
+  const visibleNpcs = useMemo(() => {
+    const nx = playerRelX
+    const nz = playerRelZ
+    return npcs.slice(0, 20).map((npc) => {
+      const sx = npc.position[0] * MAP_SCALE - nx
+      const sy = npc.position[2] * MAP_SCALE - nz
+      if (Math.abs(sx) > HALF_SIZE || Math.abs(sy) > HALF_SIZE) return null
+      return <circle key={npc.id} cx={sx} cy={sy} r={1.5} fill="rgba(255,255,255,0.4)" />
+    })
+  }, [npcs, playerRelX, playerRelZ])
+
+  // Water
+  const waterX = CENTER + waterRelX - playerRelX - waterW / 2
+  const waterY = CENTER + waterRelZ - playerRelZ - waterH / 2
 
   return (
     <div className="minimap-view">
       <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`} style={{ transform: `rotate(${rotationDeg + 180}deg)` }}>
         {/* Background grid rings */}
         {[0, 1, 2, 3, 4].map((i) => (
-          <circle key={`grid-${i}`} cx={CENTER} cy={CENTER} r={(i / 5) * (SIZE / 2)} fill="none" stroke="var(--minimap-stroke)" strokeWidth={0.5} />
+          <circle key={`grid-${i}`} cx={CENTER} cy={CENTER} r={(i / 5) * HALF_SIZE} fill="none" stroke="var(--minimap-stroke)" strokeWidth={0.5} />
         ))}
         {/* Cardinal lines */}
         <line x1={CENTER} y1={0} x2={CENTER} y2={SIZE} stroke="var(--minimap-stroke)" strokeWidth={0.3} />
-        <line x1={0} y1={CENTER} x2={SIZE} y2={CENTER} stroke="var(--minimap-stroke)" strokeWidth={0.3} />
+        <line x1={0} y1={CENTER} x2={SIZE} y2={CENTER} stroke="var(--minimap-stroke}" strokeWidth={0.3} />
 
-        {/* Roads — draw as connected line segments */}
-        {LANDSCAPE_CONFIG.roadPaths.map((path, pi) => {
-          const pts = roadToPolyline(path, playerPosition, MAP_SCALE, CENTER, CENTER)
-          const clipped = clipPolyline(pts.split(' '), CENTER, CENTER, SIZE)
-          if (!clipped) return null
-          return <polyline key={`road-${pi}`} points={clipped} fill="none" stroke="rgba(100,100,120,0.7)" strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" />
-        })}
+        {/* Roads */}
+        {roadPolylines.map((pts, pi) => pts ? <polyline key={`road-${pi}`} points={pts} fill="none" stroke="rgba(100,100,120,0.7)" strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" /> : null)}
 
         {/* Caltrain rail tracks */}
-        {LANDSCAPE_CONFIG.caltransPaths.map((path, pi) => {
-          const pts = roadToPolyline(path, playerPosition, MAP_SCALE, CENTER, CENTER)
-          const clipped = clipPolyline(pts.split(' '), CENTER, CENTER, SIZE)
-          if (!clipped) return null
-          return <polyline key={`rail-${pi}`} points={clipped} fill="none" stroke="rgba(255,140,0,0.8)" strokeWidth={1.0} strokeLinejoin="round" strokeLinecap="round" />
-        })}
+        {railPolylines.map((pts, pi) => pts ? <polyline key={`rail-${pi}`} points={pts} fill="none" stroke="rgba(255,140,0,0.8)" strokeWidth={1.0} strokeLinejoin="round" strokeLinecap="round" /> : null)}
 
-        {/* Trees as small green dots */}
-        {LANDSCAPE_CONFIG.trees.map((t, i) => {
-          const dx = (t.x - playerPosition[0]) * MAP_SCALE
-          const dy = (t.z - playerPosition[2]) * MAP_SCALE
-          const sx = CENTER + dx
-          const sy = CENTER + dy
-          if (Math.abs(sx - CENTER) > CENTER || Math.abs(sy - CENTER) > CENTER) return null
-          return <circle key={`tree-${i}`} cx={sx} cy={sy} r={1} fill="rgba(40,140,40,0.5)" />
-        })}
+        {/* Trees */}
+        {visibleTrees}
 
-        {/* Street lamps as small yellow dots */}
-        {LANDSCAPE_CONFIG.streetLamps.map((l, i) => {
-          const dx = (l.x - playerPosition[0]) * MAP_SCALE
-          const dy = (l.z - playerPosition[2]) * MAP_SCALE
-          const sx = CENTER + dx
-          const sy = CENTER + dy
-          if (Math.abs(sx - CENTER) > CENTER || Math.abs(sy - CENTER) > CENTER) return null
-          return <circle key={`lamp-${i}`} cx={sx} cy={sy} r={1.2} fill="rgba(255,200,50,0.6)" />
-        })}
+        {/* Street lamps */}
+        {visibleLamps}
 
         {/* Water body */}
-        {(() => {
-          const w = LANDSCAPE_CONFIG.water
-          const wx = (w.x - playerPosition[0]) * MAP_SCALE
-          const wy = (w.z - playerPosition[2]) * MAP_SCALE
-          const wW = w.width * MAP_SCALE
-          const wH = w.height * MAP_SCALE
-          return <rect x={CENTER + wx - wW / 2} y={CENTER + wy - wH / 2} width={wW} height={wH} fill="rgba(0,100,200,0.2)" stroke="rgba(0,150,255,0.3)" strokeWidth={0.5} />
-        })()}
+        <rect x={waterX} y={waterY} width={waterW} height={waterH} fill="rgba(0,100,200,0.2)" stroke="rgba(0,150,255,0.3)" strokeWidth={0.5} />
 
-        {/* Buildings as small rectangles — all buildings */}
-        {LANDSCAPE_CONFIG.buildings.map((b, i) => {
-          const dx = (b.x - playerPosition[0]) * MAP_SCALE
-          const dy = (b.z - playerPosition[2]) * MAP_SCALE
-          const sx = CENTER + dx
-          const sy = CENTER + dy
-          if (Math.abs(sx - CENTER) > CENTER || Math.abs(sy - CENTER) > CENTER) return null
-          const w = Math.max(1, b.width * MAP_SCALE * 0.5)
-          const h = Math.max(1, b.depth * MAP_SCALE * 0.5)
-          return (
-            <rect
-              key={`bld-${i}`}
-              x={sx - w / 2}
-              y={sy - h / 2}
-              width={w}
-              height={h}
-              fill="rgba(0, 113, 227, 0.12)"
-              stroke="rgba(0, 113, 227, 0.2)"
-              strokeWidth={0.3}
-            />
-          )
-        })}
+        {/* Buildings */}
+        {visibleBuildings}
 
-        {/* Player indicator — triangle arrow pointing up (north) */}
+        {/* Player indicator */}
         <polygon
           points={`${CENTER},${CENTER - 6} ${CENTER - 4},${CENTER + 4} ${CENTER + 4},${CENTER + 4}`}
           fill="var(--minimap-accent)"
           opacity="0.9"
         />
 
-        {/* NPCs as small white dots */}
-        {npcs.slice(0, 20).map((npc) => {
-          const dx = (npc.position[0] - playerPosition[0]) * MAP_SCALE
-          const dy = (npc.position[2] - playerPosition[2]) * MAP_SCALE
-          const sx = CENTER + dx
-          const sy = CENTER + dy
-          if (Math.abs(sx - CENTER) > CENTER || Math.abs(sy - CENTER) > CENTER) return null
-          return <circle key={npc.id} cx={sx} cy={sy} r={1.5} fill="rgba(255,255,255,0.4)" />
-        })}
+        {/* NPCs */}
+        {visibleNpcs}
       </svg>
       <div className="minimap-scale">
         <span>100m</span>

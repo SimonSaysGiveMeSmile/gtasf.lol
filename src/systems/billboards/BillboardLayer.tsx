@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useGameStore } from '../../game/store'
-import { LANDSCAPE_CONFIG } from '../../game/landscape'
+import { useLandscapeData } from '../../game/LandscapeContext'
 import { BILLBOARD_ADS, type AdContent } from './adsConfig'
 import type { BuildingData, PathPoint } from '../../game/landscape.types'
 
@@ -126,10 +126,11 @@ function isClearOfBuildings(x: number, z: number, r: number, buildings: Building
 
 // ── Billboard Layer ────────────────────────────────────────────────────────────
 export default function BillboardLayer() {
+  const data = useLandscapeData()
   const billboards = useMemo(() => {
     const spots: { x: number; z: number; height: number; ad: AdContent }[] = []
-    const paths = LANDSCAPE_CONFIG.roadPaths
-    const buildings = LANDSCAPE_CONFIG.buildings
+    const paths = data.roadPaths
+    const buildings = data.buildings
 
     let idx = 0
     // Place billboards along roads — one per ~3 segments, alternating sides

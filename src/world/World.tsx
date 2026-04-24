@@ -158,11 +158,11 @@ function RoadLayer({ roadPaths }: { roadPaths: { x: number; z: number; angle: nu
   const roads = useMemo(() => {
     const segments: { x: number; z: number; angle: number; width: number; color: string; len: number }[] = []
     const ROAD_WIDTH = 14
-    const SEG_LEN = 12
-    const STEP = 2
+    const SEG_LEN = 14
+    const STEP = 1
 
     for (const road of roadPaths) {
-      for (let i = 0; i < road.length; i += STEP) {
+      for (let i = 0; i < road.length - 1; i += STEP) {
         const pt = road[i]
         const nextPt = road[Math.min(i + 1, road.length - 1)]
         const angle = Math.atan2(nextPt.x - pt.x, nextPt.z - pt.z)
@@ -210,6 +210,7 @@ function RoadLayer({ roadPaths }: { roadPaths: { x: number; z: number; angle: nu
 
 // ─── Rail Track ───────────────────────────────────────────────────────────────
 function RailLayer({ caltransPaths }: { caltransPaths: { x: number; z: number; angle: number }[][] }) {
+  const isNight = useGameStore((s) => s.timeOfDay === "night")
   const tracks = useMemo(() => {
     const segments: { x: number; z: number; angle: number }[] = []
     for (const path of caltransPaths) {
@@ -223,22 +224,48 @@ function RailLayer({ caltransPaths }: { caltransPaths: { x: number; z: number; a
     return segments
   }, [caltransPaths])
 
+  const railColor = isNight ? '#666688' : '#888888'
+  const steelEmissive = isNight ? '#334455' : '#000000'
+  const steelEmissiveInt = isNight ? 0.3 : 0
+
   return (
     <>
       {tracks.map((seg, i) => (
         <group key={i}>
-          <mesh position={[seg.x, 0.03, seg.z]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
-            <planeGeometry args={[5, 14]} />
+          {/* Train bed / gravel */}
+          <mesh position={[seg.x, 0.025, seg.z]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
+            <planeGeometry args={[6, 14]} />
             <meshStandardMaterial color="#555555" roughness={0.95} />
           </mesh>
-          <mesh position={[seg.x, 0.06, seg.z]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
-            <planeGeometry args={[0.25, 14]} />
-            <meshStandardMaterial color="#999999" metalness={0.8} roughness={0.3} />
+          {/* Left rail */}
+          <mesh position={[seg.x, 0.065, seg.z]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
+            <planeGeometry args={[0.3, 14]} />
+            <meshStandardMaterial
+              color={railColor}
+              emissive={steelEmissive}
+              emissiveIntensity={steelEmissiveInt}
+              metalness={0.8}
+              roughness={0.3}
+            />
           </mesh>
-          <mesh position={[seg.x, 0.06, seg.z]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
-            <planeGeometry args={[0.25, 14]} />
-            <meshStandardMaterial color="#999999" metalness={0.8} roughness={0.3} />
+          {/* Right rail */}
+          <mesh position={[seg.x, 0.065, seg.z]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
+            <planeGeometry args={[0.3, 14]} />
+            <meshStandardMaterial
+              color={railColor}
+              emissive={steelEmissive}
+              emissiveIntensity={steelEmissiveInt}
+              metalness={0.8}
+              roughness={0.3}
+            />
           </mesh>
+          {/* Cross ties every other segment */}
+          {i % 2 === 0 && (
+            <mesh position={[seg.x, 0.04, seg.z]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
+              <planeGeometry args={[5.5, 0.3]} />
+              <meshStandardMaterial color="#3a2a1a" roughness={0.95} />
+            </mesh>
+          )}
         </group>
       ))}
     </>
