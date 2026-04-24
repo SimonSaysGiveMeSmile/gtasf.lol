@@ -270,9 +270,9 @@ export default function HUD() {
             </div>
             <div className="settings-divider" />
             <div className="settings-section credits">
-              <span className="credits-text">@https://github.com/SimonSaysGiveMeSmile/gtasf.lol 2026</span>
+              <span className="credits-text">@realsimontian 2026</span>
               <a
-                href="https://github.com/realsimontian/gtasf.lol"
+                href="https://github.com/SimonSaysGiveMeSmile/gtasf.lol"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="credits-link"
