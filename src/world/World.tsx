@@ -1,6 +1,7 @@
 // @simonsaysgivemesmile
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { Sky } from '@react-three/drei'
+import * as THREE from 'three'
 import { useGameStore } from '../game/store'
 import { MAP_SIZE } from '../game/constants'
 import { default as BillboardLayer } from '../systems/billboards/BillboardLayer'
@@ -140,36 +141,41 @@ function TreesLayer({ trees }: { trees: { x: number; z: number }[] }) {
 }
 
 // ─── Road ─────────────────────────────────────────────────────────────────────
-function RoadSegment({ x, z, angle, width, color, len }: {
-  x: number; z: number; angle: number; width: number; color: string; len: number
-}) {
-  return (
-    <mesh position={[x, 0.02, z]} rotation={[-Math.PI / 2, 0, -angle]}>
-      <planeGeometry args={[width, len]} />
-      <meshStandardMaterial color={color} roughness={0.95} />
-    </mesh>
-  )
-}
-
 function RoadLayer({ roadPaths }: { roadPaths: { x: number; z: number; angle: number }[][] }) {
   const timeOfDay = useGameStore((s) => s.timeOfDay)
   const isNight = timeOfDay === "night"
+  const ROAD_WIDTH = 14
 
   const roads = useMemo(() => {
-    const segments: { x: number; z: number; angle: number; width: number; color: string; len: number }[] = []
-    const ROAD_WIDTH = 14
-    const SEG_LEN = 14
-    const STEP = 1
+    const meshes: { key: string; points: THREE.Vector2[]; color: string }[] = []
+    for (let ri = 0; ri < roadPaths.length; ri++) {
+      const path = roadPaths[ri]
+      if (path.length < 2) continue
 
-    for (const road of roadPaths) {
-      for (let i = 0; i < road.length - 1; i += STEP) {
-        const pt = road[i]
-        const nextPt = road[Math.min(i + 1, road.length - 1)]
-        const angle = Math.atan2(nextPt.x - pt.x, nextPt.z - pt.z)
-        segments.push({ x: pt.x, z: pt.z, angle, width: ROAD_WIDTH, len: SEG_LEN, color: '#404050' })
+      const leftEdge: THREE.Vector2[] = []
+      const rightEdge: THREE.Vector2[] = []
+
+      for (let i = 0; i < path.length; i++) {
+        const pt = path[i]
+        const perpX = Math.cos(pt.angle + Math.PI / 2)
+        const perpZ = Math.sin(pt.angle + Math.PI / 2)
+        leftEdge.push(new THREE.Vector2(pt.x + perpX * ROAD_WIDTH / 2, pt.z + perpZ * ROAD_WIDTH / 2))
+        rightEdge.push(new THREE.Vector2(pt.x - perpX * ROAD_WIDTH / 2, pt.z - perpZ * ROAD_WIDTH / 2))
       }
+
+      const shape = new THREE.Shape()
+      shape.moveTo(leftEdge[0].x, leftEdge[0].y)
+      for (let i = 1; i < leftEdge.length; i++) {
+        shape.lineTo(leftEdge[i].x, leftEdge[i].y)
+      }
+      for (let i = rightEdge.length - 1; i >= 0; i--) {
+        shape.lineTo(rightEdge[i].x, rightEdge[i].y)
+      }
+      shape.closePath()
+
+      meshes.push({ key: `road-${ri}`, points: leftEdge, color: '#404050' })
     }
-    return segments
+    return meshes
   }, [roadPaths])
 
   const roadLines = useMemo(() => {
@@ -191,8 +197,11 @@ function RoadLayer({ roadPaths }: { roadPaths: { x: number; z: number; angle: nu
 
   return (
     <>
-      {roads.map((seg, i) => (
-        <RoadSegment key={`r-${i}`} {...seg} />
+      {roads.map(({ key, points, color }) => (
+        <mesh key={key} position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <shapeGeometry args={[new THREE.Shape(points)]} />
+          <meshStandardMaterial color={color} roughness={0.95} />
+        </mesh>
       ))}
       {roadLines.map((line, i) => (
         <mesh key={`l-${i}`} position={[line.x, 0.03, line.z]} rotation={[-Math.PI / 2, 0, -line.angle]}>
