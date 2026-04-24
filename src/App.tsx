@@ -11,6 +11,7 @@ import LoadingScreen from './ui/LoadingScreen'
 import InputManager from './systems/InputManager'
 import TouchControls from './ui/TouchControls'
 import FPSTracker from './systems/FPSTracker'
+import CheatConsole from './systems/CheatConsole'
 import AudioManager from './systems/audio/AudioManager'
 import { soundManager } from './systems/audio/SoundManager'
 import { useGameStore } from './game/store'
@@ -94,6 +95,7 @@ export default function App() {
             </Suspense>
           </Canvas>
           <HUD />
+          <CheatConsole />
           <TouchControls />
           <LoadingScreen />
           {!isDead && (

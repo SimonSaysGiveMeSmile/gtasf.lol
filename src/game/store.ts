@@ -47,6 +47,7 @@ interface GameState {
   masterVolume: number
   sfxVolume: number
   ambientVolume: number
+  currentMapName: string
 
   // Actions
   takeDamage: (amount: number) => void
@@ -78,6 +79,7 @@ interface GameState {
   setMasterVolume: (v: number) => void
   setSfxVolume: (v: number) => void
   setAmbientVolume: (v: number) => void
+  setCurrentMapName: (name: string) => void
   // Cheat system
   spawnVehicle: (type: VehicleType) => void
 }
@@ -113,6 +115,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   masterVolume: 1,
   sfxVolume: 0.8,
   ambientVolume: 0.3,
+  currentMapName: 'procedural',
 
   takeDamage: (amount) => {
     const state = get()
@@ -195,6 +198,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setMasterVolume: (v) => set({ masterVolume: v }),
   setSfxVolume: (v) => set({ sfxVolume: v }),
   setAmbientVolume: (v) => set({ ambientVolume: v }),
+  setCurrentMapName: (name) => set({ currentMapName: name }),
   spawnVehicle: (type: VehicleType) => {
     const { playerPosition, playerRotation } = get()
     // Spawn 8 units in front of player

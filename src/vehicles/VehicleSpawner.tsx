@@ -1,5 +1,5 @@
 // @t1an
-import { useRef, useMemo, useEffect } from 'react'
+import { useRef, useMemo, useEffect, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -11,6 +11,16 @@ import { vehiclePositions, vehicleRadius, OBSTACLE_RADIUS } from '../game/vehicl
 import { getNearbyBuildingsGrid } from '../world/World'
 import { VehicleAdWrap } from '../systems/billboards/VehicleAdWraps'
 import CaltrainAdWrap from '../systems/billboards/CaltrainAdWrap'
+
+// Cheat-spawned vehicle type
+interface CheatVehicle {
+  id: string
+  type: VehicleType
+  x: number
+  z: number
+  rotation: number
+  color: string
+}
 
 // Seeded random for deterministic spawns // @jiahe
 function seededRandom(seed: number): number {
@@ -881,6 +891,19 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
 
 // Vehicle spawner
 export default function VehicleSpawner() {
+  const [cheatVehicles, setCheatVehicles] = useState<CheatVehicle[]>([])
+
+  // Listen for cheat spawn events
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { id, type, x, z, rotation } = (e as CustomEvent).detail
+      const spec = VEHICLES.find(v => v.type === type) || VEHICLES[0]
+      setCheatVehicles(prev => [...prev, { id, type, x, z, rotation, color: spec.color }])
+    }
+    window.addEventListener('cheat-spawn', handler)
+    return () => window.removeEventListener('cheat-spawn', handler)
+  }, [])
+
   const { groundVehicles, boats, planes, scooters, caltrains } = useMemo(() => {
     const ground: { id: string; type: VehicleType; x: number; z: number; rotation: number; color: string }[] = []
     const water: { id: string; type: VehicleType; x: number; z: number; rotation: number; color: string }[] = []
@@ -993,6 +1016,9 @@ export default function VehicleSpawner() {
         <Vehicle key={v.id} {...v} />
       ))}
       {planes.map(v => (
+        <Vehicle key={v.id} {...v} />
+      ))}
+      {cheatVehicles.map(v => (
         <Vehicle key={v.id} {...v} />
       ))}
     </>

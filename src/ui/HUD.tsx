@@ -148,6 +148,8 @@ export default function HUD() {
   const setTimeOfDay = useGameStore((s) => s.setTimeOfDay)
   const qualityPreset = useGameStore((s) => s.qualityPreset)
   const setQualityPreset = useGameStore((s) => s.setQualityPreset)
+  const currentMapName = useGameStore((s) => s.currentMapName)
+  const setCurrentMapName = useGameStore((s) => s.setCurrentMapName)
   const vehicleSpeed = useGameStore((s) => s.vehicleSpeed)
   const currentVehicleType = useGameStore((s) => s.currentVehicleType)
   const vehicleName = currentVehicleType ? (VEHICLES.find(v => v.type === currentVehicleType)?.name || 'VEHICLE') : 'VEHICLE'
@@ -256,6 +258,17 @@ export default function HUD() {
                 <option value="high">High (1440p)</option>
                 <option value="ultra">Ultra (4K)</option>
                 <option value="8k">8K (sixseven might crash)</option>
+              </select>
+            </div>
+            <div className="settings-section">
+              <label className="settings-label">MAP</label>
+              <select
+                value={currentMapName}
+                onChange={(e) => setCurrentMapName(e.target.value)}
+                className="settings-select"
+              >
+                <option value="procedural">Procedural City</option>
+                <option value="test_map">Test Map</option>
               </select>
             </div>
             <div className="settings-section">
