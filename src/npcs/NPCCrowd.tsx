@@ -182,10 +182,9 @@ interface PedProps {
   x: number; z: number; color: string; shirt: string; pants: string; hair: string; seed: number
   buildings: { x: number; z: number; width: number; depth: number }[]
   trees: { x: number; z: number }[]
-  playerPosition: [number, number, number]
 }
 
-function PedestrianNPC({ x, z, color, shirt, pants, hair: _hair, seed, buildings, trees, playerPosition: _playerPosition }: PedProps) {
+function PedestrianNPC({ x, z, color, shirt, pants, hair: _hair, seed, buildings, trees }: PedProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const bodyGroupRef = useRef<THREE.Group>(null!)
   const leftLegRef = useRef<THREE.Group>(null!)
@@ -535,7 +534,7 @@ export default function NPCCrowd() {
   return (
     <>
       {pedestrians.map(p => (
-        <PedestrianNPC key={p.id} {...p} buildings={data.buildings} trees={data.trees} playerPosition={[0, 0, 0]} />
+        <PedestrianNPC key={p.id} {...p} buildings={data.buildings} trees={data.trees} />
       ))}
       {cars.map(c => (
         <TrafficCar key={c.id} {...c} id={c.id} buildings={data.buildings} />
