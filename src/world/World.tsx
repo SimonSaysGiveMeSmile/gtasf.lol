@@ -5,7 +5,6 @@ import { useGameStore } from '../game/store'
 import { MAP_SIZE } from '../game/constants'
 import { default as BillboardLayer } from '../systems/billboards/BillboardLayer'
 import { useLandscapeData } from '../game/LandscapeContext'
-import { LANDSCAPE_CONFIG } from '../game/landscape'
 import type { BuildingData } from '../game/landscape.types'
 
 // ─── Spatial Grid for Collision Detection ─────────────────────────────────────
@@ -599,6 +598,6 @@ export default function World() {
 // Export spatial grid getter for collision systems to use
 export function getSpatialGrid() { return _spatialGrid }
 export function getNearbyBuildingsGrid(px: number, pz: number, radius: number) {
-  if (!_spatialGrid) return LANDSCAPE_CONFIG.buildings.map((_, i) => i)
+  if (!_spatialGrid) return []
   return getNearbyBuildings(px, pz, _spatialGrid, radius)
 }
