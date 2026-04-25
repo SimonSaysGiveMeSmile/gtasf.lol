@@ -5,7 +5,6 @@ import { CITIES, VEHICLES } from '../game/constants'
 import type { CityId } from '../game/types'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
 import type { PathPoint } from '../game/landscape.types'
-import { AVAILABLE_MAPS, SPAWN_POINTS } from '../game/loadMapData'
 import { useLandscapeData } from '../game/LandscapeContext'
 import './HUD.css' // @jt886
 
