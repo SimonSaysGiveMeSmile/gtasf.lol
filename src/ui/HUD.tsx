@@ -5,6 +5,8 @@ import { CITIES, VEHICLES } from '../game/constants'
 import type { CityId } from '../game/types'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
 import type { PathPoint } from '../game/landscape.types'
+import { AVAILABLE_MAPS, SPAWN_POINTS } from '../game/loadMapData'
+import { useLandscapeData } from '../game/LandscapeContext'
 import './HUD.css' // @jt886
 
 const RANGE = 100
@@ -62,20 +64,25 @@ function getClippedRail(path: PathPoint[], playerPos: [number, number, number]):
 }
 
 // Pre-compute relative positions for buildings/trees/lamps — only re-run when map changes
-const relativeBuildings = LANDSCAPE_CONFIG.buildings.map((b) => ({
-  rx: b.x * MAP_SCALE,
-  ry: b.z * MAP_SCALE,
-  w: Math.max(1, b.width * MAP_SCALE * 0.5),
-  h: Math.max(1, b.depth * MAP_SCALE * 0.5),
-}))
-const relativeTrees = LANDSCAPE_CONFIG.trees.map((t) => ({ rx: t.x * MAP_SCALE, ry: t.z * MAP_SCALE }))
-const relativeLamps = LANDSCAPE_CONFIG.streetLamps.map((l) => ({ rx: l.x * MAP_SCALE, ry: l.z * MAP_SCALE }))
-const waterRelX = LANDSCAPE_CONFIG.water.x * MAP_SCALE
-const waterRelZ = LANDSCAPE_CONFIG.water.z * MAP_SCALE
-const waterW = LANDSCAPE_CONFIG.water.width * MAP_SCALE
-const waterH = LANDSCAPE_CONFIG.water.height * MAP_SCALE
-
 function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
+  const landscapeData = useLandscapeData()
+  // Pre-compute relative positions from active map data
+  const relativeBuildings = useMemo(() =>
+    landscapeData.buildings.map((b) => ({
+      rx: b.x * MAP_SCALE,
+      ry: b.z * MAP_SCALE,
+      w: Math.max(1, b.width * MAP_SCALE * 0.5),
+      h: Math.max(1, b.depth * MAP_SCALE * 0.5),
+    })), [landscapeData.buildings])
+  const relativeTrees = useMemo(() =>
+    landscapeData.trees.map((t) => ({ rx: t.x * MAP_SCALE, ry: t.z * MAP_SCALE })), [landscapeData.trees])
+  const relativeLamps = useMemo(() =>
+    landscapeData.streetLamps.map((l) => ({ rx: l.x * MAP_SCALE, ry: l.z * MAP_SCALE })), [landscapeData.streetLamps])
+  const waterRelX = landscapeData.water.x * MAP_SCALE
+  const waterRelZ = landscapeData.water.z * MAP_SCALE
+  const waterW = landscapeData.water.width * MAP_SCALE
+  const waterH = landscapeData.water.height * MAP_SCALE
+
   const rotationDeg = (playerRotation * 180) / Math.PI
 
   // Recalculate only when player moves significantly (integer grid = 1 unit)
@@ -230,7 +237,7 @@ export default function HUD() {
   const playerRotation = useGameStore((s) => s.playerRotation)
   const fps = useGameStore((s) => s.fps)
   const [showMenu, setShowMenu] = useState(false)
-  const [activeTab, setActiveTab] = useState<'gameplay' | 'visual' | 'audio' | 'debugging'>('gameplay')
+  const [activeTab, setActiveTab] = useState<'gameplay' | 'visual' | 'audio' | 'debugging' | 'face'>('gameplay')
   const [showCoords, setShowCoords] = useState(true)
   const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
   const speedPercent = Math.min(100, (vehicleSpeed / 200) * 100)
@@ -242,6 +249,9 @@ export default function HUD() {
   const setMasterVolume = useGameStore((s) => s.setMasterVolume)
   const setSfxVolume = useGameStore((s) => s.setSfxVolume)
   const setAmbientVolume = useGameStore((s) => s.setAmbientVolume)
+
+  const playerFaceTexture = useGameStore((s) => s.playerFaceTexture)
+const setPlayerFaceTexture = useGameStore((s) => s.setPlayerFaceTexture)
 
   const healthColor =
     health > 50 ? 'var(--accent-green)' : health > 25 ? 'var(--accent-amber)' : 'var(--accent-red)'
@@ -301,7 +311,7 @@ export default function HUD() {
 
             {/* Tab bar */}
             <div className="settings-tabs">
-              {(['gameplay', 'visual', 'audio', 'debugging'] as const).map((tab) => (
+              {(['gameplay', 'visual', 'audio', 'debugging', 'face'] as const).map((tab) => (
                 <button
                   key={tab}
                   className={`settings-tab ${activeTab === tab ? 'active' : ''}`}
@@ -345,6 +355,7 @@ export default function HUD() {
                     >
                       <option value="procedural">Procedural City</option>
                       <option value="test_map">Test Map</option>
+          <option value="golden_gate">Golden Gate / Presidio</option>
                     </select>
                   </div>
                   <div className="settings-section">
@@ -496,12 +507,54 @@ export default function HUD() {
                   </div>
                 </>
               )}
+
+              {activeTab === 'face' && (
+                <>
+                  <div className="settings-section">
+                    <label className="settings-label">PLAYER FACE</label>
+                    <p className="settings-desc">Upload a selfie to replace your character's face.</p>
+                    <label className="face-upload-btn">
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: 6 }}>
+                        <path d="M7 1L7 9M7 9L4 6M7 9L10 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M1 11H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                      </svg>
+                      Upload Selfie
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="user"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (!file) return
+                          const url = URL.createObjectURL(file)
+                          setPlayerFaceTexture(url)
+                        }}
+                      />
+                    </label>
+                    {playerFaceTexture && (
+                      <div className="face-preview">
+                        <img src={playerFaceTexture} alt="Player face preview" />
+                        <button
+                          className="face-clear-btn"
+                          onClick={() => setPlayerFaceTexture(null)}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                            <path d="M1 1L11 11M11 1L1 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                          </svg>
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Health bar */}
+  {/* Health bar */}
       <div className={`health-container ${isTouchDevice ? 'hud-topright' : ''}`}>
         <div className="health-label">
           <span style={{ fontFamily: 'var(--font-ui)', fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: 1 }}>

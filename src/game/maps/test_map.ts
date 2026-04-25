@@ -250,3 +250,6 @@ export const TEST_MAP: LandscapeData = {
     height: 1,
   },
 }
+
+export const MAP_DATA = TEST_MAP
+export const SPAWN_POINT: [number, number, number] = [0, 2, 0]

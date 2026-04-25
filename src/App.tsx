@@ -76,6 +76,7 @@ export default function App() {
     <KeyboardControls map={keyMap}>
       <InputManager>
         <AudioManager />
+        <LandscapeProvider>
         <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
           <Canvas
             shadows={false}
@@ -87,13 +88,11 @@ export default function App() {
           >
             <Suspense fallback={null}>
               <Physics gravity={[0, -25, 0]} defaultContactMaterial={{ friction: 0.5, restitution: 0.1 }}>
-                <LandscapeProvider>
                   <World />
                   <Player />
                   <VehicleSpawner />
                   <NPCCrowd />
                   <FPSTracker />
-                </LandscapeProvider>
               </Physics>
             </Suspense>
           </Canvas>
@@ -117,6 +116,7 @@ export default function App() {
             </div>
           )}
         </div>
+        </LandscapeProvider>
       </InputManager>
     </KeyboardControls>
   )

@@ -2,7 +2,10 @@
 .ls-backdrop {
   position: fixed;
   inset: 0;
-  background: var(--bg-void);
+  background-color: #000;
+  background-image: url('/loading.png');
+  background-size: cover;
+  background-position: center;
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -15,11 +18,15 @@
   position: relative;
   width: 100%;
   max-width: 600px;
-  padding: 0 32px;
+  padding: 32px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 32px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-radius: 16px;
 }
 
 /* === LOGO === */
@@ -219,3 +226,83 @@
   text-align: center;
   max-width: 280px;
 }
+
+.ls-pixel-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+}
+
+.ls-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%);
+  pointer-events: none;
+}
+
+.ls-scanline {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
+  );
+  pointer-events: none;
+  animation: scanlineMove 8s linear infinite;
+}
+
+@keyframes scanlineMove {
+  from { background-position: 0 0; }
+  to { background-position: 0 100px; }
+}
+
+.ls-divider {
+  display: flex;
+  gap: 4px;
+}
+
+.ls-divider-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.ls-grass {
+  width: 24px;
+  height: 6px;
+  background-color: #3a8c27;
+}
+
+.ls-dirt {
+  width: 24px;
+  height: 8px;
+  background-color: #8b5a2b;
+}
+
+.ls-progress-notch {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255,255,255,0.1);
+}
+
+.ls-corner {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: var(--accent);
+  border-style: solid;
+  opacity: 0.4;
+}
+
+.ls-corner-tl { top: 16px; left: 16px; border-width: 2px 0 0 2px; }
+.ls-corner-tr { top: 16px; right: 16px; border-width: 2px 2px 0 0; }
+.ls-corner-bl { bottom: 16px; left: 16px; border-width: 0 0 2px 2px; }
+.ls-corner-br { bottom: 16px; right: 16px; border-width: 0 2px 2px 0; }

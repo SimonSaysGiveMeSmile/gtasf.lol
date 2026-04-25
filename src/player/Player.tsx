@@ -1,5 +1,5 @@
 // @t1an
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -37,6 +37,20 @@ export default function Player() {
   const takeDamage = useGameStore((s) => s.takeDamage)
   const setIsFalling = useGameStore((s) => s.setIsFalling)
   const setPlayerRotation = useGameStore((s) => s.setPlayerRotation)
+  const playerFaceTexture = useGameStore((s) => s.playerFaceTexture)
+
+  // Load face texture as equirectangular map for sphere
+  const headTexture = useMemo(() => {
+    if (!playerFaceTexture) return null
+    const loader = new THREE.TextureLoader()
+    const tex = loader.load(playerFaceTexture)
+    tex.colorSpace = THREE.SRGBColorSpace
+    return tex
+  }, [playerFaceTexture])
+
+  useEffect(() => {
+    return () => { headTexture?.dispose() }
+  }, [headTexture])
 
   // Animation refs
   const leftArmRef = useRef<THREE.Group>(null)
@@ -383,8 +397,12 @@ export default function Player() {
 
         {/* Head — simple smooth sphere */}
         <mesh position={[0, HEAD_Y, 0]}>
-          <sphereGeometry args={[0.18, 12, 12]} />
-          <meshStandardMaterial color="#d4a574" roughness={0.8} />
+          <sphereGeometry args={[0.18, 24, 24]} />
+          {headTexture ? (
+            <meshStandardMaterial map={headTexture} roughness={0.8} />
+          ) : (
+            <meshStandardMaterial color="#d4a574" roughness={0.8} />
+          )}
         </mesh>
 
         {/* Left Arm */}

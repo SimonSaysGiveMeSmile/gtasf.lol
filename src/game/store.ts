@@ -48,6 +48,7 @@ interface GameState {
   sfxVolume: number
   ambientVolume: number
   currentMapName: string
+  playerFaceTexture: string | null
 
   // Actions
   takeDamage: (amount: number) => void
@@ -81,6 +82,8 @@ interface GameState {
   setSfxVolume: (v: number) => void
   setAmbientVolume: (v: number) => void
   setCurrentMapName: (name: string) => void
+  setPlayerFaceTexture: (texture: string | null) => void
+  switchMap: (mapId: string, spawnPos: [number, number, number]) => void
   // Cheat system
   spawnVehicle: (type: VehicleType) => void
 }
@@ -116,7 +119,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   masterVolume: 1,
   sfxVolume: 0.8,
   ambientVolume: 0.3,
-  currentMapName: 'procedural',
+  currentMapName: 'golden_gate',
+  playerFaceTexture: null,
+
+  setPlayerFaceTexture: (texture) => set({ playerFaceTexture: texture }),
 
   takeDamage: (amount) => {
     const state = get()
@@ -201,15 +207,30 @@ export const useGameStore = create<GameState>((set, get) => ({
   setSfxVolume: (v) => set({ sfxVolume: v }),
   setAmbientVolume: (v) => set({ ambientVolume: v }),
   setCurrentMapName: (name) => set({ currentMapName: name }),
+
+  switchMap: (mapId, spawnPos) => {
+    set({
+      currentMapName: mapId,
+      playerPosition: spawnPos,
+      playerMode: 'onfoot',
+      inVehicle: null,
+      currentVehicleType: null,
+      isFlying: false,
+      isFalling: false,
+      npcs: [],
+      activeVehicles: [],
+      isLoading: true,
+    })
+  },
+
   spawnVehicle: (type: VehicleType) => {
     const { playerPosition, playerRotation } = get()
-    // Spawn 8 units in front of player
     const dist = 8
     const x = playerPosition[0] + Math.sin(playerRotation) * dist
     const z = playerPosition[2] + Math.cos(playerRotation) * dist
     const id = `cheat-${type}-${Date.now()}`
-    // Emit a custom event that VehicleSpawner can listen to
     window.dispatchEvent(new CustomEvent('cheat-spawn', { detail: { id, type, x, z, rotation: playerRotation } }))
   },
+
   exitVehiclePosition: null,
 }))
