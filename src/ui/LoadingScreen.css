@@ -79,6 +79,49 @@
   text-transform: uppercase;
 }
 
+/* === WELCOME MESSAGE === */
+.ls-welcome {
+  width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 8px;
+}
+
+.ls-welcome-title {
+  font-family: var(--font-ui);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 0;
+}
+
+.ls-welcome-body {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.ls-welcome-tagline {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+  letter-spacing: 1px;
+  margin: 4px 0;
+}
+
+.ls-welcome-footer {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0;
+}
+
 /* === PROGRESS === */
 .ls-progress-wrap {
   width: 100%;

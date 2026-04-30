@@ -206,6 +206,16 @@ export default function LoadingScreen() {
           </div>
         </div>
 
+        {/* Welcome message */}
+        <div className="ls-welcome">
+          <h2 className="ls-welcome-title">Welcome to the Bay Area Founder Simulator 😂</h2>
+          <p className="ls-welcome-body">
+            Inspired by "vibe coding" and way too much ambition, this is a mini open-world game where you try to build a startup from scratch.
+          </p>
+          <p className="ls-welcome-tagline">Network. Pitch. Coffee chat. Climb. Party. Repeat.</p>
+          <p className="ls-welcome-footer">It's not GTA—but it might be the closest thing to founder life.</p>
+        </div>
+
         {/* Progress */}
         <div className="ls-progress-wrap">
           <div className="ls-spinner">
