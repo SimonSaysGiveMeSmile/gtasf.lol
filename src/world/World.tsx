@@ -353,10 +353,10 @@ function StreetLampsLayer({ streetLamps }: { streetLamps: { x: number; z: number
 }
 
 // ─── Traffic Light ─────────────────────────────────────────────────────────────
-function TrafficLight({ x, z }: { x: number; z: number; angle?: number }) {
+function TrafficLight({ x, z, angle }: { x: number; z: number; angle?: number }) {
   const isNight = useGameStore((s) => s.timeOfDay === "night")
   return (
-    <group position={[x, 0, z]}>
+    <group position={[x, 0, z]} rotation={[0, -(angle || 0), 0]}>
       {/* Pole */}
       <mesh position={[0, 2.5, 0]}>
         <cylinderGeometry args={[0.06, 0.08, 5, 6]} />
@@ -403,7 +403,7 @@ function TrafficLightsLayer({ trafficLights }: { trafficLights: { x: number; z: 
   return (
     <>
       {trafficLights.map((l, i) => (
-        <TrafficLight key={i} x={l.x} z={l.z} />
+        <TrafficLight key={i} x={l.x} z={l.z} angle={l.angle} />
       ))}
     </>
   )
@@ -437,9 +437,9 @@ function CrosswalksLayer({ crosswalks }: { crosswalks: { x: number; z: number; a
 }
 
 // ─── Sidewalk ────────────────────────────────────────────────────────────────
-function SidewalkSegment({ x, z, len }: { x: number; z: number; len: number }) {
+function SidewalkSegment({ x, z, angle, len }: { x: number; z: number; angle: number; len: number }) {
   return (
-    <mesh position={[x, 0.03, z]} rotation={[-Math.PI / 2, 0, 0]}>
+    <mesh position={[x, 0.03, z]} rotation={[-Math.PI / 2, 0, -angle]}>
       <planeGeometry args={[2, len]} />
       <meshStandardMaterial color="#888888" roughness={0.95} />
     </mesh>
@@ -450,7 +450,7 @@ function SidewalksLayer({ sidewalks }: { sidewalks: { x: number; z: number; angl
   return (
     <>
       {sidewalks.map((s, i) => (
-        <SidewalkSegment key={i} x={s.x} z={s.z} len={s.len} />
+        <SidewalkSegment key={i} x={s.x} z={s.z} angle={s.angle} len={s.len} />
       ))}
     </>
   )

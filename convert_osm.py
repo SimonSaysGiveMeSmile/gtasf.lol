@@ -340,21 +340,82 @@ def parse_osm(map_id, config):
                 'label': f'{tags.get("name", hw)} sidewalk',
             })
 
-    # Crosswalks
+    # Crosswalks — from OSM crossing ways (footway=crossing)
     crosswalks = []
-    for path in road_paths:
-        for i in range(0, len(path), 10):
-            pt = path[i]
-            crosswalks.append({'x': pt['x'], 'z': pt['z'], 'angle': pt['angle'], 'label': 'Crosswalk'})
+    for w in root.findall('.//way'):
+        tags = {tag.get('k'): tag.get('v') for tag in w.findall('tag')}
+        if tags.get('footway') != 'crossing':
+            continue
+        nds = w.findall('nd')
+        way_nodes = []
+        for nd in nds:
+            ref = nd.get('ref')
+            if ref in nodes:
+                way_nodes.append(nodes[ref])
+        if len(way_nodes) < 2:
+            continue
+        if not way_centroid_in_bounds(way_nodes, bounds):
+            continue
+        mid_idx = len(way_nodes) // 2
+        lat, lon = way_nodes[mid_idx]
+        x, z = latlon_to_game(lat, lon, bounds)
+        dx = latlon_to_game(way_nodes[-1][0], way_nodes[-1][1], bounds)[0] - latlon_to_game(way_nodes[0][0], way_nodes[0][1], bounds)[0]
+        dz = latlon_to_game(way_nodes[-1][0], way_nodes[-1][1], bounds)[1] - latlon_to_game(way_nodes[0][0], way_nodes[0][1], bounds)[1]
+        angle = round(math.atan2(dx, dz), 3)
+        crosswalks.append({'x': round(x, 1), 'z': round(z, 1), 'angle': angle, 'label': 'Crosswalk'})
+    # Fallback: also place from OSM crossing nodes
+    for n in root.findall('.//node'):
+        tags = {tag.get('k'): tag.get('v') for tag in n.findall('tag')}
+        if tags.get('highway') != 'crossing':
+            continue
+        lat, lon = float(n.get('lat')), float(n.get('lon'))
+        if not (bounds['minlat'] <= lat <= bounds['maxlat'] and bounds['minlon'] <= lon <= bounds['maxlon']):
+            continue
+        x, z = latlon_to_game(lat, lon, bounds)
+        # Find nearest road path point for angle
+        best_angle = 0
+        best_dist = float('inf')
+        for path in road_paths:
+            for pt in path:
+                d = (pt['x'] - x)**2 + (pt['z'] - z)**2
+                if d < best_dist:
+                    best_dist = d
+                    best_angle = pt['angle']
+        if best_dist < 400:
+            crosswalks.append({'x': round(x, 1), 'z': round(z, 1), 'angle': best_angle, 'label': 'Crosswalk'})
 
-    # Street lamps
+    # Traffic lights — from OSM highway=traffic_signals nodes
+    trafficLights = []
+    for n in root.findall('.//node'):
+        tags = {tag.get('k'): tag.get('v') for tag in n.findall('tag')}
+        if tags.get('highway') != 'traffic_signals':
+            continue
+        lat, lon = float(n.get('lat')), float(n.get('lon'))
+        if not (bounds['minlat'] <= lat <= bounds['maxlat'] and bounds['minlon'] <= lon <= bounds['maxlon']):
+            continue
+        x, z = latlon_to_game(lat, lon, bounds)
+        best_angle = 0
+        best_dist = float('inf')
+        for path in road_paths:
+            for pt in path:
+                d = (pt['x'] - x)**2 + (pt['z'] - z)**2
+                if d < best_dist:
+                    best_dist = d
+                    best_angle = pt['angle']
+        if best_dist < 400:
+            trafficLights.append({'x': round(x, 1), 'z': round(z, 1), 'angle': round(best_angle, 3), 'label': 'Traffic light'})
+
+    # Street lamps — offset to roadside using correct perpendicular
     streetLamps = []
-    for path in road_paths:
+    for ri, path in enumerate(road_paths):
+        road_width = roads[ri]['width'] if ri < len(roads) else 6
+        offset = road_width / 2 + 1.5
         for i in range(0, len(path), 15):
             pt = path[i]
-            perp = pt['angle'] + math.pi / 2
-            lamp_x = pt['x'] + math.cos(perp) * 6
-            lamp_z = pt['z'] + math.sin(perp) * 6
+            perp_x = math.cos(pt['angle'])
+            perp_z = -math.sin(pt['angle'])
+            lamp_x = pt['x'] + perp_x * offset
+            lamp_z = pt['z'] + perp_z * offset
             streetLamps.append({'x': round(lamp_x, 1), 'z': round(lamp_z, 1), 'label': 'Street lamp'})
 
     # Trees
@@ -419,12 +480,14 @@ def parse_osm(map_id, config):
     print(f"  Street lamps: {len(streetLamps)}")
     print(f"  Sidewalks: {len(sidewalks)}")
     print(f"  Crosswalks: {len(crosswalks)}")
+    print(f"  Traffic lights: {len(trafficLights)}")
     print(f"  Water: x={water['x']}, z={water['z']}, w={water['width']}, h={water['height']}")
 
     return {
         'roads': roads, 'roadPaths': road_paths, 'buildings': buildings,
         'trees': trees, 'streetLamps': streetLamps, 'sidewalks': sidewalks,
-        'crosswalks': crosswalks, 'water': water, 'mapId': map_id,
+        'crosswalks': crosswalks, 'trafficLights': trafficLights,
+        'water': water, 'mapId': map_id,
         'osmFile': osm_path, 'bounds': bounds,
     }
 
@@ -532,8 +595,16 @@ def generate_ts(data, output_path, map_label):
                       f"label: '{esc(cw['label'])}' }},")
     output.append("  ],")
 
+    # Traffic lights
+    output.append("")
+    output.append("  trafficLights: [")
+    for tl in data.get('trafficLights', []):
+        output.append(f"  {{ x: {tl['x']}, z: {tl['z']}, angle: {tl['angle']}, "
+                      f"label: '{esc(tl['label'])}' }},")
+    output.append("  ],")
+
     # Empty arrays for unpopulated types
-    for field in ['trafficLights', 'busStops', 'parkingLots', 'benches',
+    for field in ['busStops', 'parkingLots', 'benches',
                   'hydrants', 'caltransLines', 'caltransPaths']:
         output.append(f"  {field}: [],")
 
