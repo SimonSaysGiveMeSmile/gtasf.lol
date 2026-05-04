@@ -28,6 +28,12 @@ MAPS = {
         'bounds': None,
         'label': 'Union Square / Downtown SF',
     },
+    'downtown_sf': {
+        'file': 'public/maps/downtown_sf.osm',
+        'output': 'src/game/maps/downtown_sf.ts',
+        'bounds': None,
+        'label': 'Downtown San Francisco',
+    },
 }
 
 ROAD_COLORS = {
@@ -121,6 +127,25 @@ def way_centroid_in_bounds(way_nodes, bounds, margin=0.15):
             bounds['minlon'] - dlon <= avg_lon <= bounds['maxlon'] + dlon)
 
 
+def parse_building_height(tags):
+    """Extract building height in meters from OSM tags."""
+    height_str = tags.get('height')
+    if height_str:
+        try:
+            h = float(height_str.replace('m', '').strip())
+            if h > 0:
+                return h
+        except ValueError:
+            pass
+    levels_str = tags.get('building:levels')
+    if levels_str:
+        try:
+            return float(levels_str) * 3.5
+        except ValueError:
+            pass
+    return 14.0
+
+
 def parse_osm(map_id, config):
     osm_path = config['file']
     print(f"\n{'='*60}")
@@ -190,11 +215,22 @@ def parse_osm(map_id, config):
             x, z = latlon_to_game(lat, lon, bounds)
             control.append({'x': x, 'z': z})
         name = tags.get('name', tags.get('ref', f'Road-{w.get("id")}'))
-        width = {'motorway': 14, 'motorway_link': 10, 'primary': 12,
-                 'secondary': 10, 'tertiary': 8, 'tertiary_link': 6,
-                 'residential': 6, 'unclassified': 5, 'service': 4,
-                 'living_street': 5, 'pedestrian': 4, 'cycleway': 3,
-                 'busway': 8}.get(hw, 6)
+        lanes_str = tags.get('lanes')
+        if lanes_str:
+            try:
+                width = int(float(lanes_str)) * 3.5
+            except ValueError:
+                width = {'motorway': 14, 'motorway_link': 10, 'primary': 12,
+                         'secondary': 10, 'tertiary': 8, 'tertiary_link': 6,
+                         'residential': 6, 'unclassified': 5, 'service': 4,
+                         'living_street': 5, 'pedestrian': 4, 'cycleway': 3,
+                         'busway': 8}.get(hw, 6)
+        else:
+            width = {'motorway': 14, 'motorway_link': 10, 'primary': 12,
+                     'secondary': 10, 'tertiary': 8, 'tertiary_link': 6,
+                     'residential': 6, 'unclassified': 5, 'service': 4,
+                     'living_street': 5, 'pedestrian': 4, 'cycleway': 3,
+                     'busway': 8}.get(hw, 6)
         roads.append({'name': name, 'color': ROAD_COLORS[hw], 'controlPoints': control,
                       'width': width, '_way_id': w.get('id')})
 
@@ -226,16 +262,7 @@ def parse_osm(map_id, config):
         if area < 5:
             continue
         x, z, width, depth = compute_aabb(way_nodes, bounds)
-        h_str = tags.get('height') or tags.get('building:levels', '8')
-        try:
-            if 'building:levels' in tags:
-                h = float(h_str) * 3.5
-            elif 'm' in h_str:
-                h = float(h_str.replace('m', ''))
-            else:
-                h = float(h_str)
-        except:
-            h = 8.0
+        h = parse_building_height(tags)
         est_side = math.sqrt(area * 1.3)
         if width < 2 or depth < 2:
             width = est_side
@@ -271,16 +298,7 @@ def parse_osm(map_id, config):
         if area < 5:
             continue
         x, z, width, depth = compute_aabb(way_nodes, bounds)
-        h_str = tags.get('height') or tags.get('building:levels', '8')
-        try:
-            if 'building:levels' in tags:
-                h = float(h_str) * 3.5
-            elif 'm' in h_str:
-                h = float(h_str.replace('m', ''))
-            else:
-                h = float(h_str)
-        except:
-            h = 8.0
+        h = parse_building_height(tags)
         est_side = math.sqrt(area * 1.3)
         if width < 2 or depth < 2:
             width = est_side

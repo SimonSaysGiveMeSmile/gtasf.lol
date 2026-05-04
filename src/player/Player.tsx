@@ -5,8 +5,8 @@ import { useKeyboardControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '../game/store'
 import { PLAYER_CONFIG, MAP_SIZE } from '../game/constants'
-import { BUILDING_LAYOUT } from '../world/buildings'
 import { getNearbyBuildingsGrid } from '../world/World'
+import { useLandscapeData } from '../game/LandscapeContext'
 import { soundManager } from '../systems/audio/SoundManager'
 // @simonsaysgivemesmile
 
@@ -17,18 +17,20 @@ const gyroBase = { current: { alpha: 0, beta: 0, gamma: 0 } }
 // Player foot Y = world y = 0 // @jt886
 // All body parts positioned relative to feet.
 const FOOT_Y = 0
-const LEG_LENGTH = 0.5
-const TORSO_HEIGHT = 0.7
+const LEG_LENGTH = 0.82
+const TORSO_HEIGHT = 0.52
 const TORSO_Y = FOOT_Y + LEG_LENGTH
 const NECK_Y = TORSO_Y + TORSO_HEIGHT
-const HEAD_Y = NECK_Y + 0.18
+const HEAD_Y = NECK_Y + 0.22
 const SHOULDER_Y = TORSO_Y + TORSO_HEIGHT * 0.85
-const ARM_LENGTH = 0.42
+const ARM_LENGTH = 0.55
 
 export default function Player() {
   const meshRef = useRef<THREE.Group>(null)
   const { camera } = useThree()
 
+  const landscapeData = useLandscapeData()
+  const buildings = landscapeData.buildings
   const isRunning = useGameStore((s) => s.isRunning)
   const inVehicle = useGameStore((s) => s.inVehicle)
   const isDead = useGameStore((s) => s.isDead)
@@ -250,7 +252,8 @@ export default function Player() {
       let hitX = false, hitZ = false
       const nearbyBuildings = getNearbyBuildingsGrid(newX, newZ, r + 10)
       for (const bi of nearbyBuildings) {
-        const b = BUILDING_LAYOUT[bi]
+        const b = buildings[bi]
+        if (!b) continue
         const hx = b.width / 2 + r
         const hz = b.depth / 2 + r
         const dxb = newX - b.x
@@ -319,7 +322,7 @@ export default function Player() {
     const tz = position.current.z + Math.cos(camAngle) * camDist
 
     camera.position.lerp(new THREE.Vector3(tx, ty, tz), 0.12)
-    camera.lookAt(position.current.x, position.current.y + 0.8, position.current.z)
+    camera.lookAt(position.current.x, position.current.y + 1.2, position.current.z)
 
     // Animations
     if (isMoving && isGrounded.current) {

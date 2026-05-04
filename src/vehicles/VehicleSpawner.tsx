@@ -7,10 +7,14 @@ import { useGameStore } from '../game/store'
 import type { VehicleType } from '../game/types'
 import { VEHICLES, MAP_SIZE, VEHICLE_COUNT, SCOOTER_COUNT, PLANE_COUNT, BOAT_COUNT } from '../game/constants'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
+import { useLandscapeData } from '../game/LandscapeContext'
+import type { LandscapeData } from '../game/landscape.types'
 import { vehiclePositions, vehicleRadius, OBSTACLE_RADIUS } from '../game/vehicleState'
 import { getNearbyBuildingsGrid } from '../world/World'
 import { VehicleAdWrap } from '../systems/billboards/VehicleAdWraps'
 import CaltrainAdWrap from '../systems/billboards/CaltrainAdWrap'
+
+let _activeLandscape: LandscapeData = LANDSCAPE_CONFIG
 
 // Cheat-spawned vehicle type
 interface CheatVehicle {
@@ -32,7 +36,7 @@ function seededRandom(seed: number): number {
 const TREE_RADIUS = 0.4
 
 function isClearOfBuildings(x: number, z: number, r: number): boolean {
-  for (const b of LANDSCAPE_CONFIG.buildings) {
+  for (const b of _activeLandscape.buildings) {
     const hx = b.width / 2 + r + 2
     const hz = b.depth / 2 + r + 2
     if (Math.abs(x - b.x) < hx && Math.abs(z - b.z) < hz) return false
@@ -43,7 +47,7 @@ function isClearOfBuildings(x: number, z: number, r: number): boolean {
 function findSplineSpawnPoint(seed: number): { x: number; z: number } | null {
   // Collect all road path points as potential spawn locations
   const allPoints: { x: number; z: number }[] = []
-  for (const path of LANDSCAPE_CONFIG.roadPaths) {
+  for (const path of _activeLandscape.roadPaths) {
     for (let i = 0; i < path.length; i += 8) {
       allPoints.push({ x: path[i].x, z: path[i].z })
     }
@@ -69,9 +73,10 @@ function findSplineSpawnPoint(seed: number): { x: number; z: number } | null {
 
 function checkBuildingCollision(px: number, pz: number, r: number) {
   const nearby = getNearbyBuildingsGrid(px, pz, r)
-  const buildings = LANDSCAPE_CONFIG.buildings
+  const buildings = _activeLandscape.buildings
   for (const i of nearby) {
     const b = buildings[i]
+    if (!b) continue
     const hx = b.width / 2 + r
     const hz = b.depth / 2 + r
     const dx = px - b.x
@@ -84,7 +89,7 @@ function checkBuildingCollision(px: number, pz: number, r: number) {
 }
 
 function checkTreeCollision(px: number, pz: number, r: number) {
-  for (const t of LANDSCAPE_CONFIG.trees) {
+  for (const t of _activeLandscape.trees) {
     const dx = px - t.x
     const dz = pz - t.z
     const dist = Math.sqrt(dx * dx + dz * dz)
@@ -632,7 +637,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       }
 
       // Light pole collision
-      for (const lamp of LANDSCAPE_CONFIG.streetLamps) {
+      for (const lamp of _activeLandscape.streetLamps) {
         const lx = lamp.x - pos.current.x
         const lz = lamp.z - pos.current.z
         const lDist = Math.sqrt(lx * lx + lz * lz)
@@ -646,7 +651,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       }
 
       // Traffic light / bench / hydrant collision
-      for (const tl of LANDSCAPE_CONFIG.trafficLights) {
+      for (const tl of _activeLandscape.trafficLights) {
         const tx = tl.x - pos.current.x; const tz = tl.z - pos.current.z
         const tDist = Math.sqrt(tx * tx + tz * tz)
         const minT = vR + OBSTACLE_RADIUS.trafficLight + 0.1
@@ -656,7 +661,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
           vel.current.z *= 0.4
         }
       }
-      for (const bs of LANDSCAPE_CONFIG.busStops) {
+      for (const bs of _activeLandscape.busStops) {
         const bx = bs.x - pos.current.x; const bz = bs.z - pos.current.z
         const bDist = Math.sqrt(bx * bx + bz * bz)
         const minB = vR + OBSTACLE_RADIUS.busStop + 0.1
@@ -666,7 +671,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
           vel.current.z *= 0.4
         }
       }
-      for (const h of LANDSCAPE_CONFIG.hydrants) {
+      for (const h of _activeLandscape.hydrants) {
         const hx = h.x - pos.current.x; const hz = h.z - pos.current.z
         const hDist = Math.sqrt(hx * hx + hz * hz)
         const minH = vR + OBSTACLE_RADIUS.hydrant + 0.1
@@ -717,7 +722,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
 
     } else if (isCaltrain) {
       // Caltrain rail physics — follows the track automatically
-      const railPaths = LANDSCAPE_CONFIG.caltransPaths
+      const railPaths = _activeLandscape.caltransPaths
       const trackIdx = railPaths.length > 0 ? 0 : -1
       if (trackIdx >= 0 && railPaths[trackIdx].length > 0) {
         const path = railPaths[trackIdx]
@@ -892,7 +897,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
 // Vehicle spawner
 export default function VehicleSpawner() {
   const [cheatVehicles, setCheatVehicles] = useState<CheatVehicle[]>([])
-
+  _activeLandscape = useLandscapeData()
   // Listen for cheat spawn events
   useEffect(() => {
     const handler = (e: Event) => {
@@ -947,7 +952,7 @@ export default function VehicleSpawner() {
     }
 
     // Caltrain cars — spawned along rail lines
-    const railPaths = LANDSCAPE_CONFIG.caltransPaths
+    const railPaths = _activeLandscape.caltransPaths
     for (let t = 0; t < railPaths.length; t++) {
       const path = railPaths[t]
       if (!path || path.length === 0) continue

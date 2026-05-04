@@ -24,7 +24,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -202.2, z: -34.3 },
         { x: -203.5, z: -36.1 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-8915105',
@@ -47,7 +47,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -170.3, z: -44.8 },
         { x: -152.5, z: -51.8 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-8915111',
@@ -56,7 +56,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -86.0, z: 40.2 },
         { x: -77.9, z: 47.4 },
       ],
-      width: 10,
+      width: 7.0,
     },
     {
       name: 'Road-8915322',
@@ -91,7 +91,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -286.7, z: 153.3 },
         { x: -293.8, z: 146.9 },
       ],
-      width: 3,
+      width: 7.0,
     },
     {
       name: 'Merchant Road',
@@ -143,7 +143,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -227.8, z: -63.3 },
         { x: -214.5, z: -51.6 },
       ],
-      width: 10,
+      width: 7.0,
     },
     {
       name: 'Crissy Field Avenue',
@@ -179,7 +179,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 471.1, z: -363.9 },
         { x: 474.1, z: -358.3 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Marine Drive',
@@ -269,7 +269,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -140.2, z: -3.4 },
         { x: -139.1, z: -1.4 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Battery East Road',
@@ -374,7 +374,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -187.0, z: 67.6 },
         { x: -176.3, z: 75.9 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-25822538',
@@ -405,7 +405,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -270.0, z: 193.5 },
         { x: -285.4, z: 180.7 },
       ],
-      width: 3,
+      width: 7.0,
     },
     {
       name: 'Presidio Parkway',
@@ -418,7 +418,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -102.2, z: -79.1 },
         { x: -116.3, z: -62.9 },
       ],
-      width: 14,
+      width: 14.0,
     },
     {
       name: 'Presidio Parkway',
@@ -432,7 +432,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -155.1, z: -47.5 },
         { x: -152.5, z: -51.8 },
       ],
-      width: 14,
+      width: 3.5,
     },
     {
       name: 'Mason Street',
@@ -507,7 +507,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -111.7, z: 26.9 },
         { x: -117.0, z: 22.9 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-26965387',
@@ -527,7 +527,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -155.2, z: 97.1 },
         { x: -158.3, z: 95.5 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-26965424',
@@ -544,7 +544,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -71.9, z: 22.1 },
         { x: -66.9, z: 18.6 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-26965499',
@@ -560,7 +560,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -123.3, z: 83.7 },
         { x: -102.2, z: 57.9 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Presidio Parkway',
@@ -570,7 +570,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -302.0, z: 126.0 },
         { x: -287.4, z: 107.7 },
       ],
-      width: 14,
+      width: 3.5,
     },
     {
       name: 'Presidio Parkway',
@@ -585,7 +585,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -301.9, z: 145.4 },
         { x: -305.4, z: 149.4 },
       ],
-      width: 14,
+      width: 10.5,
     },
     {
       name: 'Road-26987889',
@@ -597,7 +597,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -220.2, z: -38.3 },
         { x: -223.7, z: -34.2 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Hoffman Street',
@@ -636,7 +636,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -233.8, z: -250.6 },
         { x: -234.0, z: -264.1 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Road-27031216',
@@ -660,7 +660,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -167.3, z: 82.7 },
         { x: -162.1, z: 86.7 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Lincoln Boulevard',
@@ -679,7 +679,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 260.0, z: -110.6 },
         { x: 254.6, z: -102.5 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Lincoln Boulevard',
@@ -703,7 +703,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 265.4, z: -247.4 },
         { x: 263.5, z: -239.5 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Presidio Parkway',
@@ -714,7 +714,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -142.0, z: -64.3 },
         { x: -132.2, z: -76.1 },
       ],
-      width: 14,
+      width: 14.0,
     },
     {
       name: 'Presidio Parkway',
@@ -726,7 +726,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -132.6, z: -43.5 },
         { x: -136.5, z: -38.6 },
       ],
-      width: 14,
+      width: 14.0,
     },
     {
       name: 'Presidio Parkway',
@@ -735,7 +735,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 44.8, z: -265.7 },
         { x: 56.1, z: -275.5 },
       ],
-      width: 14,
+      width: 14.0,
     },
     {
       name: 'Road-43685500',
@@ -745,7 +745,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -252.9, z: 6.2 },
         { x: -252.8, z: 6.3 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-43685501',
@@ -757,7 +757,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -230.9, z: 32.2 },
         { x: -187.0, z: 67.6 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Presidio Parkway',
@@ -788,7 +788,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 277.3, z: -411.7 },
         { x: 288.4, z: -416.6 },
       ],
-      width: 14,
+      width: 10.5,
     },
     {
       name: 'CA 1',
@@ -825,7 +825,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 208.3, z: -290.2 },
         { x: 202.1, z: -288.4 },
       ],
-      width: 10,
+      width: 7.0,
     },
     {
       name: 'Battery East Road',
@@ -869,7 +869,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -198.2, z: 44.8 },
         { x: -200.0, z: 46.8 },
       ],
-      width: 14,
+      width: 17.5,
     },
     {
       name: 'Road-91814413',
@@ -912,7 +912,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -156.4, z: 7.9 },
         { x: -176.3, z: 17.6 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-91814415',
@@ -991,7 +991,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -306.5, z: 164.5 },
         { x: -294.6, z: 173.6 },
       ],
-      width: 3,
+      width: 7.0,
     },
     {
       name: 'Lincoln Boulevard',
@@ -1019,7 +1019,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 60.2, z: 11.3 },
         { x: 52.9, z: 13.8 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Road-142974452',
@@ -1053,7 +1053,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 195.3, z: -347.1 },
         { x: 193.7, z: -349.9 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Presidio Parkway',
@@ -1075,7 +1075,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 39.5, z: -261.1 },
         { x: 44.8, z: -265.7 },
       ],
-      width: 14,
+      width: 14.0,
     },
     {
       name: 'CA 1',
@@ -1128,7 +1128,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 307.3, z: -594.9 },
         { x: 307.5, z: -616.5 },
       ],
-      width: 10,
+      width: 7.0,
     },
     {
       name: 'Lincoln Boulevard',
@@ -1166,7 +1166,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -378.0, z: -564.7 },
         { x: -382.1, z: -572.2 },
       ],
-      width: 10,
+      width: 7.0,
     },
     {
       name: 'Road-167952622',
@@ -1200,7 +1200,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 205.9, z: -335.1 },
         { x: 203.3, z: -337.3 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Presidio Parkway',
@@ -1216,7 +1216,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 195.3, z: -343.1 },
         { x: 184.0, z: -336.4 },
       ],
-      width: 14,
+      width: 10.5,
     },
     {
       name: 'Storey Avenue',
@@ -1242,7 +1242,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -227.8, z: -264.2 },
         { x: -234.0, z: -264.1 },
       ],
-      width: 6,
+      width: 7.0,
     },
     {
       name: 'Road-184255674',
@@ -1252,7 +1252,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -47.6, z: -2.0 },
         { x: -39.6, z: -8.6 },
       ],
-      width: 8,
+      width: 3.5,
     },
     {
       name: 'Presidio Promenade',
@@ -1413,7 +1413,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 344.1, z: -378.3 },
         { x: 339.5, z: -366.7 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Battery East Road',
@@ -1721,7 +1721,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -63.5, z: -13.0 },
         { x: -67.0, z: -17.5 },
       ],
-      width: 6,
+      width: 3.5,
     },
     {
       name: 'Road-380096122',
@@ -1756,7 +1756,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 5.6, z: 7.3 },
         { x: -14.1, z: -0.0 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Lincoln Boulevard',
@@ -1766,7 +1766,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -45.8, z: -10.6 },
         { x: -67.0, z: -17.5 },
       ],
-      width: 8,
+      width: 10.5,
     },
     {
       name: 'Presidio Parkway',
@@ -1780,7 +1780,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -173.7, z: 14.1 },
         { x: -176.3, z: 17.6 },
       ],
-      width: 14,
+      width: 14.0,
     },
     {
       name: 'Presidio Parkway',
@@ -1789,7 +1789,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -221.0, z: 28.1 },
         { x: -204.8, z: 9.8 },
       ],
-      width: 14,
+      width: 28.0,
     },
     {
       name: 'Road-397086250',
@@ -1799,7 +1799,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -73.0, z: 41.8 },
         { x: -77.9, z: 47.4 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Marine Drive',
@@ -1853,7 +1853,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 151.0, z: 169.9 },
         { x: 147.1, z: 176.1 },
       ],
-      width: 5,
+      width: 7.0,
     },
     {
       name: 'Presidio Promenade',
@@ -1958,7 +1958,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -43.0, z: 7.1 },
         { x: -46.9, z: 10.9 },
       ],
-      width: 8,
+      width: 3.5,
     },
     {
       name: 'Road-430151800',
@@ -2099,7 +2099,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 267.9, z: -209.8 },
         { x: 271.1, z: -199.6 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Mason Street',
@@ -2111,7 +2111,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 483.9, z: -348.7 },
         { x: 488.7, z: -344.0 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Lincoln Boulevard',
@@ -2121,7 +2121,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -74.9, z: -19.6 },
         { x: -83.7, z: -22.6 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Road-516267751',
@@ -2150,7 +2150,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -86.0, z: 40.2 },
         { x: -66.9, z: 18.6 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Road-542161989',
@@ -2179,7 +2179,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -88.0, z: 35.1 },
         { x: -86.0, z: 40.2 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-562765500',
@@ -2496,7 +2496,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -228.8, z: 37.1 },
         { x: -221.0, z: 28.1 },
       ],
-      width: 14,
+      width: 3.5,
     },
     {
       name: 'Presidio Parkway',
@@ -2508,7 +2508,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -226.7, z: 77.5 },
         { x: -227.5, z: 78.4 },
       ],
-      width: 14,
+      width: 17.5,
     },
     {
       name: 'Miller Road',
@@ -2538,7 +2538,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 206.1, z: -406.9 },
         { x: 209.6, z: -410.1 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-648873171',
@@ -2550,7 +2550,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 191.4, z: -355.7 },
         { x: 190.8, z: -357.6 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-659302844',
@@ -2634,7 +2634,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -237.0, z: 87.7 },
         { x: -237.5, z: 88.2 },
       ],
-      width: 14,
+      width: 14.0,
     },
     {
       name: 'Battery East Road',
@@ -2765,7 +2765,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 456.1, z: -360.6 },
         { x: 454.3, z: -361.4 },
       ],
-      width: 3,
+      width: 7.0,
     },
     {
       name: 'Road-775551120',
@@ -2775,7 +2775,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -289.7, z: 177.2 },
         { x: -294.6, z: 173.6 },
       ],
-      width: 3,
+      width: 7.0,
     },
     {
       name: 'Road-778988068',
@@ -2799,7 +2799,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 283.9, z: -359.8 },
         { x: 280.6, z: -356.4 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Presidio Parkway',
@@ -2819,7 +2819,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -39.8, z: -155.1 },
         { x: -60.0, z: -128.2 },
       ],
-      width: 14,
+      width: 10.5,
     },
     {
       name: 'Road-791435098',
@@ -2829,7 +2829,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -90.6, z: 39.0 },
         { x: -117.0, z: 22.9 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-791435099',
@@ -2848,7 +2848,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -33.9, z: -6.7 },
         { x: -39.6, z: -8.6 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Road-791435101',
@@ -2859,7 +2859,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -91.4, z: 44.7 },
         { x: -86.0, z: 40.2 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-791435102',
@@ -2874,7 +2874,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -126.4, z: 11.6 },
         { x: -106.5, z: 23.6 },
       ],
-      width: 10,
+      width: 7.0,
     },
     {
       name: 'Presidio Parkway',
@@ -2891,7 +2891,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 88.6, z: -272.7 },
         { x: 77.5, z: -264.2 },
       ],
-      width: 14,
+      width: 10.5,
     },
     {
       name: 'CA 1',
@@ -2934,7 +2934,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -20.2, z: -167.1 },
         { x: -60.0, z: -128.2 },
       ],
-      width: 10,
+      width: 7.0,
     },
     {
       name: 'Road-791476536',
@@ -2945,7 +2945,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -208.7, z: -41.5 },
         { x: -211.2, z: -48.8 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Lincoln Boulevard',
@@ -2954,7 +2954,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -119.1, z: -44.6 },
         { x: -148.4, z: -69.1 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Lincoln Boulevard',
@@ -2966,7 +2966,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -110.3, z: -37.8 },
         { x: -119.1, z: -44.6 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Road-791514279',
@@ -2985,7 +2985,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -255.3, z: 3.5 },
         { x: -259.6, z: 5.4 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-791514282',
@@ -2995,7 +2995,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -248.0, z: -5.8 },
         { x: -255.3, z: 3.5 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Presidio Parkway',
@@ -3009,7 +3009,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -90.1, z: -126.4 },
         { x: -85.0, z: -132.2 },
       ],
-      width: 14,
+      width: 14.0,
     },
     {
       name: 'Road-837812928',
@@ -3038,7 +3038,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -287.4, z: 107.7 },
         { x: -248.5, z: 60.5 },
       ],
-      width: 14,
+      width: 3.5,
     },
     {
       name: 'Presidio Parkway',
@@ -3047,7 +3047,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -247.6, z: 97.3 },
         { x: -266.0, z: 113.3 },
       ],
-      width: 14,
+      width: 10.5,
     },
     {
       name: 'Road-910333246',
@@ -3115,7 +3115,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 378.1, z: -153.9 },
         { x: 387.5, z: -152.0 },
       ],
-      width: 4,
+      width: 7.0,
     },
     {
       name: 'Road-920648684',
@@ -3135,7 +3135,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -247.1, z: 30.7 },
         { x: -242.2, z: 25.0 },
       ],
-      width: 14,
+      width: 3.5,
     },
     {
       name: 'Road-920648685',
@@ -3157,7 +3157,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -154.7, z: -46.5 },
         { x: -152.5, z: -51.8 },
       ],
-      width: 14,
+      width: 3.5,
     },
     {
       name: 'Road-920648686',
@@ -3173,7 +3173,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -209.0, z: 19.7 },
         { x: -191.4, z: -3.6 },
       ],
-      width: 14,
+      width: 3.5,
     },
     {
       name: 'Road-920648687',
@@ -3188,7 +3188,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -232.1, z: 34.4 },
         { x: -195.8, z: -8.1 },
       ],
-      width: 14,
+      width: 3.5,
     },
     {
       name: 'Road-920648689',
@@ -3208,7 +3208,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -182.7, z: -0.3 },
         { x: -167.1, z: -24.1 },
       ],
-      width: 14,
+      width: 3.5,
     },
     {
       name: 'Road-920648690',
@@ -3235,7 +3235,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -160.1, z: -45.5 },
         { x: -152.5, z: -51.8 },
       ],
-      width: 14,
+      width: 3.5,
     },
     {
       name: 'Road-920648691',
@@ -3254,7 +3254,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -226.3, z: 15.8 },
         { x: -176.4, z: -37.0 },
       ],
-      width: 14,
+      width: 3.5,
     },
     {
       name: 'Road-932341654',
@@ -3268,7 +3268,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -210.1, z: -6.8 },
         { x: -202.4, z: -14.2 },
       ],
-      width: 14,
+      width: 3.5,
     },
     {
       name: 'Road-932341655',
@@ -3280,7 +3280,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -184.5, z: -30.3 },
         { x: -176.4, z: -37.0 },
       ],
-      width: 14,
+      width: 3.5,
     },
     {
       name: 'Road-932341656',
@@ -3294,7 +3294,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -156.8, z: -49.9 },
         { x: -152.5, z: -51.8 },
       ],
-      width: 14,
+      width: 3.5,
     },
     {
       name: 'Road-934659292',
@@ -3377,7 +3377,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -237.5, z: 88.2 },
         { x: -247.6, z: 97.3 },
       ],
-      width: 14,
+      width: 14.0,
     },
     {
       name: 'Lincoln Boulevard',
@@ -3387,7 +3387,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 239.1, z: -88.9 },
         { x: 229.9, z: -83.6 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Lincoln Boulevard',
@@ -3397,7 +3397,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 250.1, z: -97.3 },
         { x: 246.0, z: -93.6 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Lincoln Boulevard',
@@ -3409,7 +3409,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 266.0, z: -215.3 },
         { x: 267.9, z: -209.8 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Road-1272988189',
@@ -3420,7 +3420,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 448.2, z: -363.0 },
         { x: 443.8, z: -363.3 },
       ],
-      width: 3,
+      width: 7.0,
     },
     {
       name: 'Mason Street',
@@ -3429,7 +3429,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 504.9, z: -351.9 },
         { x: 520.7, z: -355.1 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Mason Street',
@@ -3442,7 +3442,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 501.1, z: -351.0 },
         { x: 504.9, z: -351.9 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Road-1289221683',
@@ -3451,7 +3451,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 484.0, z: -338.6 },
         { x: 478.8, z: -342.9 },
       ],
-      width: 3,
+      width: 7.0,
     },
     {
       name: 'Road-1293537278',
@@ -3485,7 +3485,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 749.5, z: -395.2 },
         { x: 955.5, z: -425.0 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Presidio Parkway',
@@ -3494,7 +3494,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -136.5, z: -38.6 },
         { x: -143.7, z: -28.7 },
       ],
-      width: 14,
+      width: 14.0,
     },
     {
       name: 'Road-1339315883',
@@ -3503,7 +3503,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -162.1, z: 86.7 },
         { x: -158.1, z: 90.0 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-1394439274',
@@ -3534,7 +3534,7 @@ export const MAP_DATA: LandscapeData = {
         { x: 19.1, z: 11.6 },
         { x: 5.6, z: 7.3 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Road-1434764815',
@@ -3547,7 +3547,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -255.1, z: 10.0 },
         { x: -255.5, z: 9.5 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-1434764819',
@@ -3559,7 +3559,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -221.2, z: -43.8 },
         { x: -214.5, z: -51.6 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-1434764820',
@@ -3568,7 +3568,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -179.2, z: 79.5 },
         { x: -190.0, z: 71.1 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-1434764821',
@@ -3577,7 +3577,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -66.9, z: 18.6 },
         { x: -61.7, z: 12.4 },
       ],
-      width: 8,
+      width: 7.0,
     },
     {
       name: 'Road-1434764822',
@@ -3587,7 +3587,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -161.1, z: 93.6 },
         { x: -165.1, z: 90.3 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-1434764823',
@@ -3598,7 +3598,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -172.6, z: 84.5 },
         { x: -179.2, z: 79.5 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-1434764824',
@@ -3610,7 +3610,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -259.6, z: 5.4 },
         { x: -258.0, z: 0.4 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-1434764825',
@@ -3619,7 +3619,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -258.0, z: 0.4 },
         { x: -255.3, z: 3.5 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Road-1434764827',
@@ -3628,7 +3628,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -258.0, z: 0.4 },
         { x: -226.9, z: -37.1 },
       ],
-      width: 10,
+      width: 3.5,
     },
     {
       name: 'Merchant Road',
@@ -3637,7 +3637,7 @@ export const MAP_DATA: LandscapeData = {
         { x: -214.5, z: -51.6 },
         { x: -211.2, z: -48.8 },
       ],
-      width: 10,
+      width: 7.0,
     },
   ],
 
@@ -6133,30 +6133,30 @@ export const MAP_DATA: LandscapeData = {
   { x: 398.3, z: -276.8, width: 62.5, depth: 77.7, height: 10.0, color: '#202050', label: 'Movement San Francisco' },
   { x: 449.9, z: -331.9, width: 40.5, depth: 41.8, height: 7.0, color: '#151535', label: undefined },
   { x: -238.8, z: 37.2, width: 37.6, depth: 33.9, height: 0.0, color: '#1a1a3a', label: undefined },
-  { x: 199.3, z: 170.4, width: 27.7, depth: 19.5, height: 24.5, color: '#18183a', label: 'Warming Hut' },
-  { x: 180.8, z: 193.6, width: 16.2, depth: 13.9, height: 17.5, color: '#222245', label: undefined },
-  { x: -235.2, z: 110.5, width: 18.2, depth: 18.2, height: 8.0, color: '#202050', label: 'Round House Café' },
+  { x: 199.3, z: 170.4, width: 27.7, depth: 19.5, height: 7.0, color: '#18183a', label: 'Warming Hut' },
+  { x: 180.8, z: 193.6, width: 16.2, depth: 13.9, height: 5.0, color: '#222245', label: undefined },
+  { x: -235.2, z: 110.5, width: 18.2, depth: 18.2, height: 14.0, color: '#202050', label: 'Round House Café' },
   { x: -274.0, z: 53.0, width: 76.8, depth: 88.7, height: 6.0, color: '#202050', label: 'Bridge Patrol' },
   { x: -194.6, z: 84.3, width: 11.9, depth: 12.8, height: 3.5, color: '#151535', label: 'Bridge Café' },
-  { x: -165.5, z: 107.8, width: 28.4, depth: 26.7, height: 8.0, color: '#12122a', label: 'Welcome Center' },
+  { x: -165.5, z: 107.8, width: 28.4, depth: 26.7, height: 14.0, color: '#12122a', label: 'Welcome Center' },
   { x: -355.3, z: -363.4, width: 30.8, depth: 43.8, height: 3.0, color: '#151535', label: undefined },
-  { x: 173.2, z: 186.0, width: 16.0, depth: 13.7, height: 17.5, color: '#12122a', label: undefined },
-  { x: 167.2, z: 193.6, width: 9.0, depth: 11.6, height: 10.5, color: '#18183a', label: undefined },
+  { x: 173.2, z: 186.0, width: 16.0, depth: 13.7, height: 5.0, color: '#12122a', label: undefined },
+  { x: 167.2, z: 193.6, width: 9.0, depth: 11.6, height: 3.0, color: '#18183a', label: undefined },
   { x: -302.3, z: 331.5, width: 8.9, depth: 11.6, height: 4.0, color: '#202050', label: undefined },
   { x: -284.9, z: -83.8, width: 17.0, depth: 16.8, height: 4.0, color: '#18183a', label: undefined },
-  { x: -300.9, z: -59.1, width: 6.6, depth: 5.8, height: 8.0, color: '#18183a', label: undefined },
-  { x: -302.0, z: -56.3, width: 7.7, depth: 6.6, height: 8.0, color: '#12122a', label: undefined },
+  { x: -300.9, z: -59.1, width: 6.6, depth: 5.8, height: 14.0, color: '#18183a', label: undefined },
+  { x: -302.0, z: -56.3, width: 7.7, depth: 6.6, height: 14.0, color: '#12122a', label: undefined },
   { x: -290.3, z: -97.1, width: 16.6, depth: 17.0, height: 4.0, color: '#0d0d25', label: undefined },
-  { x: -306.2, z: -50.1, width: 6.1, depth: 5.4, height: 8.0, color: '#12122a', label: undefined },
-  { x: -301.0, z: -63.3, width: 12.5, depth: 10.9, height: 8.0, color: '#18183a', label: undefined },
+  { x: -306.2, z: -50.1, width: 6.1, depth: 5.4, height: 14.0, color: '#12122a', label: undefined },
+  { x: -301.0, z: -63.3, width: 12.5, depth: 10.9, height: 14.0, color: '#18183a', label: undefined },
   { x: -272.0, z: -99.2, width: 23.4, depth: 23.1, height: 4.0, color: '#222245', label: undefined },
-  { x: -303.7, z: -42.7, width: 8.9, depth: 8.6, height: 8.0, color: '#1e1e40', label: undefined },
-  { x: -305.0, z: -54.1, width: 7.2, depth: 6.9, height: 8.0, color: '#12122a', label: undefined },
+  { x: -303.7, z: -42.7, width: 8.9, depth: 8.6, height: 14.0, color: '#1e1e40', label: undefined },
+  { x: -305.0, z: -54.1, width: 7.2, depth: 6.9, height: 14.0, color: '#12122a', label: undefined },
   { x: -293.4, z: -4.4, width: 47.8, depth: 51.2, height: 6.0, color: '#1c1c3a', label: undefined },
   { x: -310.7, z: 43.2, width: 6.7, depth: 12.0, height: 4.0, color: '#18183a', label: undefined },
   { x: -194.5, z: 72.0, width: 8.4, depth: 8.6, height: 3.0, color: '#202050', label: undefined },
   { x: -273.8, z: -29.5, width: 10.9, depth: 10.1, height: 4.0, color: '#1a1a3a', label: undefined },
-  { x: -184.8, z: 58.3, width: 9.4, depth: 9.9, height: 10.5, color: '#202050', label: undefined },
+  { x: -184.8, z: 58.3, width: 9.4, depth: 9.9, height: 3.0, color: '#202050', label: undefined },
   { x: -217.0, z: -355.2, width: 18.9, depth: 50.3, height: 11.0, color: '#222245', label: undefined },
   { x: -26.5, z: -324.4, width: 30.2, depth: 30.4, height: 4.0, color: '#12122a', label: 'Log Cabin' },
   { x: 30.6, z: -5.2, width: 11.5, depth: 14.3, height: 6.0, color: '#202050', label: undefined },
@@ -6196,56 +6196,56 @@ export const MAP_DATA: LandscapeData = {
   { x: -201.0, z: -67.4, width: 15.5, depth: 17.3, height: 4.0, color: '#18183a', label: undefined },
   { x: -189.2, z: -225.6, width: 23.6, depth: 30.9, height: 8.0, color: '#151535', label: 'Presidio Religious Activities Center' },
   { x: 345.3, z: -97.8, width: 56.4, depth: 45.3, height: 10.0, color: '#1e1e40', label: undefined },
-  { x: -30.6, z: 86.2, width: 10.8, depth: 9.9, height: 8.0, color: '#12122a', label: undefined },
+  { x: -30.6, z: 86.2, width: 10.8, depth: 9.9, height: 14.0, color: '#12122a', label: undefined },
   { x: 366.8, z: -211.5, width: 58.8, depth: 50.1, height: 10.0, color: '#12122a', label: undefined },
   { x: 372.2, z: -173.2, width: 23.3, depth: 19.2, height: 6.0, color: '#1c1c3a', label: 'Roaring Mouse Cycles' },
   { x: 180.8, z: -197.2, width: 3, depth: 13.5, height: 3.0, color: '#151535', label: undefined },
   { x: -83.8, z: 113.6, width: 7.1, depth: 7.7, height: 3.0, color: '#202050', label: undefined },
   { x: 164.2, z: -172.2, width: 12.8, depth: 9.3, height: 3.0, color: '#1a1a3a', label: undefined },
   { x: 360.4, z: -121.5, width: 22.8, depth: 22.9, height: 9.0, color: '#0f0f2a', label: undefined },
-  { x: -50.5, z: 97.8, width: 3.3, depth: 3.4, height: 8.0, color: '#1e1e40', label: undefined },
+  { x: -50.5, z: 97.8, width: 3.3, depth: 3.4, height: 14.0, color: '#1e1e40', label: undefined },
   { x: -95.1, z: 118.1, width: 16.1, depth: 11.2, height: 4.0, color: '#202050', label: undefined },
   { x: -22.6, z: 22.6, width: 10.2, depth: 13.6, height: 4.0, color: '#1a1a3a', label: undefined },
   { x: -201.9, z: -208.2, width: 14.2, depth: 18.9, height: 7.0, color: '#151535', label: undefined },
-  { x: -11.6, z: 28.8, width: 9.9, depth: 9.8, height: 8.0, color: '#151535', label: undefined },
+  { x: -11.6, z: 28.8, width: 9.9, depth: 9.8, height: 14.0, color: '#151535', label: undefined },
   { x: -102.4, z: 107.9, width: 9.2, depth: 10.0, height: 3.0, color: '#1a1a3a', label: undefined },
   { x: -194.7, z: -89.9, width: 11.5, depth: 12.6, height: 4.0, color: '#0d0d25', label: undefined },
   { x: -40.2, z: 51.4, width: 10.2, depth: 10.3, height: 4.0, color: '#151535', label: undefined },
   { x: -145.8, z: 49.9, width: 7.8, depth: 8.5, height: 4.0, color: '#1c1c3a', label: undefined },
   { x: -44.4, z: 46.8, width: 10.3, depth: 10.2, height: 4.0, color: '#1a1a3a', label: undefined },
-  { x: 15.9, z: 28.4, width: 9.3, depth: 6.4, height: 8.0, color: '#1e1e40', label: undefined },
-  { x: -32.9, z: 57.3, width: 8.8, depth: 8.6, height: 8.0, color: '#202050', label: undefined },
-  { x: -29.2, z: 61.1, width: 9.0, depth: 8.8, height: 8.0, color: '#0f0f2a', label: undefined },
+  { x: 15.9, z: 28.4, width: 9.3, depth: 6.4, height: 14.0, color: '#1e1e40', label: undefined },
+  { x: -32.9, z: 57.3, width: 8.8, depth: 8.6, height: 14.0, color: '#202050', label: undefined },
+  { x: -29.2, z: 61.1, width: 9.0, depth: 8.8, height: 14.0, color: '#0f0f2a', label: undefined },
   { x: -22.5, z: 59.5, width: 10.5, depth: 9.9, height: 6.0, color: '#0f0f2a', label: undefined },
   { x: -158.4, z: 61.1, width: 14.6, depth: 14.6, height: 3.0, color: '#1c1c3a', label: undefined },
-  { x: -34.1, z: 82.7, width: 13.4, depth: 11.8, height: 8.0, color: '#1e1e40', label: undefined },
+  { x: -34.1, z: 82.7, width: 13.4, depth: 11.8, height: 14.0, color: '#1e1e40', label: undefined },
   { x: 6.3, z: 42.9, width: 21.1, depth: 20.5, height: 4.0, color: '#1e1e40', label: undefined },
   { x: -192.4, z: -70.4, width: 21.3, depth: 22.4, height: 5.0, color: '#18183a', label: undefined },
   { x: -32.5, z: 21.8, width: 16.6, depth: 19.6, height: 5.0, color: '#151535', label: undefined },
-  { x: 490.5, z: -131.5, width: 16.1, depth: 17.5, height: 24.5, color: '#12122a', label: 'Ocean Climate Center' },
-  { x: 524.6, z: -150.6, width: 26.9, depth: 26.7, height: 35.0, color: '#222245', label: 'Greater Farallones Marine Sanctuary Visitor Center' },
-  { x: 472.4, z: -117.3, width: 15.4, depth: 16.1, height: 17.5, color: '#12122a', label: '1890 Boathouse' },
-  { x: 548.7, z: -146.4, width: 17.6, depth: 17.1, height: 21.0, color: '#1a1a3a', label: 'Shop and Garage' },
+  { x: 490.5, z: -131.5, width: 16.1, depth: 17.5, height: 7.0, color: '#12122a', label: 'Ocean Climate Center' },
+  { x: 524.6, z: -150.6, width: 26.9, depth: 26.7, height: 10.0, color: '#222245', label: 'Greater Farallones Marine Sanctuary Visitor Center' },
+  { x: 472.4, z: -117.3, width: 15.4, depth: 16.1, height: 5.0, color: '#12122a', label: '1890 Boathouse' },
+  { x: 548.7, z: -146.4, width: 17.6, depth: 17.1, height: 6.0, color: '#1a1a3a', label: 'Shop and Garage' },
   { x: 502.9, z: -376.4, width: 44.4, depth: 36.3, height: 7.0, color: '#202050', label: undefined },
-  { x: 167.8, z: 162.4, width: 11.0, depth: 11.5, height: 14.0, color: '#0f0f2a', label: undefined },
-  { x: 145.9, z: 203.8, width: 24.0, depth: 20.9, height: 17.5, color: '#1e1e40', label: undefined },
-  { x: -368.0, z: -240.0, width: 32.7, depth: 43.8, height: 8.0, color: '#1a1a3a', label: 'Battery Boutelle' },
-  { x: -329.3, z: 47.3, width: 47.3, depth: 68.8, height: 8.0, color: '#0d0d25', label: 'Battery Cranston' },
-  { x: -387.8, z: -342.4, width: 60.1, depth: 122.0, height: 8.0, color: '#0f0f2a', label: 'Battery Godfrey' },
-  { x: -320.4, z: 95.7, width: 5.9, depth: 5.9, height: 8.0, color: '#202050', label: undefined },
-  { x: -334.8, z: 28.8, width: 9.8, depth: 14.0, height: 8.0, color: '#1a1a3a', label: undefined },
-  { x: 39.0, z: -203.0, width: 6.4, depth: 5.9, height: 8.0, color: '#18183a', label: undefined },
-  { x: 44.2, z: -206.8, width: 7.7, depth: 7.1, height: 8.0, color: '#18183a', label: undefined },
-  { x: -31.0, z: -85.8, width: 20.2, depth: 20.1, height: 8.0, color: '#151535', label: undefined },
-  { x: -12.0, z: -70.5, width: 21.1, depth: 21.2, height: 8.0, color: '#0d0d25', label: undefined },
-  { x: 35.0, z: -58.0, width: 33.3, depth: 27.1, height: 8.0, color: '#202050', label: undefined },
-  { x: 59.0, z: -84.3, width: 16.2, depth: 19.6, height: 8.0, color: '#202050', label: undefined },
-  { x: 47.1, z: -102.1, width: 15.5, depth: 14.3, height: 8.0, color: '#12122a', label: undefined },
-  { x: -2.3, z: -117.3, width: 33.7, depth: 27.4, height: 8.0, color: '#151535', label: undefined },
+  { x: 167.8, z: 162.4, width: 11.0, depth: 11.5, height: 4.0, color: '#0f0f2a', label: undefined },
+  { x: 145.9, z: 203.8, width: 24.0, depth: 20.9, height: 5.0, color: '#1e1e40', label: undefined },
+  { x: -368.0, z: -240.0, width: 32.7, depth: 43.8, height: 14.0, color: '#1a1a3a', label: 'Battery Boutelle' },
+  { x: -329.3, z: 47.3, width: 47.3, depth: 68.8, height: 14.0, color: '#0d0d25', label: 'Battery Cranston' },
+  { x: -387.8, z: -342.4, width: 60.1, depth: 122.0, height: 14.0, color: '#0f0f2a', label: 'Battery Godfrey' },
+  { x: -320.4, z: 95.7, width: 5.9, depth: 5.9, height: 14.0, color: '#202050', label: undefined },
+  { x: -334.8, z: 28.8, width: 9.8, depth: 14.0, height: 14.0, color: '#1a1a3a', label: undefined },
+  { x: 39.0, z: -203.0, width: 6.4, depth: 5.9, height: 14.0, color: '#18183a', label: undefined },
+  { x: 44.2, z: -206.8, width: 7.7, depth: 7.1, height: 14.0, color: '#18183a', label: undefined },
+  { x: -31.0, z: -85.8, width: 20.2, depth: 20.1, height: 14.0, color: '#151535', label: undefined },
+  { x: -12.0, z: -70.5, width: 21.1, depth: 21.2, height: 14.0, color: '#0d0d25', label: undefined },
+  { x: 35.0, z: -58.0, width: 33.3, depth: 27.1, height: 14.0, color: '#202050', label: undefined },
+  { x: 59.0, z: -84.3, width: 16.2, depth: 19.6, height: 14.0, color: '#202050', label: undefined },
+  { x: 47.1, z: -102.1, width: 15.5, depth: 14.3, height: 14.0, color: '#12122a', label: undefined },
+  { x: -2.3, z: -117.3, width: 33.7, depth: 27.4, height: 14.0, color: '#151535', label: undefined },
   { x: -217.3, z: -11.4, width: 9.5, depth: 9.9, height: 3.0, color: '#202050', label: undefined },
-  { x: 323.0, z: -191.0, width: 10.7, depth: 8.3, height: 8.0, color: '#0f0f2a', label: undefined },
+  { x: 323.0, z: -191.0, width: 10.7, depth: 8.3, height: 14.0, color: '#0f0f2a', label: undefined },
   { x: -166.6, z: 64.6, width: 7.5, depth: 8.2, height: 3.0, color: '#1a1a3a', label: undefined },
-  { x: 329.6, z: -217.4, width: 4.0, depth: 4.2, height: 8.0, color: '#151535', label: undefined },
+  { x: 329.6, z: -217.4, width: 4.0, depth: 4.2, height: 14.0, color: '#151535', label: undefined },
   { x: -234.4, z: 40.6, width: 11.6, depth: 13.3, height: 0.2, color: '#1c1c3a', label: undefined },
   { x: -244.0, z: 31.2, width: 12.7, depth: 14.4, height: 0.2, color: '#151535', label: undefined },
   { x: -224.6, z: 49.0, width: 11.6, depth: 13.3, height: 0.2, color: '#222245', label: undefined },
@@ -6254,8 +6254,8 @@ export const MAP_DATA: LandscapeData = {
   { x: -237.7, z: 37.8, width: 11.7, depth: 13.2, height: 0.2, color: '#1c1c3a', label: undefined },
   { x: -228.0, z: 46.1, width: 11.7, depth: 13.2, height: 0.2, color: '#0d0d25', label: undefined },
   { x: -231.2, z: 43.4, width: 11.6, depth: 13.2, height: 0.2, color: '#0d0d25', label: undefined },
-  { x: -358.3, z: 423.0, width: 85.1, depth: 79.4, height: 52.5, color: '#18183a', label: 'Fort Point' },
-  { x: -337.9, z: -72.1, width: 52.9, depth: 166.2, height: 8.0, color: '#151535', label: 'Battery Marcus Miller' },
+  { x: -358.3, z: 423.0, width: 85.1, depth: 79.4, height: 15.0, color: '#18183a', label: 'Fort Point' },
+  { x: -337.9, z: -72.1, width: 52.9, depth: 166.2, height: 14.0, color: '#151535', label: 'Battery Marcus Miller' },
   ],
 
   // ─── Trees ─────────────────────────────────────────────────

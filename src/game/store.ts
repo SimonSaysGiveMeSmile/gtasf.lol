@@ -93,7 +93,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   playerHealth: 100,
   playerMode: 'onfoot',
   inVehicle: null,
-  playerPosition: SPAWN_POINTS['golden_gate'] || [0, 3, 0],
+  playerPosition: SPAWN_POINTS['downtown_sf'] || [0, 3, 0],
   playerRotation: 0,
   isRunning: false,
   isDead: false,
@@ -120,7 +120,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   masterVolume: 1,
   sfxVolume: 0.8,
   ambientVolume: 0.3,
-  currentMapName: 'golden_gate',
+  currentMapName: 'downtown_sf',
   playerFaceTexture: null,
 
   setPlayerFaceTexture: (texture) => set({ playerFaceTexture: texture }),

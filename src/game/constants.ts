@@ -168,7 +168,7 @@ export const PLAYER_CONFIG = {
   interactRange: 3,
 }
 
-export const MAP_SIZE = 1600
+export const MAP_SIZE = 2400
 export const BUILDING_COUNT = 200
 export const TREE_COUNT = 120
 export const NPC_COUNT = 50
