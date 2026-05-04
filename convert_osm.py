@@ -23,7 +23,7 @@ MAPS = {
         'label': 'Golden Gate / Presidio',
     },
     'union_square': {
-        'file': 'public/maps/UnionSquare.osm',
+        'file': 'public/maps/unionsquare.osm',
         'output': 'src/game/maps/union_square.ts',
         'bounds': None,
         'label': 'Union Square / Downtown SF',
@@ -36,8 +36,14 @@ ROAD_COLORS = {
     'primary': '#444466',
     'secondary': '#333344',
     'tertiary': '#2a2a3a',
+    'tertiary_link': '#2a2a3a',
     'residential': '#2a2a3a',
     'unclassified': '#2a2a3a',
+    'service': '#252535',
+    'living_street': '#2a2a3a',
+    'pedestrian': '#3a3a4a',
+    'cycleway': '#2a3a2a',
+    'busway': '#333344',
 }
 
 BUILDING_COLORS = [
@@ -103,6 +109,18 @@ def polygon_area(way_nodes, bounds):
     return abs(area) / 2
 
 
+def way_centroid_in_bounds(way_nodes, bounds, margin=0.15):
+    """Check if the centroid of a way falls within the expanded map bounds."""
+    if not way_nodes:
+        return False
+    avg_lat = sum(lat for lat, lon in way_nodes) / len(way_nodes)
+    avg_lon = sum(lon for lat, lon in way_nodes) / len(way_nodes)
+    dlat = (bounds['maxlat'] - bounds['minlat']) * margin
+    dlon = (bounds['maxlon'] - bounds['minlon']) * margin
+    return (bounds['minlat'] - dlat <= avg_lat <= bounds['maxlat'] + dlat and
+            bounds['minlon'] - dlon <= avg_lon <= bounds['maxlon'] + dlon)
+
+
 def parse_osm(map_id, config):
     osm_path = config['file']
     print(f"\n{'='*60}")
@@ -137,6 +155,17 @@ def parse_osm(map_id, config):
         lat, lon = float(n.get('lat')), float(n.get('lon'))
         nodes[n.get('id')] = (lat, lon)
 
+    # Build way-node index for relation lookups
+    way_nodes_index = {}
+    for w in root.findall('.//way'):
+        nds = w.findall('nd')
+        wn = []
+        for nd in nds:
+            ref = nd.get('ref')
+            if ref in nodes:
+                wn.append(nodes[ref])
+        way_nodes_index[w.get('id')] = wn
+
     # Parse roads
     roads = []
     road_way_nodes = {}
@@ -153,23 +182,19 @@ def parse_osm(map_id, config):
                 way_nodes.append(nodes[ref])
         if len(way_nodes) < 2:
             continue
+        if not way_centroid_in_bounds(way_nodes, bounds):
+            continue
         road_way_nodes[w.get('id')] = way_nodes
         control = []
-        step = max(1, len(way_nodes) // 6)
-        for i in range(0, len(way_nodes), step):
-            lat, lon = way_nodes[i]
+        for lat, lon in way_nodes:
             x, z = latlon_to_game(lat, lon, bounds)
             control.append({'x': x, 'z': z})
-        if len(control) < 2:
-            control = [
-                {'x': latlon_to_game(way_nodes[0][0], way_nodes[0][1], bounds)[0],
-                 'z': latlon_to_game(way_nodes[0][0], way_nodes[0][1], bounds)[1]},
-                {'x': latlon_to_game(way_nodes[-1][0], way_nodes[-1][1], bounds)[0],
-                 'z': latlon_to_game(way_nodes[-1][0], way_nodes[-1][1], bounds)[1]},
-            ]
         name = tags.get('name', tags.get('ref', f'Road-{w.get("id")}'))
         width = {'motorway': 14, 'motorway_link': 10, 'primary': 12,
-                 'secondary': 10, 'tertiary': 8, 'residential': 6, 'unclassified': 5}.get(hw, 8)
+                 'secondary': 10, 'tertiary': 8, 'tertiary_link': 6,
+                 'residential': 6, 'unclassified': 5, 'service': 4,
+                 'living_street': 5, 'pedestrian': 4, 'cycleway': 3,
+                 'busway': 8}.get(hw, 6)
         roads.append({'name': name, 'color': ROAD_COLORS[hw], 'controlPoints': control,
                       'width': width, '_way_id': w.get('id')})
 
@@ -194,6 +219,53 @@ def parse_osm(map_id, config):
             if ref in nodes:
                 way_nodes.append(nodes[ref])
         if len(way_nodes) < 3:
+            continue
+        if not way_centroid_in_bounds(way_nodes, bounds):
+            continue
+        area = polygon_area(way_nodes, bounds)
+        if area < 5:
+            continue
+        x, z, width, depth = compute_aabb(way_nodes, bounds)
+        h_str = tags.get('height') or tags.get('building:levels', '8')
+        try:
+            if 'building:levels' in tags:
+                h = float(h_str) * 3.5
+            elif 'm' in h_str:
+                h = float(h_str.replace('m', ''))
+            else:
+                h = float(h_str)
+        except:
+            h = 8.0
+        est_side = math.sqrt(area * 1.3)
+        if width < 2 or depth < 2:
+            width = est_side
+            depth = est_side * 0.7
+        if width < 3:
+            width = 3
+        if depth < 3:
+            depth = 3
+        label = tags.get('name', None)
+        color_idx = int(abs(x + z) / 10) % len(BUILDING_COLORS)
+        buildings.append({
+            'x': round(x, 1), 'z': round(z, 1), 'width': round(width, 1),
+            'depth': round(depth, 1), 'height': round(h, 1),
+            'color': BUILDING_COLORS[color_idx], 'label': label,
+        })
+
+    # Parse buildings from relations (multipolygons)
+    for rel in root.findall('.//relation'):
+        tags = {tag.get('k'): tag.get('v') for tag in rel.findall('tag')}
+        if not (tags.get('building') or tags.get('building:levels')):
+            continue
+        way_nodes = []
+        for member in rel.findall('member'):
+            if member.get('type') == 'way' and member.get('role') in ('outer', ''):
+                wid = member.get('ref')
+                if wid in way_nodes_index:
+                    way_nodes.extend(way_nodes_index[wid])
+        if len(way_nodes) < 3:
+            continue
+        if not way_centroid_in_bounds(way_nodes, bounds):
             continue
         area = polygon_area(way_nodes, bounds)
         if area < 5:
@@ -240,6 +312,8 @@ def parse_osm(map_id, config):
                 way_nodes.append(nodes[ref])
         if len(way_nodes) < 2:
             continue
+        if not way_centroid_in_bounds(way_nodes, bounds):
+            continue
         path = compute_path_points(way_nodes, bounds)
         for i in range(0, len(path), 3):
             pt = path[i]
@@ -280,6 +354,8 @@ def parse_osm(map_id, config):
                 way_nodes.append(nodes[ref])
         if len(way_nodes) < 3:
             continue
+        if not way_centroid_in_bounds(way_nodes, bounds):
+            continue
         x, z, width, depth = compute_aabb(way_nodes, bounds)
         count = min(8, max(2, int(width * depth / 400)))
         for _ in range(count):
@@ -301,7 +377,7 @@ def parse_osm(map_id, config):
                 ref = nd.get('ref')
                 if ref in nodes:
                     way_nodes.append(nodes[ref])
-            if len(way_nodes) >= 3:
+            if len(way_nodes) >= 3 and way_centroid_in_bounds(way_nodes, bounds):
                 x, z, width, depth = compute_aabb(way_nodes, bounds)
                 water_polygons.append((x, z, width, depth))
 
@@ -335,6 +411,11 @@ def parse_osm(map_id, config):
     }
 
 
+def esc(s):
+    """Escape single quotes for embedding in JS string literals."""
+    return s.replace("'", "\\'") if s else s
+
+
 def generate_ts(data, output_path, map_label):
     """Generate TypeScript from parsed OSM data."""
     output = []
@@ -365,7 +446,7 @@ def generate_ts(data, output_path, map_label):
     output.append("  roads: [")
     for road in data['roads']:
         output.append("    {")
-        output.append(f"      name: '{road['name']}',")
+        output.append(f"      name: '{esc(road['name'])}',")
         output.append(f"      color: '{road['color']}',")
         output.append("      controlPoints: [")
         for cp in road['controlPoints']:
@@ -391,7 +472,7 @@ def generate_ts(data, output_path, map_label):
     output.append("  // ─── Buildings ─────────────────────────────────────────────")
     output.append("  buildings: [")
     for b in data['buildings']:
-        lbl = f"'{b['label']}'" if b['label'] else 'undefined'
+        lbl = f"'{esc(b['label'])}'" if b['label'] else 'undefined'
         output.append(f"  {{ x: {b['x']}, z: {b['z']}, width: {b['width']}, depth: {b['depth']}, "
                       f"height: {b['height']}, color: '{b['color']}', label: {lbl} }},")
     output.append("  ],")
@@ -401,14 +482,14 @@ def generate_ts(data, output_path, map_label):
     output.append("  // ─── Trees ─────────────────────────────────────────────────")
     output.append("  trees: [")
     for t in data['trees']:
-        output.append(f"  {{ x: {t['x']}, z: {t['z']}, label: '{t['label']}' }},")
+        output.append(f"  {{ x: {t['x']}, z: {t['z']}, label: '{esc(t['label'])}' }},")
     output.append("  ],")
 
     # Street lamps
     output.append("")
     output.append("  streetLamps: [")
     for l in data['streetLamps']:
-        output.append(f"  {{ x: {l['x']}, z: {l['z']}, label: '{l['label']}' }},")
+        output.append(f"  {{ x: {l['x']}, z: {l['z']}, label: '{esc(l['label'])}' }},")
     output.append("  ],")
 
     # Sidewalks
@@ -416,7 +497,7 @@ def generate_ts(data, output_path, map_label):
     output.append("  sidewalks: [")
     for sw in data['sidewalks']:
         output.append(f"  {{ x: {sw['x']}, z: {sw['z']}, angle: {sw['angle']}, "
-                      f"len: {sw['len']}, label: '{sw['label']}' }},")
+                      f"len: {sw['len']}, label: '{esc(sw['label'])}' }},")
     output.append("  ],")
 
     # Crosswalks
@@ -424,7 +505,7 @@ def generate_ts(data, output_path, map_label):
     output.append("  crosswalks: [")
     for cw in data['crosswalks']:
         output.append(f"  {{ x: {cw['x']}, z: {cw['z']}, angle: {cw['angle']}, "
-                      f"label: '{cw['label']}' }},")
+                      f"label: '{esc(cw['label'])}' }},")
     output.append("  ],")
 
     # Empty arrays for unpopulated types

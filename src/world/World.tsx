@@ -58,14 +58,11 @@ function getNearbyBuildings(px: number, pz: number, grid: SpatialGrid, radius: n
 let _spatialGrid: SpatialGrid | null = null
 
 // ─── Building ─────────────────────────────────────────────────────────────────
-function Building({ x, z, width, depth, height, colorIdx }: {
-  x: number; z: number; width: number; depth: number; height: number; colorIdx: number
+function Building({ x, z, width, depth, height, color }: {
+  x: number; z: number; width: number; depth: number; height: number; color?: string
 }) {
   const isNight = useGameStore((s) => s.timeOfDay === "night")
-  const colors = ['#1a1a3a', '#151535', '#202050', '#0f0f2a', '#1e1e40',
-    '#12122a', '#18183a', '#222245', '#0d0d25', '#1c1c3a',
-    '#252560', '#1a1a50', '#2a2a55', '#181845', '#202048']
-  const baseColor = colors[colorIdx % colors.length]
+  const baseColor = color || '#1a1a3a'
   const emissive = isNight ? '#222244' : '#000000'
   const emissiveIntensity = isNight ? 0.3 : 0
 
@@ -88,7 +85,7 @@ function BuildingsLayer({ buildings }: { buildings: BuildingData[] }) {
   return (
     <>
       {buildings.map((b, i) => (
-        <Building key={i} x={b.x} z={b.z} width={b.width} depth={b.depth} height={b.height} colorIdx={i} />
+        <Building key={i} x={b.x} z={b.z} width={b.width} depth={b.depth} height={b.height} color={b.color} />
       ))}
     </>
   )
@@ -141,26 +138,29 @@ function TreesLayer({ trees }: { trees: { x: number; z: number }[] }) {
 }
 
 // ─── Road ─────────────────────────────────────────────────────────────────────
-function RoadLayer({ roadPaths }: { roadPaths: { x: number; z: number; angle: number }[][] }) {
+function RoadLayer({ roadPaths, roads: roadDefs }: {
+  roadPaths: { x: number; z: number; angle: number }[][],
+  roads: { width: number }[]
+}) {
   const timeOfDay = useGameStore((s) => s.timeOfDay)
   const isNight = timeOfDay === "night"
-  const ROAD_WIDTH = 14
 
-  const roads = useMemo(() => {
-    const meshes: { key: string; points: THREE.Vector2[]; color: string }[] = []
+  const roadShapes = useMemo(() => {
+    const result: { key: string; shape: THREE.Shape; color: string }[] = []
     for (let ri = 0; ri < roadPaths.length; ri++) {
       const path = roadPaths[ri]
       if (path.length < 2) continue
+      const width = roadDefs[ri]?.width ?? 10
 
       const leftEdge: THREE.Vector2[] = []
       const rightEdge: THREE.Vector2[] = []
 
       for (let i = 0; i < path.length; i++) {
         const pt = path[i]
-        const perpX = Math.cos(pt.angle + Math.PI / 2)
-        const perpZ = Math.sin(pt.angle + Math.PI / 2)
-        leftEdge.push(new THREE.Vector2(pt.x + perpX * ROAD_WIDTH / 2, pt.z + perpZ * ROAD_WIDTH / 2))
-        rightEdge.push(new THREE.Vector2(pt.x - perpX * ROAD_WIDTH / 2, pt.z - perpZ * ROAD_WIDTH / 2))
+        const perpX = Math.cos(pt.angle)
+        const perpZ = -Math.sin(pt.angle)
+        leftEdge.push(new THREE.Vector2(pt.x + perpX * width / 2, pt.z + perpZ * width / 2))
+        rightEdge.push(new THREE.Vector2(pt.x - perpX * width / 2, pt.z - perpZ * width / 2))
       }
 
       const shape = new THREE.Shape()
@@ -173,10 +173,10 @@ function RoadLayer({ roadPaths }: { roadPaths: { x: number; z: number; angle: nu
       }
       shape.closePath()
 
-      meshes.push({ key: `road-${ri}`, points: leftEdge, color: '#404050' })
+      result.push({ key: `road-${ri}`, shape, color: '#404050' })
     }
-    return meshes
-  }, [roadPaths])
+    return result
+  }, [roadPaths, roadDefs])
 
   const roadLines = useMemo(() => {
     const lines: { x: number; z: number; angle: number }[] = []
@@ -197,9 +197,9 @@ function RoadLayer({ roadPaths }: { roadPaths: { x: number; z: number; angle: nu
 
   return (
     <>
-      {roads.map(({ key, points, color }) => (
+      {roadShapes.map(({ key, shape, color }) => (
         <mesh key={key} position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <shapeGeometry args={[new THREE.Shape(points)]} />
+          <shapeGeometry args={[shape]} />
           <meshStandardMaterial color={color} roughness={0.95} />
         </mesh>
       ))}
@@ -616,7 +616,7 @@ export default function World() {
       <Sky {...skyProps} />
 
       <Ground water={data.water} />
-      <RoadLayer roadPaths={data.roadPaths} />
+      <RoadLayer roadPaths={data.roadPaths} roads={data.roads} />
       <RailLayer caltransPaths={data.caltransPaths} />
       <BuildingsLayer buildings={data.buildings} />
       <TreesLayer trees={data.trees} />

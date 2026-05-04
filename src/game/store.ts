@@ -1,6 +1,7 @@
 // @simonsaysgivemesmile
 import { create } from 'zustand'
 import type { CityId, NPC, PlayerMode, VehicleType } from './types'
+import { SPAWN_POINTS } from './loadMapData'
 
 interface GameState {
   // Player state
@@ -92,7 +93,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   playerHealth: 100,
   playerMode: 'onfoot',
   inVehicle: null,
-  playerPosition: [0, 2, 0],
+  playerPosition: SPAWN_POINTS['golden_gate'] || [0, 3, 0],
   playerRotation: 0,
   isRunning: false,
   isDead: false,
@@ -166,6 +167,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   respawn: () => {
+    const { currentMapName } = get()
     set({
       isDead: false,
       isRespawning: false,
@@ -173,7 +175,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       playerMode: 'onfoot',
       inVehicle: null,
       currentVehicleType: null,
-      playerPosition: [0, 3, 0],
+      playerPosition: SPAWN_POINTS[currentMapName] || [0, 3, 0],
     })
   },
 
