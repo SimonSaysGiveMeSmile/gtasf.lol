@@ -58,13 +58,43 @@ function getNearbyBuildings(px: number, pz: number, grid: SpatialGrid, radius: n
 let _spatialGrid: SpatialGrid | null = null
 
 // ─── Building ─────────────────────────────────────────────────────────────────
-function Building({ x, z, width, depth, height, color }: {
+function Building({ x, z, width, depth, height, color, footprint }: {
   x: number; z: number; width: number; depth: number; height: number; color?: string
+  footprint?: { x: number; z: number }[]
 }) {
   const isNight = useGameStore((s) => s.timeOfDay === "night")
   const baseColor = color || '#1a1a3a'
   const emissive = isNight ? '#222244' : '#000000'
   const emissiveIntensity = isNight ? 0.3 : 0
+
+  const geometry = useMemo(() => {
+    if (footprint && footprint.length >= 3) {
+      const shape = new THREE.Shape()
+      shape.moveTo(footprint[0].x, footprint[0].z)
+      for (let i = 1; i < footprint.length; i++) {
+        shape.lineTo(footprint[i].x, footprint[i].z)
+      }
+      shape.closePath()
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: height, bevelEnabled: false })
+      geo.rotateX(-Math.PI / 2)
+      return geo
+    }
+    return null
+  }, [footprint, height])
+
+  if (geometry) {
+    return (
+      <mesh position={[0, 0, 0]} geometry={geometry}>
+        <meshStandardMaterial
+          color={baseColor}
+          metalness={0.1}
+          roughness={0.8}
+          emissive={emissive}
+          emissiveIntensity={emissiveIntensity}
+        />
+      </mesh>
+    )
+  }
 
   return (
     <mesh position={[x, height / 2, z]}>
@@ -85,7 +115,7 @@ function BuildingsLayer({ buildings }: { buildings: BuildingData[] }) {
   return (
     <>
       {buildings.map((b, i) => (
-        <Building key={i} x={b.x} z={b.z} width={b.width} depth={b.depth} height={b.height} color={b.color} />
+        <Building key={i} x={b.x} z={b.z} width={b.width} depth={b.depth} height={b.height} color={b.color} footprint={b.footprint} />
       ))}
     </>
   )

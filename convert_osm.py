@@ -96,8 +96,8 @@ def compute_path_points(way_nodes, bounds):
 def compute_aabb(way_nodes, bounds):
     xs = [latlon_to_game(lat, lon, bounds)[0] for lat, lon in way_nodes]
     zs = [latlon_to_game(lat, lon, bounds)[1] for lat, lon in way_nodes]
-    x = sum(xs) / len(xs)
-    z = sum(zs) / len(zs)
+    x = (min(xs) + max(xs)) / 2
+    z = (min(zs) + max(zs)) / 2
     width = max(xs) - min(xs)
     depth = max(zs) - min(zs)
     return x, z, width, depth
@@ -263,20 +263,20 @@ def parse_osm(map_id, config):
             continue
         x, z, width, depth = compute_aabb(way_nodes, bounds)
         h = parse_building_height(tags)
-        est_side = math.sqrt(area * 1.3)
-        if width < 2 or depth < 2:
-            width = est_side
-            depth = est_side * 0.7
         if width < 3:
             width = 3
         if depth < 3:
             depth = 3
+        footprint = [{'x': round(latlon_to_game(lat, lon, bounds)[0], 1),
+                       'z': round(latlon_to_game(lat, lon, bounds)[1], 1)}
+                      for lat, lon in way_nodes]
         label = tags.get('name', None)
         color_idx = int(abs(x + z) / 10) % len(BUILDING_COLORS)
         buildings.append({
             'x': round(x, 1), 'z': round(z, 1), 'width': round(width, 1),
             'depth': round(depth, 1), 'height': round(h, 1),
             'color': BUILDING_COLORS[color_idx], 'label': label,
+            'footprint': footprint,
         })
 
     # Parse buildings from relations (multipolygons)
@@ -299,20 +299,20 @@ def parse_osm(map_id, config):
             continue
         x, z, width, depth = compute_aabb(way_nodes, bounds)
         h = parse_building_height(tags)
-        est_side = math.sqrt(area * 1.3)
-        if width < 2 or depth < 2:
-            width = est_side
-            depth = est_side * 0.7
         if width < 3:
             width = 3
         if depth < 3:
             depth = 3
+        footprint = [{'x': round(latlon_to_game(lat, lon, bounds)[0], 1),
+                       'z': round(latlon_to_game(lat, lon, bounds)[1], 1)}
+                      for lat, lon in way_nodes]
         label = tags.get('name', None)
         color_idx = int(abs(x + z) / 10) % len(BUILDING_COLORS)
         buildings.append({
             'x': round(x, 1), 'z': round(z, 1), 'width': round(width, 1),
             'depth': round(depth, 1), 'height': round(h, 1),
             'color': BUILDING_COLORS[color_idx], 'label': label,
+            'footprint': footprint,
         })
 
     # Parse sidewalks (footways / pedestrian paths)
@@ -491,10 +491,16 @@ def generate_ts(data, output_path, map_label):
     output.append("  buildings: [")
     for b in data['buildings']:
         lbl = f"'{esc(b['label'])}'" if b['label'] else 'undefined'
-        output.append(f"  {{ x: {b['x']}, z: {b['z']}, width: {b['width']}, depth: {b['depth']}, "
-                      f"height: {b['height']}, color: '{b['color']}', label: {lbl} }},")
+        fp = b.get('footprint')
+        if fp and len(fp) >= 3:
+            fp_str = ', '.join(f'{{x:{p["x"]},z:{p["z"]}}}' for p in fp)
+            output.append(f"  {{ x: {b['x']}, z: {b['z']}, width: {b['width']}, depth: {b['depth']}, "
+                          f"height: {b['height']}, color: '{b['color']}', label: {lbl}, "
+                          f"footprint: [{fp_str}] }},")
+        else:
+            output.append(f"  {{ x: {b['x']}, z: {b['z']}, width: {b['width']}, depth: {b['depth']}, "
+                          f"height: {b['height']}, color: '{b['color']}', label: {lbl} }},")
     output.append("  ],")
-
     # Trees
     output.append("")
     output.append("  // ─── Trees ─────────────────────────────────────────────────")

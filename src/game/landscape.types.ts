@@ -26,7 +26,8 @@ export interface BuildingData {
   depth: number
   height: number
   color?: string
-  label?: string  // human-readable name, e.g. "Salesforce Tower"
+  label?: string
+  footprint?: { x: number; z: number }[]
 }
 
 export interface TreeData {
