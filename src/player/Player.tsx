@@ -5,7 +5,7 @@ import { useKeyboardControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '../game/store'
 import { PLAYER_CONFIG, MAP_SIZE } from '../game/constants'
-import { getNearbyBuildingsGrid } from '../world/World'
+import { getNearbyBuildingsGrid, collideCircleWithBuilding } from '../world/World'
 import { useLandscapeData } from '../game/LandscapeContext'
 import { soundManager } from '../systems/audio/SoundManager'
 // @simonsaysgivemesmile
@@ -305,40 +305,29 @@ export default function Player() {
       velocity.current.y -= 28 * dt
     }
 
-    // Building collision
+    // Building collision — polygon-accurate when footprint is present
     {
       const r = PLAYER_CONFIG.radius + 0.1
-      const newX = position.current.x + velocity.current.x * dt
-      const newZ = position.current.z + velocity.current.z * dt
+      let cx = position.current.x + velocity.current.x * dt
+      let cz = position.current.z + velocity.current.z * dt
 
-      let hitX = false, hitZ = false
-      const nearbyBuildings = getNearbyBuildingsGrid(newX, newZ, r + 10)
+      const nearbyBuildings = getNearbyBuildingsGrid(cx, cz, r + 10)
       for (const bi of nearbyBuildings) {
-        const b = buildings[bi]
-        if (!b) continue
-        const hx = b.width / 2 + r
-        const hz = b.depth / 2 + r
-        const dxb = newX - b.x
-        const dzb = newZ - b.z
-
-        if (Math.abs(dxb) < hx && Math.abs(dzb) < hz) {
-          const overlapX = hx - Math.abs(dxb)
-          const overlapZ = hz - Math.abs(dzb)
-
-          if (overlapX < overlapZ) {
-            velocity.current.x = 0
-            position.current.x = b.x + Math.sign(dxb) * hx
-            hitX = true
-          } else {
-            velocity.current.z = 0
-            position.current.z = b.z + Math.sign(dzb) * hz
-            hitZ = true
-          }
+        const push = collideCircleWithBuilding(bi, cx, cz, r, buildings)
+        if (!push) continue
+        cx += push.pushX
+        cz += push.pushZ
+        // Kill the velocity component driving us into the wall so the next
+        // step slides along the surface instead of pressing harder into it.
+        if (Math.abs(push.pushX) > Math.abs(push.pushZ)) {
+          velocity.current.x = 0
+        } else {
+          velocity.current.z = 0
         }
       }
 
-      if (!hitX) position.current.x = newX
-      if (!hitZ) position.current.z = newZ
+      position.current.x = cx
+      position.current.z = cz
     }
 
     position.current.y += velocity.current.y * dt

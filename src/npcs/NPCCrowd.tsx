@@ -1,13 +1,14 @@
 // @jiahe
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { useKeyboardControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '../game/store'
 import type { NPC } from '../game/types'
 import { NPC_COLORS, MAP_SIZE } from '../game/constants'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
 import { vehiclePositions } from '../game/vehicleState'
-import { getNearbyBuildingsGrid } from '../world/World'
+import { getNearbyBuildingsGrid, collideCircleWithBuilding, circleHitsBuilding } from '../world/World'
 import { VehicleMesh } from '../vehicles/Vehicle'
 import { useLandscapeData } from '../game/LandscapeContext'
 // @simonsaysgivemesmile
@@ -229,24 +230,14 @@ function PedestrianNPC({ x, z, color, shirt, pants, hair: _hair, seed, buildings
       pos.current.z += (dz / dist) * walkSpeed * dt
       angle.current = Math.atan2(dx, dz)
 
-      // Building collision for pedestrians
+      // Building collision for pedestrians — polygon-accurate
       const pR = 0.3
       const nearbyBuildings = getNearbyBuildingsGrid(pos.current.x, pos.current.z, pR + 10)
       for (const bi of nearbyBuildings) {
-        const b = buildings[bi]
-        const hx = b.width / 2 + pR
-        const hz = b.depth / 2 + pR
-        const ddx = pos.current.x - b.x
-        const ddz = pos.current.z - b.z
-        if (Math.abs(ddx) < hx && Math.abs(ddz) < hz) {
-          const ovX = hx - Math.abs(ddx)
-          const ovZ = hz - Math.abs(ddz)
-          if (ovX < ovZ) {
-            pos.current.x -= Math.sign(ddx) * ovX
-          } else {
-            pos.current.z -= Math.sign(ddz) * ovZ
-          }
-        }
+        const push = collideCircleWithBuilding(bi, pos.current.x, pos.current.z, pR, buildings)
+        if (!push) continue
+        pos.current.x += push.pushX
+        pos.current.z += push.pushZ
       }
 
       // Tree collision for pedestrians
@@ -399,17 +390,12 @@ function TrafficCar({ x, z, rotation, color, id, buildings }: { x: number; z: nu
     const nx = pos.current.x + dx
     const nz = pos.current.z + dz
 
-    // Building collision for traffic cars
+    // Building collision for traffic cars — polygon-accurate
     const tcR = 1.8
     let blocked = false
     const nearbyBuildings = getNearbyBuildingsGrid(nx, nz, tcR + 10)
     for (const bi of nearbyBuildings) {
-      const b = buildings[bi]
-      const hx = b.width / 2 + tcR
-      const hz = b.depth / 2 + tcR
-      const ddx = nx - b.x
-      const ddz = nz - b.z
-      if (Math.abs(ddx) < hx && Math.abs(ddz) < hz) {
+      if (circleHitsBuilding(bi, nx, nz, tcR, buildings)) {
         blocked = true
         break
       }

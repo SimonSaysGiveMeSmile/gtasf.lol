@@ -10,7 +10,7 @@ import { LANDSCAPE_CONFIG } from '../game/landscape'
 import { useLandscapeData } from '../game/LandscapeContext'
 import type { LandscapeData } from '../game/landscape.types'
 import { vehiclePositions, vehicleRadius, OBSTACLE_RADIUS } from '../game/vehicleState'
-import { getNearbyBuildingsGrid } from '../world/World'
+import { getNearbyBuildingsGrid, circleHitsBuilding } from '../world/World'
 import { VehicleAdWrap } from '../systems/billboards/VehicleAdWraps'
 import CaltrainAdWrap from '../systems/billboards/CaltrainAdWrap'
 
@@ -36,10 +36,11 @@ function seededRandom(seed: number): number {
 const TREE_RADIUS = 0.4
 
 function isClearOfBuildings(x: number, z: number, r: number): boolean {
-  for (const b of _activeLandscape.buildings) {
-    const hx = b.width / 2 + r + 2
-    const hz = b.depth / 2 + r + 2
-    if (Math.abs(x - b.x) < hx && Math.abs(z - b.z) < hz) return false
+  const buildings = _activeLandscape.buildings
+  const nearby = getNearbyBuildingsGrid(x, z, r + 2)
+  // Extra 2m pad so vehicles don't spawn flush with a wall.
+  for (const i of nearby) {
+    if (circleHitsBuilding(i, x, z, r + 2, buildings)) return false
   }
   return true
 }
@@ -75,17 +76,11 @@ function checkBuildingCollision(px: number, pz: number, r: number) {
   const nearby = getNearbyBuildingsGrid(px, pz, r)
   const buildings = _activeLandscape.buildings
   for (const i of nearby) {
-    const b = buildings[i]
-    if (!b) continue
-    const hx = b.width / 2 + r
-    const hz = b.depth / 2 + r
-    const dx = px - b.x
-    const dz = pz - b.z
-    if (Math.abs(dx) < hx && Math.abs(dz) < hz) {
-      return { hit: true, hx, hz, bounceX: dx, bounceZ: dz }
+    if (circleHitsBuilding(i, px, pz, r, buildings)) {
+      return { hit: true }
     }
   }
-  return { hit: false, hx: 0, hz: 0, bounceX: 0, bounceZ: 0 }
+  return { hit: false }
 }
 
 function checkTreeCollision(px: number, pz: number, r: number) {
