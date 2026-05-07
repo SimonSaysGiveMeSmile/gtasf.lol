@@ -50,6 +50,7 @@ interface GameState {
   ambientVolume: number
   currentMapName: string
   playerFaceTexture: string | null
+  godMode: boolean
 
   // Actions
   takeDamage: (amount: number) => void
@@ -84,6 +85,7 @@ interface GameState {
   setAmbientVolume: (v: number) => void
   setCurrentMapName: (name: string) => void
   setPlayerFaceTexture: (texture: string | null) => void
+  setGodMode: (v: boolean) => void
   switchMap: (mapId: string, spawnPos: [number, number, number]) => void
   // Cheat system
   spawnVehicle: (type: VehicleType) => void
@@ -122,6 +124,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   ambientVolume: 0.3,
   currentMapName: 'downtown_sf',
   playerFaceTexture: null,
+  godMode: false,
 
   setPlayerFaceTexture: (texture) => set({ playerFaceTexture: texture }),
 
@@ -209,6 +212,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setSfxVolume: (v) => set({ sfxVolume: v }),
   setAmbientVolume: (v) => set({ ambientVolume: v }),
   setCurrentMapName: (name) => set({ currentMapName: name }),
+  setGodMode: (v) => set({ godMode: v }),
 
   switchMap: (mapId, spawnPos) => {
     set({
@@ -236,3 +240,5 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   exitVehiclePosition: null,
 }))
+
+;(window as unknown as { __gameStore?: unknown }).__gameStore = useGameStore

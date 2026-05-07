@@ -238,6 +238,8 @@ export default function HUD() {
   const [showMenu, setShowMenu] = useState(false)
   const [activeTab, setActiveTab] = useState<'gameplay' | 'visual' | 'audio' | 'debugging' | 'face'>('gameplay')
   const [showCoords, setShowCoords] = useState(true)
+  const godMode = useGameStore((s) => s.godMode)
+  const setGodMode = useGameStore((s) => s.setGodMode)
   const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
   const speedPercent = Math.min(100, (vehicleSpeed / 200) * 100)
 
@@ -379,6 +381,20 @@ const setPlayerFaceTexture = useGameStore((s) => s.setPlayerFaceTexture)
                       {showCoords ? 'ON' : 'OFF'}
                     </button>
                   </div>
+                  <div className="settings-section">
+                    <label className="settings-label">GOD MODE</label>
+                    <button
+                      className={`settings-toggle-btn ${godMode ? 'active' : ''}`}
+                      onClick={() => setGodMode(!godMode)}
+                    >
+                      {godMode ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+                  {godMode && (
+                    <p className="settings-desc">
+                      Fly like a plane. WASD moves, Space ascends, Shift descends. Collisions off.
+                    </p>
+                  )}
                   <div className="settings-divider" />
                   <div className="settings-section credits">
                     <span className="credits-text">@realsimontian 2026</span>

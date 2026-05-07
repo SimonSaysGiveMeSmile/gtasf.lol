@@ -43,6 +43,7 @@ export default function Player() {
   const setIsFalling = useGameStore((s) => s.setIsFalling)
   const setPlayerRotation = useGameStore((s) => s.setPlayerRotation)
   const playerFaceTexture = useGameStore((s) => s.playerFaceTexture)
+  const godMode = useGameStore((s) => s.godMode)
 
   // Load face texture as equirectangular map for sphere
   const headTexture = useMemo(() => {
@@ -268,7 +269,9 @@ export default function Player() {
     const jmp = jump || touch.jump
     const rn = run || touch.run || isRunning
 
-    const speed = rn ? PLAYER_CONFIG.runSpeed : PLAYER_CONFIG.walkSpeed
+    const speed = godMode
+      ? PLAYER_CONFIG.runSpeed * 2.5
+      : (rn ? PLAYER_CONFIG.runSpeed : PLAYER_CONFIG.walkSpeed)
     // Camera-relative movement: forward/back/left/right follow where the camera looks
     const angle = cameraAngle.current.theta
 
@@ -290,23 +293,37 @@ export default function Player() {
     velocity.current.x += (worldDx * speed - velocity.current.x) * 0.2
     velocity.current.z += (worldDz * speed - velocity.current.z) * 0.2
 
-    // Jump
+    // Jump / vertical
     const now = Date.now()
-    if (jmp && isGrounded.current && now - lastJumpTime.current > 300) {
-      velocity.current.y = PLAYER_CONFIG.jumpForce
+    if (godMode) {
+      // Space ascends, Shift descends. No gravity, no ground — a free fly cam.
+      let vy = 0
+      if (jmp) vy += PLAYER_CONFIG.runSpeed
+      if (rn) vy -= PLAYER_CONFIG.runSpeed
+      velocity.current.y += (vy - velocity.current.y) * 0.2
       isGrounded.current = false
-      peakHeight.current = position.current.y
-      lastJumpTime.current = now
-      soundManager.play('jump', { volume: 0.7 })
+      // Keep peakHeight pinned low so toggling god mode off at altitude doesn't
+      // charge (peakHeight - y) worth of fall damage on the next landing.
+      peakHeight.current = FOOT_Y
+    } else {
+      if (jmp && isGrounded.current && now - lastJumpTime.current > 300) {
+        velocity.current.y = PLAYER_CONFIG.jumpForce
+        isGrounded.current = false
+        peakHeight.current = position.current.y
+        lastJumpTime.current = now
+        soundManager.play('jump', { volume: 0.7 })
+      }
+      if (!isGrounded.current) {
+        velocity.current.y -= 28 * dt
+      }
     }
 
-    // Gravity
-    if (!isGrounded.current) {
-      velocity.current.y -= 28 * dt
-    }
-
-    // Building collision — polygon-accurate when footprint is present
-    {
+    // Building collision — skipped entirely in god mode.
+    if (godMode) {
+      position.current.x += velocity.current.x * dt
+      position.current.z += velocity.current.z * dt
+    } else {
+      // Polygon-accurate when footprint is present
       const r = PLAYER_CONFIG.radius + 0.1
       let cx = position.current.x + velocity.current.x * dt
       let cz = position.current.z + velocity.current.z * dt
@@ -332,8 +349,16 @@ export default function Player() {
 
     position.current.y += velocity.current.y * dt
 
-    // Ground check
-    if (position.current.y <= FOOT_Y) {
+    if (godMode) {
+      // Clamp altitude to something reasonable so the camera doesn't detach.
+      // Floor prevents sinking below the terrain; ceiling keeps the sky in frame.
+      if (position.current.y < FOOT_Y) {
+        position.current.y = FOOT_Y
+        if (velocity.current.y < 0) velocity.current.y = 0
+      }
+      if (position.current.y > 800) position.current.y = 800
+    } else if (position.current.y <= FOOT_Y) {
+      // Ground check
       if (!isGrounded.current) {
         const fallDist = peakHeight.current - position.current.y
         if (fallDist > 2.5) {

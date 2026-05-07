@@ -37,12 +37,12 @@ export default function App() {
   const setQualityCounts = useGameStore((s) => s.setQualityCounts)
 
   const dpr = qualityPreset === 'low' ? 1
-    : qualityPreset === 'med' ? 1.5
-    : qualityPreset === 'high' ? Math.min(window.devicePixelRatio, 2)
-    : qualityPreset === 'ultra' ? Math.min(window.devicePixelRatio, 2.5)
+    : qualityPreset === 'med' ? 1.25
+    : qualityPreset === 'high' ? Math.min(window.devicePixelRatio, 1.5)
+    : qualityPreset === 'ultra' ? Math.min(window.devicePixelRatio, 2)
     : window.devicePixelRatio
 
-  const antialias = qualityPreset === 'high' || qualityPreset === 'ultra'
+  const antialias = qualityPreset === 'ultra'
 
   // Sync quality counts into store so NPC/VehicleSpawner can read them
   useEffect(() => {
@@ -81,10 +81,18 @@ export default function App() {
           <Canvas
             shadows={false}
             camera={{ fov: 60, near: 0.1, far: 8000 }}
-            gl={{ antialias, alpha: false, powerPreference: 'high-performance' }}
+            gl={{
+              antialias,
+              alpha: false,
+              powerPreference: 'high-performance',
+              stencil: false,
+              depth: true,
+              preserveDrawingBuffer: false,
+            }}
             style={{ background: '#87CEEB' }}
             frameloop="always"
             dpr={dpr}
+            onCreated={({ gl }) => { (window as unknown as { __r3f_gl?: unknown }).__r3f_gl = gl }}
           >
             <Suspense fallback={null}>
               <Physics gravity={[0, -25, 0]} defaultContactMaterial={{ friction: 0.5, restitution: 0.1 }}>

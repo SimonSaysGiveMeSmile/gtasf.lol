@@ -1,7 +1,8 @@
 // @simonsaysgivemesmile
-import { useMemo } from 'react'
+import { useMemo, useRef, useLayoutEffect } from 'react'
 import { Sky } from '@react-three/drei'
 import * as THREE from 'three'
+import { mergeBufferGeometries } from 'three-stdlib'
 import { useGameStore } from '../game/store'
 import { MAP_SIZE } from '../game/constants'
 import { default as BillboardLayer } from '../systems/billboards/BillboardLayer'
@@ -14,6 +15,12 @@ import {
   InstancedSidewalks,
   InstancedCrosswalks,
 } from './InstancedLayers2'
+import {
+  InstancedBusStops,
+  InstancedParkingLots,
+  InstancedHydrants,
+  InstancedBenches,
+} from './InstancedProps'
 
 // ─── Spatial Grid for Collision Detection ─────────────────────────────────────
 // Divide the map into a grid; each cell stores building indices
@@ -236,16 +243,16 @@ function RoadLayer({ roadPaths, roads: roadDefs }: {
   const timeOfDay = useGameStore((s) => s.timeOfDay)
   const isNight = timeOfDay === "night"
 
-  const roadShapes = useMemo(() => {
-    const result: { key: string; shape: THREE.Shape; color: string }[] = []
+  // Merge all road polygons into ONE BufferGeometry — 1 draw call for
+  // every street, instead of N shape-meshes.
+  const mergedRoadGeo = useMemo(() => {
+    const geos: THREE.BufferGeometry[] = []
     for (let ri = 0; ri < roadPaths.length; ri++) {
       const path = roadPaths[ri]
       if (path.length < 2) continue
       const width = roadDefs[ri]?.width ?? 10
-
       const leftEdge: THREE.Vector2[] = []
       const rightEdge: THREE.Vector2[] = []
-
       for (let i = 0; i < path.length; i++) {
         const pt = path[i]
         const perpX = Math.cos(pt.angle)
@@ -253,34 +260,57 @@ function RoadLayer({ roadPaths, roads: roadDefs }: {
         leftEdge.push(new THREE.Vector2(pt.x + perpX * width / 2, pt.z + perpZ * width / 2))
         rightEdge.push(new THREE.Vector2(pt.x - perpX * width / 2, pt.z - perpZ * width / 2))
       }
-
       const shape = new THREE.Shape()
       shape.moveTo(leftEdge[0].x, leftEdge[0].y)
-      for (let i = 1; i < leftEdge.length; i++) {
-        shape.lineTo(leftEdge[i].x, leftEdge[i].y)
-      }
-      for (let i = rightEdge.length - 1; i >= 0; i--) {
-        shape.lineTo(rightEdge[i].x, rightEdge[i].y)
-      }
+      for (let i = 1; i < leftEdge.length; i++) shape.lineTo(leftEdge[i].x, leftEdge[i].y)
+      for (let i = rightEdge.length - 1; i >= 0; i--) shape.lineTo(rightEdge[i].x, rightEdge[i].y)
       shape.closePath()
-
-      result.push({ key: `road-${ri}`, shape, color: '#404050' })
+      const g = new THREE.ShapeGeometry(shape)
+      g.rotateX(-Math.PI / 2)
+      g.translate(0, 0.02, 0)
+      geos.push(g)
     }
-    return result
+    if (geos.length === 0) return null
+    const merged = mergeBufferGeometries(geos, false)
+    for (const g of geos) g.dispose()
+    return merged
   }, [roadPaths, roadDefs])
 
-  const roadLines = useMemo(() => {
-    const lines: { x: number; z: number; angle: number }[] = []
+  // Instanced lane stripes — one draw for all of them.
+  const lineData = useMemo(() => {
+    const out: { x: number; z: number; angle: number }[] = []
     for (const road of roadPaths) {
       for (let i = 0; i < road.length; i += 4) {
         const pt = road[i]
         const nextPt = road[Math.min(i + 1, road.length - 1)]
         const angle = Math.atan2(nextPt.x - pt.x, nextPt.z - pt.z)
-        lines.push({ x: pt.x, z: pt.z, angle })
+        out.push({ x: pt.x, z: pt.z, angle })
       }
     }
-    return lines
+    return out
   }, [roadPaths])
+
+  const lineRef = useRef<THREE.InstancedMesh>(null)
+  useLayoutEffect(() => {
+    const mesh = lineRef.current
+    if (!mesh) return
+    const tm = new THREE.Matrix4()
+    const q = new THREE.Quaternion()
+    const e = new THREE.Euler()
+    const p = new THREE.Vector3()
+    const s = new THREE.Vector3(1, 1, 1)
+    for (let i = 0; i < lineData.length; i++) {
+      const l = lineData[i]
+      e.set(-Math.PI / 2, 0, -l.angle, 'XYZ')
+      q.setFromEuler(e)
+      p.set(l.x, 0.03, l.z)
+      tm.compose(p, q, s)
+      mesh.setMatrixAt(i, tm)
+    }
+    mesh.count = lineData.length
+    mesh.instanceMatrix.needsUpdate = true
+    mesh.frustumCulled = false
+  }, [lineData])
 
   const lineColor = isNight ? '#ffdd00' : '#ffcc00'
   const lineEmissive = isNight ? '#ffaa00' : '#000000'
@@ -288,22 +318,21 @@ function RoadLayer({ roadPaths, roads: roadDefs }: {
 
   return (
     <>
-      {roadShapes.map(({ key, shape, color }) => (
-        <mesh key={key} position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <shapeGeometry args={[shape]} />
-          <meshStandardMaterial color={color} roughness={0.95} />
+      {mergedRoadGeo && (
+        <mesh geometry={mergedRoadGeo} frustumCulled={false}>
+          <meshStandardMaterial color="#404050" roughness={0.95} />
         </mesh>
-      ))}
-      {roadLines.map((line, i) => (
-        <mesh key={`l-${i}`} position={[line.x, 0.03, line.z]} rotation={[-Math.PI / 2, 0, -line.angle]}>
+      )}
+      {lineData.length > 0 && (
+        <instancedMesh
+          ref={lineRef}
+          args={[undefined as unknown as THREE.BufferGeometry, undefined as unknown as THREE.Material, lineData.length]}
+          frustumCulled={false}
+        >
           <planeGeometry args={[0.3, 4]} />
-          <meshStandardMaterial
-            color={lineColor}
-            emissive={lineEmissive}
-            emissiveIntensity={lineEmissiveInt}
-          />
-        </mesh>
-      ))}
+          <meshStandardMaterial color={lineColor} emissive={lineEmissive} emissiveIntensity={lineEmissiveInt} />
+        </instancedMesh>
+      )}
     </>
   )
 }
@@ -384,146 +413,11 @@ function RailLayer({ caltransPaths }: { caltransPaths: { x: number; z: number; a
 
 // ─── Street Lamp, Traffic Light, Crosswalk, Sidewalk ───────────────────────
 // (Moved to InstancedLayers2.tsx — per-mesh components removed.)
+// ─── Bus Stop / Parking Lot / Fire Hydrant / Bench ────────────────────────
+// (Moved to InstancedProps.tsx — per-mesh components removed.)
 
 
-// ─── Bus Stop ────────────────────────────────────────────────────────────────
-function BusStop({ x, z }: { x: number; z: number; angle?: number }) {
-  return (
-    <group position={[x, 0, z]}>
-      {/* Pole */}
-      <mesh position={[0, 1.5, 0]}>
-        <cylinderGeometry args={[0.05, 0.05, 3, 6]} />
-        <meshStandardMaterial color="#0055aa" metalness={0.3} roughness={0.7} />
-      </mesh>
-      {/* Sign */}
-      <mesh position={[0, 3.0, 0]}>
-        <boxGeometry args={[1.2, 0.5, 0.05]} />
-        <meshStandardMaterial color="#0055aa" metalness={0.2} roughness={0.8} />
-      </mesh>
-      {/* Shelter roof */}
-      <mesh position={[0, 2.6, 0]}>
-        <boxGeometry args={[2, 0.08, 1]} />
-        <meshStandardMaterial color="#aaaaaa" metalness={0.3} roughness={0.6} />
-      </mesh>
-      {/* Bench */}
-      <mesh position={[0, 0.25, 0.2]}>
-        <boxGeometry args={[1.5, 0.08, 0.4]} />
-        <meshStandardMaterial color="#8B4513" roughness={0.9} />
-      </mesh>
-      {/* Bench legs */}
-      <mesh position={[-0.6, 0.12, 0.2]}>
-        <boxGeometry args={[0.05, 0.25, 0.05]} />
-        <meshStandardMaterial color="#555555" roughness={0.9} />
-      </mesh>
-      <mesh position={[0.6, 0.12, 0.2]}>
-        <boxGeometry args={[0.05, 0.25, 0.05]} />
-        <meshStandardMaterial color="#555555" roughness={0.9} />
-      </mesh>
-    </group>
-  )
-}
-
-function BusStopsLayer({ busStops }: { busStops: { x: number; z: number; angle: number; name: string }[] }) {
-  return (
-    <>
-      {busStops.map((s, i) => (
-        <BusStop key={i} x={s.x} z={s.z} />
-      ))}
-    </>
-  )
-}
-
-// ─── Parking Lot ─────────────────────────────────────────────────────────────
-function ParkingLot({ x, z }: { x: number; z: number }) {
-  return (
-    <mesh position={[x, 0.015, z]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[18, 18]} />
-      <meshStandardMaterial color="#4a4a4a" roughness={0.95} />
-    </mesh>
-  )
-}
-
-function ParkingLotsLayer({ parkingLots }: { parkingLots: { x: number; z: number; angle: number }[] }) {
-  return (
-    <>
-      {parkingLots.map((l, i) => (
-        <ParkingLot key={i} x={l.x} z={l.z} />
-      ))}
-    </>
-  )
-}
-
-// ─── Fire Hydrant ────────────────────────────────────────────────────────────
-function FireHydrant({ x, z }: { x: number; z: number }) {
-  const isNight = useGameStore((s) => s.timeOfDay === "night")
-  return (
-    <group position={[x, 0, z]}>
-      <mesh position={[0, 0.25, 0]}>
-        <cylinderGeometry args={[0.12, 0.15, 0.5, 8]} />
-        <meshStandardMaterial color="#cc2200" roughness={0.8} />
-      </mesh>
-      <mesh position={[0, 0.55, 0]}>
-        <cylinderGeometry args={[0.08, 0.12, 0.2, 8]} />
-        <meshStandardMaterial color="#cc2200" roughness={0.8} />
-      </mesh>
-      <mesh position={[0.15, 0.35, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.04, 0.04, 0.15, 6]} />
-        <meshStandardMaterial color="#cc2200" roughness={0.8} />
-      </mesh>
-      <mesh position={[-0.15, 0.35, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.04, 0.04, 0.15, 6]} />
-        <meshStandardMaterial color="#cc2200" roughness={0.8} />
-      </mesh>
-      {isNight && <pointLight position={[0, 0.5, 0]} color="#ff4444" intensity={0.5} distance={4} />}
-    </group>
-  )
-}
-
-function FireHydrantsLayer({ hydrants }: { hydrants: { x: number; z: number }[] }) {
-  return (
-    <>
-      {hydrants.map((h, i) => (
-        <FireHydrant key={i} x={h.x} z={h.z} />
-      ))}
-    </>
-  )
-}
-
-// ─── Bench ─────────────────────────────────────────────────────────────────
-function Bench({ x, z }: { x: number; z: number }) {
-  return (
-    <group position={[x, 0, z]}>
-      {/* Seat */}
-      <mesh position={[0, 0.4, 0]}>
-        <boxGeometry args={[1.2, 0.06, 0.4]} />
-        <meshStandardMaterial color="#8B6914" roughness={0.9} />
-      </mesh>
-      {/* Back */}
-      <mesh position={[0, 0.65, -0.15]} rotation={[0.2, 0, 0]}>
-        <boxGeometry args={[1.2, 0.5, 0.05]} />
-        <meshStandardMaterial color="#8B6914" roughness={0.9} />
-      </mesh>
-      {/* Legs */}
-      {[-0.5, 0.5].map((lx, i) => (
-        <mesh key={i} position={[lx, 0.2, 0]}>
-          <boxGeometry args={[0.05, 0.4, 0.35]} />
-          <meshStandardMaterial color="#444444" roughness={0.9} />
-        </mesh>
-      ))}
-    </group>
-  )
-}
-
-function BenchesLayer({ benches }: { benches: { x: number; z: number; angle: number }[] }) {
-  return (
-    <>
-      {benches.map((b, i) => (
-        <Bench key={i} x={b.x} z={b.z} />
-      ))}
-    </>
-  )
-}
-
+// ─── Ground ───────────────────────────────────────────────────────────────────
 // ─── Ground ───────────────────────────────────────────────────────────────────
 function Ground({ water }: { water: { x: number; z: number; width: number; height: number } }) {
   const groundColor = '#2a3a20'
@@ -583,10 +477,10 @@ export default function World() {
       <InstancedLamps lamps={data.streetLamps} />
       <InstancedSidewalks sidewalks={data.sidewalks} />
       <InstancedCrosswalks crosswalks={data.crosswalks} />
-      <BusStopsLayer busStops={data.busStops} />
-      <ParkingLotsLayer parkingLots={data.parkingLots} />
-      <FireHydrantsLayer hydrants={data.hydrants} />
-      <BenchesLayer benches={data.benches} />
+      <InstancedBusStops busStops={data.busStops} />
+      <InstancedParkingLots lots={data.parkingLots} />
+      <InstancedHydrants hydrants={data.hydrants} />
+      <InstancedBenches benches={data.benches} />
       <InstancedTrafficLights lights={data.trafficLights} />
       <BillboardLayer />
     </>
