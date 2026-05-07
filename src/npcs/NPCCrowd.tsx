@@ -372,7 +372,9 @@ function PedestrianNPC({ x, z, color, shirt, pants, hair: _hair, seed, buildings
 }
 
 // ── Traffic Car NPC ─────────────────────────────────────────────────────────
-// Traffic cars are real vehicles: enterable, have NPC drivers, register in vehiclePositions
+// Traffic cars are AI-driven until the player hijacks them. On hijack, the
+// traffic entry is removed and a real player-drivable Vehicle spawns at the
+// same pose via the existing 'cheat-spawn' pipe in VehicleSpawner.
 function TrafficCar({ x, z, rotation, color, id, buildings }: { x: number; z: number; rotation: number; color: string; id: string; buildings: { x: number; z: number; width: number; depth: number }[] }) {
   const meshRef = useRef<THREE.Group>(null)
   const carAngle = useRef(rotation)
@@ -380,8 +382,16 @@ function TrafficCar({ x, z, rotation, color, id, buildings }: { x: number; z: nu
   const speed = 8 + seededRandom(x * 19 + z * 43 + rotation * 7) * 6
   const pos = useRef(new THREE.Vector3(x, 0, z))
   const driverRef = useRef<THREE.Group>(null!)
+  const [hijacked, setHijacked] = useState(false)
+  const prevInteract = useRef(false)
+
+  const [, getKeys] = useKeyboardControls()
+  const inVehicle = useGameStore((s) => s.inVehicle)
+  const playerPosition = useGameStore((s) => s.playerPosition)
+  const setNearbyInteractable = useGameStore((s) => s.setNearbyInteractable)
 
   useFrame((_, delta) => {
+    if (hijacked) return
     const dt = Math.min(delta, 0.05)
     timer.current += dt
 
@@ -429,7 +439,6 @@ function TrafficCar({ x, z, rotation, color, id, buildings }: { x: number; z: nu
     if (pos.current.z < -half) pos.current.z = half
     if (pos.current.z > half) pos.current.z = -half
 
-    // Register position for collisions (NPC vehicles share same registry)
     vehiclePositions.set(id, { x: pos.current.x, z: pos.current.z, radius: 1.8 })
 
     if (meshRef.current) {
@@ -437,11 +446,43 @@ function TrafficCar({ x, z, rotation, color, id, buildings }: { x: number; z: nu
       meshRef.current.rotation.y = carAngle.current
     }
 
-    // Driver head rotation — looks forward in direction of travel
     if (driverRef.current) {
       driverRef.current.rotation.y = carAngle.current
     }
+
+    // Hijack prompt + input. Only when player is on foot and not inside any vehicle.
+    if (!inVehicle) {
+      const pdx = playerPosition[0] - pos.current.x
+      const pdz = playerPosition[2] - pos.current.z
+      const pdist = Math.sqrt(pdx * pdx + pdz * pdz)
+
+      if (pdist < 4) {
+        setNearbyInteractable({ type: 'vehicle', id }, 'Press F to hijack')
+
+        const touch = (window as Window & { __touchInput?: { interact?: boolean } }).__touchInput || {}
+        const { interact } = getKeys()
+        const intract = !!(interact || touch.interact)
+
+        if (intract && !prevInteract.current) {
+          const newId = `hijacked-${id}-${Date.now()}`
+          window.dispatchEvent(new CustomEvent('cheat-spawn', {
+            detail: { id: newId, type: 'sports', x: pos.current.x, z: pos.current.z, rotation: carAngle.current },
+          }))
+          useGameStore.getState().enterVehicle(newId, 'sports')
+          vehiclePositions.delete(id)
+          setNearbyInteractable(null)
+          setHijacked(true)
+        }
+        prevInteract.current = intract
+      } else {
+        prevInteract.current = false
+        const current = useGameStore.getState()
+        if (current.nearbyInteractable?.id === id) setNearbyInteractable(null)
+      }
+    }
   })
+
+  if (hijacked) return null
 
   return (
     <group ref={meshRef} position={[x, 0, z]}>
