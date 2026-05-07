@@ -77,7 +77,7 @@ export default function App() {
       <InputManager>
         <AudioManager />
         <LandscapeProvider>
-        <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+        <div style={{ width: '100vw', height: '100vh', position: 'relative', touchAction: 'none', overscrollBehavior: 'none' }}>
           <Canvas
             shadows={false}
             camera={{ fov: 60, near: 0.1, far: 8000 }}
