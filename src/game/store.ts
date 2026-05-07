@@ -240,5 +240,3 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   exitVehiclePosition: null,
 }))
-
-;(window as unknown as { __gameStore?: unknown }).__gameStore = useGameStore

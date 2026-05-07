@@ -105,6 +105,7 @@ export function InstancedBuildings({ buildings }: { buildings: BuildingData[] })
             roughness={0.8}
             emissive={emissive}
             emissiveIntensity={emissiveIntensity}
+            side={THREE.DoubleSide}
           />
         </instancedMesh>
       )}
@@ -116,6 +117,7 @@ export function InstancedBuildings({ buildings }: { buildings: BuildingData[] })
             roughness={0.8}
             emissive={emissive}
             emissiveIntensity={emissiveIntensity}
+            side={THREE.DoubleSide}
           />
         </mesh>
       )}

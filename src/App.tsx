@@ -92,7 +92,6 @@ export default function App() {
             style={{ background: '#87CEEB' }}
             frameloop="always"
             dpr={dpr}
-            onCreated={({ gl }) => { (window as unknown as { __r3f_gl?: unknown }).__r3f_gl = gl }}
           >
             <Suspense fallback={null}>
               <Physics gravity={[0, -25, 0]} defaultContactMaterial={{ friction: 0.5, restitution: 0.1 }}>

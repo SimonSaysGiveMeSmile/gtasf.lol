@@ -215,22 +215,38 @@ def parse_osm(map_id, config):
             x, z = latlon_to_game(lat, lon, bounds)
             control.append({'x': x, 'z': z})
         name = tags.get('name', tags.get('ref', f'Road-{w.get("id")}'))
-        lanes_str = tags.get('lanes')
-        if lanes_str:
+        # Widths include parking/bike lanes on each side where typical — so the
+        # rendered pavement lines up with curb-to-curb distances on real SF
+        # streets rather than just the carriageway.
+        DEFAULT_WIDTHS = {
+            'motorway': 18, 'motorway_link': 12, 'trunk': 16, 'trunk_link': 10,
+            'primary': 16, 'primary_link': 10,
+            'secondary': 14, 'secondary_link': 9,
+            'tertiary': 12, 'tertiary_link': 8,
+            'residential': 10, 'unclassified': 9,
+            'service': 6, 'living_street': 7,
+            'pedestrian': 5, 'cycleway': 3, 'busway': 10,
+        }
+        width = None
+        # Explicit OSM width tag ("width=12" or "width=12 m") — authoritative.
+        width_str = tags.get('width')
+        if width_str:
             try:
-                width = int(float(lanes_str)) * 3.5
-            except ValueError:
-                width = {'motorway': 14, 'motorway_link': 10, 'primary': 12,
-                         'secondary': 10, 'tertiary': 8, 'tertiary_link': 6,
-                         'residential': 6, 'unclassified': 5, 'service': 4,
-                         'living_street': 5, 'pedestrian': 4, 'cycleway': 3,
-                         'busway': 8}.get(hw, 6)
-        else:
-            width = {'motorway': 14, 'motorway_link': 10, 'primary': 12,
-                     'secondary': 10, 'tertiary': 8, 'tertiary_link': 6,
-                     'residential': 6, 'unclassified': 5, 'service': 4,
-                     'living_street': 5, 'pedestrian': 4, 'cycleway': 3,
-                     'busway': 8}.get(hw, 6)
+                # Strip units like " m" / " ft"
+                cleaned = width_str.replace('m', '').strip().split()[0]
+                width = float(cleaned)
+            except (ValueError, IndexError):
+                width = None
+        if width is None:
+            lanes_str = tags.get('lanes')
+            if lanes_str:
+                try:
+                    # Each lane ≈ 3.5m + 2m allowance for parking/shoulders.
+                    width = int(float(lanes_str)) * 3.5 + 2
+                except ValueError:
+                    width = DEFAULT_WIDTHS.get(hw, 10)
+            else:
+                width = DEFAULT_WIDTHS.get(hw, 10)
         roads.append({'name': name, 'color': ROAD_COLORS[hw], 'controlPoints': control,
                       'width': width, '_way_id': w.get('id')})
 
@@ -279,41 +295,47 @@ def parse_osm(map_id, config):
             'footprint': footprint,
         })
 
-    # Parse buildings from relations (multipolygons)
+    # Parse buildings from relations (multipolygons).
+    # Each outer ring becomes its OWN building record so the extruded mesh and
+    # collider polygon are both valid. Concatenating all outer rings into one
+    # footprint was producing self-intersecting polygons whose AABB swallowed
+    # streets between real buildings — which manifested in-game as invisible
+    # walls on the road.
     for rel in root.findall('.//relation'):
         tags = {tag.get('k'): tag.get('v') for tag in rel.findall('tag')}
         if not (tags.get('building') or tags.get('building:levels')):
             continue
-        way_nodes = []
-        for member in rel.findall('member'):
-            if member.get('type') == 'way' and member.get('role') in ('outer', ''):
-                wid = member.get('ref')
-                if wid in way_nodes_index:
-                    way_nodes.extend(way_nodes_index[wid])
-        if len(way_nodes) < 3:
-            continue
-        if not way_centroid_in_bounds(way_nodes, bounds):
-            continue
-        area = polygon_area(way_nodes, bounds)
-        if area < 5:
-            continue
-        x, z, width, depth = compute_aabb(way_nodes, bounds)
         h = parse_building_height(tags)
-        if width < 3:
-            width = 3
-        if depth < 3:
-            depth = 3
-        footprint = [{'x': round(latlon_to_game(lat, lon, bounds)[0], 1),
-                       'z': round(latlon_to_game(lat, lon, bounds)[1], 1)}
-                      for lat, lon in way_nodes]
         label = tags.get('name', None)
-        color_idx = int(abs(x + z) / 10) % len(BUILDING_COLORS)
-        buildings.append({
-            'x': round(x, 1), 'z': round(z, 1), 'width': round(width, 1),
-            'depth': round(depth, 1), 'height': round(h, 1),
-            'color': BUILDING_COLORS[color_idx], 'label': label,
-            'footprint': footprint,
-        })
+        for member in rel.findall('member'):
+            if member.get('type') != 'way':
+                continue
+            if member.get('role') not in ('outer', ''):
+                continue
+            wid = member.get('ref')
+            way_nodes = way_nodes_index.get(wid)
+            if not way_nodes or len(way_nodes) < 3:
+                continue
+            if not way_centroid_in_bounds(way_nodes, bounds):
+                continue
+            area = polygon_area(way_nodes, bounds)
+            if area < 5:
+                continue
+            x, z, width, depth = compute_aabb(way_nodes, bounds)
+            if width < 3:
+                width = 3
+            if depth < 3:
+                depth = 3
+            footprint = [{'x': round(latlon_to_game(lat, lon, bounds)[0], 1),
+                           'z': round(latlon_to_game(lat, lon, bounds)[1], 1)}
+                          for lat, lon in way_nodes]
+            color_idx = int(abs(x + z) / 10) % len(BUILDING_COLORS)
+            buildings.append({
+                'x': round(x, 1), 'z': round(z, 1), 'width': round(width, 1),
+                'depth': round(depth, 1), 'height': round(h, 1),
+                'color': BUILDING_COLORS[color_idx], 'label': label,
+                'footprint': footprint,
+            })
 
     # Parse sidewalks (footways / pedestrian paths)
     sidewalks = []
@@ -339,6 +361,35 @@ def parse_osm(map_id, config):
                 'x': pt['x'], 'z': pt['z'], 'angle': pt['angle'], 'len': 6,
                 'label': f'{tags.get("name", hw)} sidewalk',
             })
+
+    # Implicit sidewalks along every driveable road. OSM rarely tags every
+    # footway in a downtown extract; without this, many streets look like
+    # carriageway floating in grass. Each sidewalk segment sits flush against
+    # the curb on each side. The sidewalk width itself is baked into the
+    # SidewalkSegment mesh (3m wide).
+    SIDEWALK_W = 3.0
+    for ri, path in enumerate(road_paths):
+        road_w = roads[ri]['width'] if ri < len(roads) else 10
+        # Skip pedestrian-only ways — they already come through the explicit
+        # footway loop above and don't have a "curb" to sit next to.
+        road_color = roads[ri].get('color') if ri < len(roads) else None
+        if road_color == ROAD_COLORS.get('pedestrian') or road_color == ROAD_COLORS.get('cycleway'):
+            continue
+        offset = road_w / 2 + SIDEWALK_W / 2
+        # Every ~4 path points is enough to match the stride of explicit
+        # sidewalks and keep segment count reasonable.
+        for i in range(0, len(path), 4):
+            pt = path[i]
+            perp_x = math.cos(pt['angle'])
+            perp_z = -math.sin(pt['angle'])
+            for side in (-1, 1):
+                sx = pt['x'] + perp_x * offset * side
+                sz = pt['z'] + perp_z * offset * side
+                sidewalks.append({
+                    'x': round(sx, 1), 'z': round(sz, 1),
+                    'angle': pt['angle'], 'len': 6,
+                    'label': f'{roads[ri]["name"]} sidewalk',
+                })
 
     # Crosswalks — from OSM crossing ways (footway=crossing)
     crosswalks = []

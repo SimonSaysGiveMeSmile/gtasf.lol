@@ -3,6 +3,7 @@ import { useGameStore } from '../../game/store'
 import { useLandscapeData } from '../../game/LandscapeContext'
 import { BILLBOARD_ADS, type AdContent } from './adsConfig'
 import type { BuildingData, PathPoint } from '../../game/landscape.types'
+import { circleHitsBuilding } from '../../world/World'
 
 function seededRandom(seed: number): number { // @t1an
   const x = Math.sin(seed + 1) * 10000
@@ -114,12 +115,12 @@ function getBillboardSpot(
   }
 }
 
-// Check if a billboard spot is clear of buildings
+// Check if a billboard spot is clear of any building's footprint polygon.
+// Uses the shared circle-vs-polygon test so the AABB false-positives that
+// used to hide billboards on non-rectangular buildings no longer apply.
 function isClearOfBuildings(x: number, z: number, r: number, buildings: BuildingData[]): boolean {
-  for (const b of buildings) {
-    const hx = b.width / 2 + r
-    const hz = b.depth / 2 + r
-    if (Math.abs(x - b.x) < hx && Math.abs(z - b.z) < hz) return false
+  for (let i = 0; i < buildings.length; i++) {
+    if (circleHitsBuilding(i, x, z, r, buildings)) return false
   }
   return true
 }
@@ -176,7 +177,7 @@ export default function BillboardLayer() {
     }
 
     return spots
-  }, [])
+  }, [data.roadPaths, data.buildings])
 
   return (
     <>
