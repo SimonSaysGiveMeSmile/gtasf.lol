@@ -502,9 +502,24 @@ def generate_ts(data, output_path, map_label):
     output = []
     output.append(f"// {map_label} — real-world OSM data")
     output.append(f"// Source: {data['osmFile']} (OpenStreetMap contributors, ODbL 1.0)")
-    output.append(f"// Scale: 1 unit = 1 meter")
+    output.append(f"// Scale: 1 unit = 1 meter. Character height reference: 1.83m (6 ft).")
     output.append("")
-    output.append("import type { LandscapeData } from '../landscape.types'")
+    output.append("import type { LandscapeData, OsmBounds } from '../landscape.types'")
+    output.append("")
+
+    # Emit OSM bounds as a named export so tools can re-project lat/lon to x/z
+    b = data['bounds']
+    output.append("// Edge coordinates of the OSM extract this map was generated from.")
+    output.append("// Game origin (0,0) corresponds to the centroid of this rectangle.")
+    output.append("// Use this for future map imports that need to align with these coordinates.")
+    output.append("export const OSM_BOUNDS: OsmBounds = {")
+    output.append(f"  minlat: {b['minlat']},")
+    output.append(f"  maxlat: {b['maxlat']},")
+    output.append(f"  minlon: {b['minlon']},")
+    output.append(f"  maxlon: {b['maxlon']},")
+    output.append("}")
+    output.append("")
+    output.append(f"export const OSM_SOURCE_FILE = '{data['osmFile']}'")
     output.append("")
 
     # Compute a good spawn point (first road path point, or center)
@@ -521,6 +536,9 @@ def generate_ts(data, output_path, map_label):
                   f"[{spawn_x}, 3, {spawn_z}]")
     output.append("")
     output.append("export const MAP_DATA: LandscapeData = {")
+    output.append(f"  mapId: '{data['mapId']}',")
+    output.append("  osmBounds: OSM_BOUNDS,")
+    output.append("  osmFile: OSM_SOURCE_FILE,")
 
     # Roads
     output.append("  // ─── Roads ───────────────────────────────────────────────────")

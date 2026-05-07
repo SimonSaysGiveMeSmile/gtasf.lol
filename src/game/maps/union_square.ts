@@ -1,14 +1,29 @@
 // Union Square / Downtown SF — real-world OSM data
 // Source: public/maps/unionsquare.osm (OpenStreetMap contributors, ODbL 1.0)
-// Scale: 1 unit = 1 meter
+// Scale: 1 unit = 1 meter. Character height reference: 1.83m (6 ft).
 
-import type { LandscapeData } from '../landscape.types'
+import type { LandscapeData, OsmBounds } from '../landscape.types'
+
+// Edge coordinates of the OSM extract this map was generated from.
+// Game origin (0,0) corresponds to the centroid of this rectangle.
+// Use this for future map imports that need to align with these coordinates.
+export const OSM_BOUNDS: OsmBounds = {
+  minlat: 37.7855,
+  maxlat: 37.7895,
+  minlon: -122.4105,
+  maxlon: -122.4005,
+}
+
+export const OSM_SOURCE_FILE = 'public/maps/unionsquare.osm'
 
 // Spawn point: (16.8, 168.4)
 
 export const SPAWN_POINT: [number, number, number] = [16.8, 3, 168.4]
 
 export const MAP_DATA: LandscapeData = {
+  mapId: 'union_square',
+  osmBounds: OSM_BOUNDS,
+  osmFile: OSM_SOURCE_FILE,
   // ─── Roads ───────────────────────────────────────────────────
   roads: [
     {

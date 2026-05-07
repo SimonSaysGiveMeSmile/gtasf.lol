@@ -16,14 +16,17 @@ const gyroBase = { current: { alpha: 0, beta: 0, gamma: 0 } }
 
 // Player foot Y = world y = 0 // @jt886
 // All body parts positioned relative to feet.
+// Scale: 1 unit = 1 meter. Top of head = 1.83m (6 ft).
+// Breakdown: legs 0.87 + torso 0.55 + neck-to-head 0.22 + head radius 0.19 = 1.83
 const FOOT_Y = 0
-const LEG_LENGTH = 0.82
-const TORSO_HEIGHT = 0.52
+const LEG_LENGTH = 0.87
+const TORSO_HEIGHT = 0.55
 const TORSO_Y = FOOT_Y + LEG_LENGTH
 const NECK_Y = TORSO_Y + TORSO_HEIGHT
 const HEAD_Y = NECK_Y + 0.22
+const HEAD_RADIUS = 0.19
 const SHOULDER_Y = TORSO_Y + TORSO_HEIGHT * 0.85
-const ARM_LENGTH = 0.55
+const ARM_LENGTH = 0.58
 
 export default function Player() {
   const meshRef = useRef<THREE.Group>(null)
@@ -134,6 +137,65 @@ export default function Player() {
       window.removeEventListener('mouseup', handleMouseUp)
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('contextmenu', handleContextMenu)
+    }
+  }, [])
+
+  // Touch drag camera control (mobile) — any non-control touch rotates the camera.
+  useEffect(() => {
+    const active = new Map<number, { x: number; y: number }>()
+
+    const isControlTarget = (t: EventTarget | null) => {
+      let el = t as HTMLElement | null
+      while (el) {
+        if (el.dataset && el.dataset.touchControl) return true
+        el = el.parentElement
+      }
+      return false
+    }
+
+    const onStart = (e: globalThis.TouchEvent) => {
+      for (const t of Array.from(e.changedTouches)) {
+        if (isControlTarget(t.target)) continue
+        active.set(t.identifier, { x: t.clientX, y: t.clientY })
+      }
+    }
+    const onMove = (e: globalThis.TouchEvent) => {
+      let moved = false
+      for (const t of Array.from(e.changedTouches)) {
+        const prev = active.get(t.identifier)
+        if (!prev) continue
+        const dx = t.clientX - prev.x
+        const dy = t.clientY - prev.y
+        prev.x = t.clientX
+        prev.y = t.clientY
+        // Match mouse: left-drag turns right (theta -=), down-drag looks down (phi -=).
+        cameraAngle.current.theta -= dx * 0.005
+        cameraAngle.current.phi = Math.max(
+          CAM_PHI_MIN,
+          Math.min(CAM_PHI_MAX, cameraAngle.current.phi - dy * 0.005)
+        )
+        moved = true
+      }
+      if (moved) {
+        // Touch-drag overrides gyro so they don't fight each other.
+        if (gyroEnabled.current) gyroEnabled.current = false
+        e.preventDefault()
+      }
+    }
+    const onEnd = (e: globalThis.TouchEvent) => {
+      for (const t of Array.from(e.changedTouches)) active.delete(t.identifier)
+    }
+
+    window.addEventListener('touchstart', onStart, { passive: true })
+    window.addEventListener('touchmove', onMove, { passive: false })
+    window.addEventListener('touchend', onEnd, { passive: true })
+    window.addEventListener('touchcancel', onEnd, { passive: true })
+
+    return () => {
+      window.removeEventListener('touchstart', onStart)
+      window.removeEventListener('touchmove', onMove)
+      window.removeEventListener('touchend', onEnd)
+      window.removeEventListener('touchcancel', onEnd)
     }
   }, [])
 
@@ -322,7 +384,7 @@ export default function Player() {
     const tz = position.current.z + Math.cos(camAngle) * camDist
 
     camera.position.lerp(new THREE.Vector3(tx, ty, tz), 0.12)
-    camera.lookAt(position.current.x, position.current.y + 1.2, position.current.z)
+    camera.lookAt(position.current.x, position.current.y + 1.3, position.current.z)
 
     // Animations
     if (isMoving && isGrounded.current) {
@@ -388,7 +450,7 @@ export default function Player() {
 
         {/* Torso */}
         <mesh position={[0, TORSO_Y + TORSO_HEIGHT / 2, 0]}>
-          <boxGeometry args={[0.5, TORSO_HEIGHT, 0.28]} />
+          <boxGeometry args={[0.52, TORSO_HEIGHT, 0.29]} />
           <meshStandardMaterial color="#2255aa" metalness={0.3} roughness={0.6} />
         </mesh>
 
@@ -400,7 +462,7 @@ export default function Player() {
 
         {/* Head — simple smooth sphere */}
         <mesh position={[0, HEAD_Y, 0]}>
-          <sphereGeometry args={[0.18, 24, 24]} />
+          <sphereGeometry args={[HEAD_RADIUS, 24, 24]} />
           {headTexture ? (
             <meshStandardMaterial map={headTexture} roughness={0.8} />
           ) : (

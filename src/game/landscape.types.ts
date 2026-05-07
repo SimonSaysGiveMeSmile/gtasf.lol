@@ -99,6 +99,17 @@ export interface WaterData {
   height: number
 }
 
+// OSM source bounds — lat/lon rectangle the map was converted from.
+// Game coordinates (x, z) are meters relative to the center of this rectangle.
+// Preserving this lets future imports align to the same world origin and
+// lets tools convert between game units and lat/lon.
+export interface OsmBounds {
+  minlat: number
+  maxlat: number
+  minlon: number
+  maxlon: number
+}
+
 // Full landscape data bundle — returned by loadLandscapeData()
 export interface LandscapeData {
   roads: RoadData[]
@@ -116,4 +127,8 @@ export interface LandscapeData {
   caltransLines: RailLineData[]
   caltransPaths: PathPoint[][]
   water: WaterData
+  // Provenance — only present on OSM-derived maps. Consumers should treat as optional.
+  osmBounds?: OsmBounds
+  osmFile?: string
+  mapId?: string
 }

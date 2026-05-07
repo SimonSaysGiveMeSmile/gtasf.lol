@@ -1,14 +1,29 @@
 // Golden Gate / Presidio — real-world OSM data
 // Source: public/maps/GoldenGate.osm (OpenStreetMap contributors, ODbL 1.0)
-// Scale: 1 unit = 1 meter
+// Scale: 1 unit = 1 meter. Character height reference: 1.83m (6 ft).
 
-import type { LandscapeData } from '../landscape.types'
+import type { LandscapeData, OsmBounds } from '../landscape.types'
+
+// Edge coordinates of the OSM extract this map was generated from.
+// Game origin (0,0) corresponds to the centroid of this rectangle.
+// Use this for future map imports that need to align with these coordinates.
+export const OSM_BOUNDS: OsmBounds = {
+  minlat: 37.803418,
+  maxlat: 37.810157,
+  minlon: -122.479148,
+  maxlon: -122.466853,
+}
+
+export const OSM_SOURCE_FILE = 'public/maps/GoldenGate.osm'
 
 // Spawn point: (-202.4, -14.2)
 
 export const SPAWN_POINT: [number, number, number] = [-202.4, 3, -14.2]
 
 export const MAP_DATA: LandscapeData = {
+  mapId: 'golden_gate',
+  osmBounds: OSM_BOUNDS,
+  osmFile: OSM_SOURCE_FILE,
   // ─── Roads ───────────────────────────────────────────────────
   roads: [
     {

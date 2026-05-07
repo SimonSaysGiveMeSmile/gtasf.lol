@@ -97,13 +97,18 @@ function findCarSpawn(seed: number, roadPaths: typeof LANDSCAPE_CONFIG.roadPaths
 }
 
 // ── Body dimensions ────────────────────────────────────────────────────────
-const LEG_LEN = 0.5
-const TORSO_H = 0.65
+// Scale: 1 unit = 1 meter. Top of head = 1.83m (6 ft).
+// Breakdown: legs 0.87 + torso 0.58 + neck-to-head 0.20 + head radius 0.18 = 1.83
+const LEG_LEN = 0.87
+const TORSO_H = 0.58
 const TORSO_Y = LEG_LEN
 const NECK_Y = TORSO_Y + TORSO_H
-const HEAD_Y = NECK_Y + 0.18
+const HEAD_Y = NECK_Y + 0.20
+const HEAD_R = 0.18
 const SHOULDER_Y = TORSO_Y + TORSO_H * 0.85
-const ARM_LEN = 0.4
+const ARM_LEN = 0.55
+const LOWER_LEG_Y = LEG_LEN / 4
+const LOWER_LEG_LEN = LEG_LEN * 0.4
 
 // ── Shared body mesh ────────────────────────────────────────────────────────
 function BodyMesh({ shirt, pants, skin }: { shirt: string; pants: string; skin: string }) {
@@ -111,62 +116,62 @@ function BodyMesh({ shirt, pants, skin }: { shirt: string; pants: string; skin: 
     <group>
       {/* Torso */}
       <mesh position={[0, TORSO_Y + TORSO_H / 2, 0]}>
-        <boxGeometry args={[0.4, TORSO_H, 0.22]} />
+        <boxGeometry args={[0.48, TORSO_H, 0.26]} />
         <meshStandardMaterial color={shirt} roughness={0.8} />
       </mesh>
       {/* Neck */}
       <mesh position={[0, NECK_Y, 0]}>
-        <cylinderGeometry args={[0.05, 0.06, 0.1, 8]} />
+        <cylinderGeometry args={[0.06, 0.07, 0.12, 8]} />
         <meshStandardMaterial color={skin} roughness={0.8} />
       </mesh>
       {/* Head — simple smooth sphere */}
       <mesh position={[0, HEAD_Y, 0]}>
-        <sphereGeometry args={[0.15, 10, 10]} />
+        <sphereGeometry args={[HEAD_R, 10, 10]} />
         <meshStandardMaterial color={skin} roughness={0.8} />
       </mesh>
       {/* Arms */}
-      <mesh position={[-0.25, SHOULDER_Y, 0]}>
-        <capsuleGeometry args={[0.045, ARM_LEN * 0.6, 4, 8]} />
+      <mesh position={[-0.3, SHOULDER_Y, 0]}>
+        <capsuleGeometry args={[0.055, ARM_LEN * 0.6, 4, 8]} />
         <meshStandardMaterial color={shirt} roughness={0.8} />
       </mesh>
-      <mesh position={[0.25, SHOULDER_Y, 0]}>
-        <capsuleGeometry args={[0.045, ARM_LEN * 0.6, 4, 8]} />
+      <mesh position={[0.3, SHOULDER_Y, 0]}>
+        <capsuleGeometry args={[0.055, ARM_LEN * 0.6, 4, 8]} />
         <meshStandardMaterial color={shirt} roughness={0.8} />
       </mesh>
       {/* Hands */}
-      <mesh position={[-0.25, SHOULDER_Y - ARM_LEN - 0.1, 0]}>
-        <sphereGeometry args={[0.04, 8, 8]} />
+      <mesh position={[-0.3, SHOULDER_Y - ARM_LEN - 0.12, 0]}>
+        <sphereGeometry args={[0.05, 8, 8]} />
         <meshStandardMaterial color={skin} roughness={0.8} />
       </mesh>
-      <mesh position={[0.25, SHOULDER_Y - ARM_LEN - 0.1, 0]}>
-        <sphereGeometry args={[0.04, 8, 8]} />
+      <mesh position={[0.3, SHOULDER_Y - ARM_LEN - 0.12, 0]}>
+        <sphereGeometry args={[0.05, 8, 8]} />
         <meshStandardMaterial color={skin} roughness={0.8} />
       </mesh>
       {/* Legs */}
-      <mesh position={[-0.1, LEG_LEN / 2, 0]}>
-        <capsuleGeometry args={[0.065, LEG_LEN * 0.65, 4, 8]} />
+      <mesh position={[-0.13, LEG_LEN * 0.6, 0]}>
+        <capsuleGeometry args={[0.08, LEG_LEN * 0.55, 4, 8]} />
         <meshStandardMaterial color={pants} roughness={0.8} />
       </mesh>
-      <mesh position={[0.1, LEG_LEN / 2, 0]}>
-        <capsuleGeometry args={[0.065, LEG_LEN * 0.65, 4, 8]} />
+      <mesh position={[0.13, LEG_LEN * 0.6, 0]}>
+        <capsuleGeometry args={[0.08, LEG_LEN * 0.55, 4, 8]} />
         <meshStandardMaterial color={pants} roughness={0.8} />
       </mesh>
       {/* Lower legs */}
-      <mesh position={[-0.1, 0.12, 0]}>
-        <capsuleGeometry args={[0.045, 0.2, 4, 8]} />
+      <mesh position={[-0.13, LOWER_LEG_Y, 0]}>
+        <capsuleGeometry args={[0.055, LOWER_LEG_LEN, 4, 8]} />
         <meshStandardMaterial color={pants} roughness={0.8} />
       </mesh>
-      <mesh position={[0.1, 0.12, 0]}>
-        <capsuleGeometry args={[0.045, 0.2, 4, 8]} />
+      <mesh position={[0.13, LOWER_LEG_Y, 0]}>
+        <capsuleGeometry args={[0.055, LOWER_LEG_LEN, 4, 8]} />
         <meshStandardMaterial color={pants} roughness={0.8} />
       </mesh>
       {/* Shoes */}
-      <mesh position={[-0.1, 0.03, 0.05]}>
-        <boxGeometry args={[0.1, 0.06, 0.18]} />
+      <mesh position={[-0.13, 0.04, 0.06]}>
+        <boxGeometry args={[0.12, 0.07, 0.22]} />
         <meshStandardMaterial color="#111111" roughness={0.9} />
       </mesh>
-      <mesh position={[0.1, 0.03, 0.05]}>
-        <boxGeometry args={[0.1, 0.06, 0.18]} />
+      <mesh position={[0.13, 0.04, 0.06]}>
+        <boxGeometry args={[0.12, 0.07, 0.22]} />
         <meshStandardMaterial color="#111111" roughness={0.9} />
       </mesh>
     </group>
@@ -322,51 +327,51 @@ function PedestrianNPC({ x, z, color, shirt, pants, hair: _hair, seed, buildings
         {/* Core body parts */}
         <BodyMesh shirt={shirt} pants={pants} skin={color} />
         {/* Animated limbs — pivot at shoulder/hip joints */}
-        <group ref={leftArmRef} position={[-0.25, SHOULDER_Y, 0]}>
+        <group ref={leftArmRef} position={[-0.3, SHOULDER_Y, 0]}>
           <mesh position={[0, -ARM_LEN * 0.3, 0]}>
-            <capsuleGeometry args={[0.045, ARM_LEN * 0.6, 4, 8]} />
+            <capsuleGeometry args={[0.055, ARM_LEN * 0.6, 4, 8]} />
             <meshStandardMaterial color={shirt} roughness={0.8} />
           </mesh>
-          <mesh position={[0, -ARM_LEN - 0.1, 0]}>
-            <sphereGeometry args={[0.04, 8, 8]} />
+          <mesh position={[0, -ARM_LEN - 0.12, 0]}>
+            <sphereGeometry args={[0.05, 8, 8]} />
             <meshStandardMaterial color={color} roughness={0.8} />
           </mesh>
         </group>
-        <group ref={rightArmRef} position={[0.25, SHOULDER_Y, 0]}>
+        <group ref={rightArmRef} position={[0.3, SHOULDER_Y, 0]}>
           <mesh position={[0, -ARM_LEN * 0.3, 0]}>
-            <capsuleGeometry args={[0.045, ARM_LEN * 0.6, 4, 8]} />
+            <capsuleGeometry args={[0.055, ARM_LEN * 0.6, 4, 8]} />
             <meshStandardMaterial color={shirt} roughness={0.8} />
           </mesh>
-          <mesh position={[0, -ARM_LEN - 0.1, 0]}>
-            <sphereGeometry args={[0.04, 8, 8]} />
+          <mesh position={[0, -ARM_LEN - 0.12, 0]}>
+            <sphereGeometry args={[0.05, 8, 8]} />
             <meshStandardMaterial color={color} roughness={0.8} />
           </mesh>
         </group>
-        <group ref={leftLegRef} position={[-0.1, 0, 0]}>
+        <group ref={leftLegRef} position={[-0.13, 0, 0]}>
           <mesh position={[0, LEG_LEN * 0.35, 0]}>
-            <capsuleGeometry args={[0.065, LEG_LEN * 0.65, 4, 8]} />
+            <capsuleGeometry args={[0.08, LEG_LEN * 0.55, 4, 8]} />
             <meshStandardMaterial color={pants} roughness={0.8} />
           </mesh>
           <mesh position={[0, LEG_LEN + 0.12, 0]}>
-            <capsuleGeometry args={[0.045, 0.2, 4, 8]} />
+            <capsuleGeometry args={[0.055, LEG_LEN * 0.4, 4, 8]} />
             <meshStandardMaterial color={pants} roughness={0.8} />
           </mesh>
-          <mesh position={[0, LEG_LEN * 2 + 0.03, 0.05]}>
-            <boxGeometry args={[0.1, 0.06, 0.18]} />
+          <mesh position={[0, LEG_LEN * 2 + 0.04, 0.06]}>
+            <boxGeometry args={[0.12, 0.07, 0.22]} />
             <meshStandardMaterial color="#111111" roughness={0.9} />
           </mesh>
         </group>
-        <group ref={rightLegRef} position={[0.1, 0, 0]}>
+        <group ref={rightLegRef} position={[0.13, 0, 0]}>
           <mesh position={[0, LEG_LEN * 0.35, 0]}>
-            <capsuleGeometry args={[0.065, LEG_LEN * 0.65, 4, 8]} />
+            <capsuleGeometry args={[0.08, LEG_LEN * 0.55, 4, 8]} />
             <meshStandardMaterial color={pants} roughness={0.8} />
           </mesh>
           <mesh position={[0, LEG_LEN + 0.12, 0]}>
-            <capsuleGeometry args={[0.045, 0.2, 4, 8]} />
+            <capsuleGeometry args={[0.055, LEG_LEN * 0.4, 4, 8]} />
             <meshStandardMaterial color={pants} roughness={0.8} />
           </mesh>
-          <mesh position={[0, LEG_LEN * 2 + 0.03, 0.05]}>
-            <boxGeometry args={[0.1, 0.06, 0.18]} />
+          <mesh position={[0, LEG_LEN * 2 + 0.04, 0.06]}>
+            <boxGeometry args={[0.12, 0.07, 0.22]} />
             <meshStandardMaterial color="#111111" roughness={0.9} />
           </mesh>
         </group>

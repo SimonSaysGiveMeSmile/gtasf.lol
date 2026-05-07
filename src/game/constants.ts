@@ -161,7 +161,7 @@ export const PLAYER_CONFIG = {
   walkSpeed: 8,
   runSpeed: 16,
   jumpForce: 10,
-  height: 1.8,
+  height: 1.83,
   radius: 0.3,
   cameraDistance: 6,
   cameraHeight: 2.5,

@@ -51,7 +51,8 @@ export default function TouchControls() {
   const handleTouchMove = useCallback((e: TouchEvent<HTMLDivElement>) => {
     e.preventDefault()
     if (!joystick.current.active) return
-    const touch = e.touches[0]
+    const touch = e.targetTouches[0]
+    if (!touch) return
     const rect = joystickRef.current?.getBoundingClientRect()
     if (!rect) return
 
@@ -106,6 +107,7 @@ export default function TouchControls() {
       {/* Joystick base */}
       <div
         ref={joystickRef}
+        data-touch-control="joystick"
         style={{
           position: 'fixed',
           bottom: 60,
@@ -150,7 +152,7 @@ export default function TouchControls() {
       </div>
 
       {/* Right-side action buttons */}
-      <div style={{
+      <div data-touch-control="actions" style={{
         position: 'fixed',
         bottom: 60,
         right: 20,

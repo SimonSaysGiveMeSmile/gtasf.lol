@@ -267,18 +267,28 @@ function RailLayer({ caltransPaths }: { caltransPaths: { x: number; z: number; a
   const steelEmissive = isNight ? '#334455' : '#000000'
   const steelEmissiveInt = isNight ? 0.3 : 0
 
+  // Standard gauge: 1.435m between rails → ±0.72m from centerline
+  const RAIL_HALF_GAUGE = 0.72
+
   return (
     <>
-      {tracks.map((seg, i) => (
+      {tracks.map((seg, i) => {
+        const perpX = Math.cos(seg.angle)
+        const perpZ = -Math.sin(seg.angle)
+        const leftX = seg.x + perpX * RAIL_HALF_GAUGE
+        const leftZ = seg.z + perpZ * RAIL_HALF_GAUGE
+        const rightX = seg.x - perpX * RAIL_HALF_GAUGE
+        const rightZ = seg.z - perpZ * RAIL_HALF_GAUGE
+        return (
         <group key={i}>
           {/* Train bed / gravel */}
           <mesh position={[seg.x, 0.025, seg.z]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
-            <planeGeometry args={[6, 14]} />
+            <planeGeometry args={[2.5, 14]} />
             <meshStandardMaterial color="#555555" roughness={0.95} />
           </mesh>
           {/* Left rail */}
-          <mesh position={[seg.x, 0.065, seg.z]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
-            <planeGeometry args={[0.3, 14]} />
+          <mesh position={[leftX, 0.065, leftZ]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
+            <planeGeometry args={[0.08, 14]} />
             <meshStandardMaterial
               color={railColor}
               emissive={steelEmissive}
@@ -288,8 +298,8 @@ function RailLayer({ caltransPaths }: { caltransPaths: { x: number; z: number; a
             />
           </mesh>
           {/* Right rail */}
-          <mesh position={[seg.x, 0.065, seg.z]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
-            <planeGeometry args={[0.3, 14]} />
+          <mesh position={[rightX, 0.065, rightZ]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
+            <planeGeometry args={[0.08, 14]} />
             <meshStandardMaterial
               color={railColor}
               emissive={steelEmissive}
@@ -301,12 +311,12 @@ function RailLayer({ caltransPaths }: { caltransPaths: { x: number; z: number; a
           {/* Cross ties every other segment */}
           {i % 2 === 0 && (
             <mesh position={[seg.x, 0.04, seg.z]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
-              <planeGeometry args={[5.5, 0.3]} />
+              <planeGeometry args={[2.0, 0.2]} />
               <meshStandardMaterial color="#3a2a1a" roughness={0.95} />
             </mesh>
           )}
         </group>
-      ))}
+      )})}
     </>
   )
 }
@@ -440,7 +450,7 @@ function CrosswalksLayer({ crosswalks }: { crosswalks: { x: number; z: number; a
 function SidewalkSegment({ x, z, angle, len }: { x: number; z: number; angle: number; len: number }) {
   return (
     <mesh position={[x, 0.03, z]} rotation={[-Math.PI / 2, 0, -angle]}>
-      <planeGeometry args={[2, len]} />
+      <planeGeometry args={[3, len]} />
       <meshStandardMaterial color="#888888" roughness={0.95} />
     </mesh>
   )
