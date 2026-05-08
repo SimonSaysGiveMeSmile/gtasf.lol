@@ -435,7 +435,11 @@ def parse_osm(map_id, config):
         if best_dist < 400:
             crosswalks.append({'x': round(x, 1), 'z': round(z, 1), 'angle': best_angle, 'label': 'Crosswalk'})
 
-    # Traffic lights — from OSM highway=traffic_signals nodes
+    # Traffic lights — from OSM highway=traffic_signals nodes.
+    # The OSM node is the intersection point; we offset to the curb corner
+    # so the pole stands at the sidewalk edge rather than the middle of the
+    # asphalt. Also pulls the nearest road's width so the offset respects
+    # widened primary/secondary streets.
     trafficLights = []
     for n in root.findall('.//node'):
         tags = {tag.get('k'): tag.get('v') for tag in n.findall('tag')}
@@ -447,14 +451,24 @@ def parse_osm(map_id, config):
         x, z = latlon_to_game(lat, lon, bounds)
         best_angle = 0
         best_dist = float('inf')
-        for path in road_paths:
+        best_width = 10
+        for ri, path in enumerate(road_paths):
             for pt in path:
                 d = (pt['x'] - x)**2 + (pt['z'] - z)**2
                 if d < best_dist:
                     best_dist = d
                     best_angle = pt['angle']
+                    best_width = roads[ri]['width'] if ri < len(roads) else 10
         if best_dist < 400:
-            trafficLights.append({'x': round(x, 1), 'z': round(z, 1), 'angle': round(best_angle, 3), 'label': 'Traffic light'})
+            offset = best_width / 2 + 2
+            perp_x = math.cos(best_angle)
+            perp_z = -math.sin(best_angle)
+            tl_x = x + perp_x * offset
+            tl_z = z + perp_z * offset
+            trafficLights.append({
+                'x': round(tl_x, 1), 'z': round(tl_z, 1),
+                'angle': round(best_angle, 3), 'label': 'Traffic light',
+            })
 
     # Street lamps — offset to roadside using correct perpendicular
     streetLamps = []

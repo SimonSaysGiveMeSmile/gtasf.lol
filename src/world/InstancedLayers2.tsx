@@ -174,7 +174,7 @@ export function InstancedTrafficLights({ lights }: { lights: TrafficLightData[] 
 }
 
 // ── Sidewalks ───────────────────────────────────────────────────────────
-// Each sidewalk is a plane of width 2 × length `len`. Unit-plane scaled.
+// Each sidewalk is a plane of width 3m × length `len`. Unit-plane scaled.
 export function InstancedSidewalks({ sidewalks }: { sidewalks: SidewalkData[] }) {
   const n = sidewalks.length
   const ref = useRef<THREE.InstancedMesh>(null)
@@ -184,7 +184,7 @@ export function InstancedSidewalks({ sidewalks }: { sidewalks: SidewalkData[] })
     if (!mesh) return
     for (let i = 0; i < n; i++) {
       const s = sidewalks[i]
-      compose(_m, s.x, 0.03, s.z, -Math.PI / 2, 0, -s.angle, 2, s.len, 1)
+      compose(_m, s.x, 0.03, s.z, -Math.PI / 2, 0, -s.angle, 3, s.len, 1)
       mesh.setMatrixAt(i, _m)
     }
     mesh.count = n
@@ -202,12 +202,15 @@ export function InstancedSidewalks({ sidewalks }: { sidewalks: SidewalkData[] })
 }
 
 // ── Crosswalks ──────────────────────────────────────────────────────────
-// Each crosswalk = 5 stripes. Flatten to one InstancedMesh of N×5 instances.
+// Each crosswalk = 6 stripes. Flatten to one InstancedMesh of N×6 instances.
+// Stripes are sized to span the widest roads (~18m) without being obviously
+// too short on narrower streets — overpainting a few extra meters onto the
+// sidewalk reads as normal curb-extension at a glance.
 export function InstancedCrosswalks({ crosswalks }: { crosswalks: CrosswalkData[] }) {
-  const STRIPES = 5
-  const STRIPE_W = 0.4
-  const STRIPE_L = 8
-  const STRIDE = STRIPE_W + 0.3
+  const STRIPES = 6
+  const STRIPE_W = 0.45
+  const STRIPE_L = 16
+  const STRIDE = STRIPE_W + 0.35
   const n = crosswalks.length
   const total = n * STRIPES
   const ref = useRef<THREE.InstancedMesh>(null)

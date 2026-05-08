@@ -8175,7 +8175,7 @@ export const MAP_DATA: LandscapeData = {
   ],
 
   trafficLights: [
-  { x: 104.5, z: -259.5, angle: -1.155, label: 'Traffic light' },
+  { x: 107.1, z: -253.6, angle: -1.155, label: 'Traffic light' },
   ],
   busStops: [],
   parkingLots: [],
