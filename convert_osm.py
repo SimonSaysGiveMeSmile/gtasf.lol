@@ -160,6 +160,78 @@ def nearest_road_angle(x, z, road_paths):
     return best_angle
 
 
+def chain_ways_into_rings(ways):
+    """Chain a list of ways into ordered closed rings by matching endpoints.
+
+    OSM multipolygon `outer` members are frequently split across multiple
+    `<way>` records — each covers part of the perimeter, sharing endpoints
+    with its neighbours. Treating each way as its own closed polygon
+    produces invalid shapes: the collider closes the arc with a straight
+    phantom edge, which in-game manifests as an invisible wall spanning
+    open space (often the street).
+
+    Input: list of [(lat, lon), ...] way node-lists.
+    Output: list of rings, each a closed [(lat, lon), ...] loop.
+    Ways that cannot be closed are dropped — a better bias toward missing
+    a few buildings than painting airwalls across streets.
+    """
+    EPS = 1e-7  # ~1cm at SF latitude — enough to match shared endpoints
+    # Already-closed ways are emitted as-is.
+    rings = []
+    open_ways = []
+    for w in ways:
+        if len(w) < 2:
+            continue
+        first, last = w[0], w[-1]
+        if abs(first[0] - last[0]) < EPS and abs(first[1] - last[1]) < EPS:
+            rings.append(list(w))
+        else:
+            open_ways.append(list(w))
+
+    while open_ways:
+        chain = open_ways.pop(0)
+        made_progress = True
+        while made_progress:
+            made_progress = False
+            head = chain[0]
+            tail = chain[-1]
+            # Closed now?
+            if abs(head[0] - tail[0]) < EPS and abs(head[1] - tail[1]) < EPS:
+                break
+            for i, w in enumerate(open_ways):
+                wf, wl = w[0], w[-1]
+                # Append: tail of chain == head of w
+                if abs(tail[0] - wf[0]) < EPS and abs(tail[1] - wf[1]) < EPS:
+                    chain.extend(w[1:])
+                    open_ways.pop(i)
+                    made_progress = True
+                    break
+                # Append reversed: tail of chain == tail of w
+                if abs(tail[0] - wl[0]) < EPS and abs(tail[1] - wl[1]) < EPS:
+                    chain.extend(reversed(w[:-1]))
+                    open_ways.pop(i)
+                    made_progress = True
+                    break
+                # Prepend: head of chain == tail of w
+                if abs(head[0] - wl[0]) < EPS and abs(head[1] - wl[1]) < EPS:
+                    chain = list(w) + chain[1:]
+                    open_ways.pop(i)
+                    made_progress = True
+                    break
+                # Prepend reversed: head of chain == head of w
+                if abs(head[0] - wf[0]) < EPS and abs(head[1] - wf[1]) < EPS:
+                    chain = list(reversed(w)) + chain[1:]
+                    open_ways.pop(i)
+                    made_progress = True
+                    break
+        # Only keep the chain if it actually closed.
+        if len(chain) >= 4:
+            h, t = chain[0], chain[-1]
+            if abs(h[0] - t[0]) < EPS and abs(h[1] - t[1]) < EPS:
+                rings.append(chain)
+    return rings
+
+
 def parse_osm(map_id, config):
     osm_path = config['file']
     print(f"\n{'='*60}")
@@ -286,6 +358,12 @@ def parse_osm(map_id, config):
                 way_nodes.append(nodes[ref])
         if len(way_nodes) < 3:
             continue
+        # Require explicit closure: first node == last node. OSM building
+        # ways are closed by convention (the last <nd ref> repeats the
+        # first); anything else is an incomplete outline that would
+        # produce a phantom wall when the collider closes it for us.
+        if way_nodes[0] != way_nodes[-1]:
+            continue
         if not way_centroid_in_bounds(way_nodes, bounds):
             continue
         area = polygon_area(way_nodes, bounds)
@@ -310,25 +388,33 @@ def parse_osm(map_id, config):
         })
 
     # Parse buildings from relations (multipolygons).
-    # Each outer ring becomes its OWN building record so the extruded mesh and
-    # collider polygon are both valid. Concatenating all outer rings into one
-    # footprint was producing self-intersecting polygons whose AABB swallowed
-    # streets between real buildings — which manifested in-game as invisible
-    # walls on the road.
+    # Outer members are frequently split across several <way> records that
+    # share endpoints — those have to be chained endpoint-to-endpoint into
+    # closed rings before we can treat them as a polygon. Emitting each
+    # arc as its own building was the original airwall bug: the collider
+    # closed each arc with a straight phantom edge that often cut across
+    # streets or courtyards.
     for rel in root.findall('.//relation'):
         tags = {tag.get('k'): tag.get('v') for tag in rel.findall('tag')}
         if not (tags.get('building') or tags.get('building:levels')):
             continue
         h = parse_building_height(tags)
         label = tags.get('name', None)
+
+        outer_ways = []
         for member in rel.findall('member'):
             if member.get('type') != 'way':
                 continue
             if member.get('role') not in ('outer', ''):
                 continue
             wid = member.get('ref')
-            way_nodes = way_nodes_index.get(wid)
-            if not way_nodes or len(way_nodes) < 3:
+            w_nodes = way_nodes_index.get(wid)
+            if w_nodes and len(w_nodes) >= 2:
+                outer_ways.append(w_nodes)
+
+        rings = chain_ways_into_rings(outer_ways)
+        for way_nodes in rings:
+            if len(way_nodes) < 4:
                 continue
             if not way_centroid_in_bounds(way_nodes, bounds):
                 continue
