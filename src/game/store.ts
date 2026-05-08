@@ -211,7 +211,20 @@ export const useGameStore = create<GameState>((set, get) => ({
   setMasterVolume: (v) => set({ masterVolume: v }),
   setSfxVolume: (v) => set({ sfxVolume: v }),
   setAmbientVolume: (v) => set({ ambientVolume: v }),
-  setCurrentMapName: (name) => set({ currentMapName: name }),
+  setCurrentMapName: (name) => {
+    // Also teleport the player to the new map's spawn so they don't end up
+    // inside a building or in mid-air from the previous map's coordinates.
+    const spawn = SPAWN_POINTS[name] || [0, 3, 0]
+    set({
+      currentMapName: name,
+      playerPosition: spawn,
+      playerMode: 'onfoot',
+      inVehicle: null,
+      currentVehicleType: null,
+      npcs: [],
+      activeVehicles: [],
+    })
+  },
   setGodMode: (v) => set({ godMode: v }),
 
   switchMap: (mapId, spawnPos) => {

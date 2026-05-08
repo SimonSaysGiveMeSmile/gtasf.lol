@@ -6,6 +6,7 @@ import type { CityId } from '../game/types'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
 import type { PathPoint } from '../game/landscape.types'
 import { useLandscapeData } from '../game/LandscapeContext'
+import { AVAILABLE_MAPS } from '../game/loadMapData'
 import './HUD.css' // @jt886
 
 const RANGE = 100
@@ -439,9 +440,9 @@ const setPlayerFaceTexture = useGameStore((s) => s.setPlayerFaceTexture)
                       onChange={(e) => setCurrentMapName(e.target.value)}
                       className="settings-select"
                     >
-                      <option value="procedural">Procedural City</option>
-                      <option value="test_map">Test Map</option>
-          <option value="golden_gate">Golden Gate / Presidio</option>
+                      {AVAILABLE_MAPS.map((m) => (
+                        <option key={m.id} value={m.id}>{m.label}</option>
+                      ))}
                     </select>
                   </div>
                   <div className="settings-section">
