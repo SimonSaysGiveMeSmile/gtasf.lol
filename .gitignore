@@ -30,3 +30,7 @@ dist-ssr
 # Local agent / editor tooling
 .agents/
 .claude/
+
+# Large uploaded source archives — we ship the processed outputs under
+# public/models/ instead (e.g. SanFrancisco_City.glb at 12 MB).
+public/maps/uploads_files_*.zip

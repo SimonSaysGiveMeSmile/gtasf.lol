@@ -116,6 +116,17 @@ export interface OsmBounds {
   maxlon: number
 }
 
+// Static-mesh city model — e.g. a detailed downtown OBJ/GLB export.
+// When present, World renders this in place of the OSM-extruded buildings
+// and builds the collider from the real mesh geometry via BVH.
+export interface ObjModelRef {
+  url: string        // absolute path under /public/
+  scale: number      // multiplier so 1 game unit = 1 meter after scaling
+  offsetX: number    // world-space translation applied after scale
+  offsetY: number
+  offsetZ: number
+}
+
 // Full landscape data bundle — returned by loadLandscapeData()
 export interface LandscapeData {
   roads: RoadData[]
@@ -137,4 +148,7 @@ export interface LandscapeData {
   osmBounds?: OsmBounds
   osmFile?: string
   mapId?: string
+  // Detailed static city model. When present, the OSM building array should
+  // typically be empty; colliders are derived from the mesh via BVH.
+  objModel?: ObjModelRef
 }

@@ -10,7 +10,7 @@ import { LANDSCAPE_CONFIG } from '../game/landscape'
 import { useLandscapeData } from '../game/LandscapeContext'
 import type { LandscapeData } from '../game/landscape.types'
 import { vehiclePositions, vehicleRadius, OBSTACLE_RADIUS } from '../game/vehicleState'
-import { getNearbyBuildingsGrid, circleHitsBuilding } from '../world/World'
+import { getNearbyBuildingsGrid, circleHitsBuilding, meshColliderHitsCircle } from '../world/World'
 import { VehicleAdWrap } from '../systems/billboards/VehicleAdWraps'
 import CaltrainAdWrap from '../systems/billboards/CaltrainAdWrap'
 
@@ -42,6 +42,7 @@ function isClearOfBuildings(x: number, z: number, r: number): boolean {
   for (const i of nearby) {
     if (circleHitsBuilding(i, x, z, r + 2, buildings)) return false
   }
+  if (meshColliderHitsCircle(x, z, r + 2)) return false
   return true
 }
 
@@ -80,6 +81,7 @@ function checkBuildingCollision(px: number, pz: number, r: number) {
       return { hit: true }
     }
   }
+  if (meshColliderHitsCircle(px, pz, r)) return { hit: true }
   return { hit: false }
 }
 

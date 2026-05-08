@@ -5,7 +5,7 @@ import { useKeyboardControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '../game/store'
 import { PLAYER_CONFIG, MAP_SIZE } from '../game/constants'
-import { getNearbyBuildingsGrid, collideCircleWithBuilding } from '../world/World'
+import { getNearbyBuildingsGrid, collideCircleWithBuilding, meshColliderPushOutCircle } from '../world/World'
 import { useLandscapeData } from '../game/LandscapeContext'
 import { soundManager } from '../systems/audio/SoundManager'
 // @simonsaysgivemesmile
@@ -337,6 +337,18 @@ export default function Player() {
         // Kill the velocity component driving us into the wall so the next
         // step slides along the surface instead of pressing harder into it.
         if (Math.abs(push.pushX) > Math.abs(push.pushZ)) {
+          velocity.current.x = 0
+        } else {
+          velocity.current.z = 0
+        }
+      }
+
+      // Static-mesh (GLB) collider, if the current map has one.
+      const meshPush = meshColliderPushOutCircle(cx, cz, r)
+      if (meshPush) {
+        cx += meshPush.pushX
+        cz += meshPush.pushZ
+        if (Math.abs(meshPush.pushX) > Math.abs(meshPush.pushZ)) {
           velocity.current.x = 0
         } else {
           velocity.current.z = 0

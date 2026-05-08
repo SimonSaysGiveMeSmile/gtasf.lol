@@ -1,13 +1,14 @@
 // @simonsaysgivemesmile
-import { useMemo, useRef, useLayoutEffect } from 'react'
-import { Sky } from '@react-three/drei'
+import { useMemo, useRef, useLayoutEffect, useEffect } from 'react'
+import { Sky, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { mergeBufferGeometries } from 'three-stdlib'
+import { MeshBVH } from 'three-mesh-bvh'
 import { useGameStore } from '../game/store'
 import { MAP_SIZE } from '../game/constants'
 import { default as BillboardLayer } from '../systems/billboards/BillboardLayer'
 import { useLandscapeData } from '../game/LandscapeContext'
-import type { BuildingData } from '../game/landscape.types'
+import type { BuildingData, ObjModelRef } from '../game/landscape.types'
 import { InstancedBuildings, InstancedTrees } from './InstancedLayers'
 import {
   InstancedLamps,
@@ -231,6 +232,79 @@ export function circleHitsBuilding(
 // Expose spatial grid getter for use in collision checks
 let _spatialGrid: SpatialGrid | null = null
 
+// ─── BVH Collider (for static-mesh city models) ───────────────────────────────
+// When a map ships with a detailed GLB (e.g. sf_obj), buildings is empty and
+// colliders come from a MeshBVH built over the loaded geometry instead.
+// Player/NPC/Vehicle circle checks consult this BVH alongside the spatial grid.
+interface MeshCollider {
+  bvh: MeshBVH
+  worldMatrix: THREE.Matrix4
+  inverseMatrix: THREE.Matrix4
+  yMin: number  // world-space bounds of the collider — cheap early-out
+  yMax: number
+}
+
+let _meshCollider: MeshCollider | null = null
+
+export function setMeshCollider(mc: MeshCollider | null) {
+  _meshCollider = mc
+}
+
+// Scratch objects reused between calls to avoid GC churn in the hot collision loop.
+const _scratchBox = new THREE.Box3()
+const _scratchMin = new THREE.Vector3()
+const _scratchMax = new THREE.Vector3()
+const _scratchPoint = new THREE.Vector3()
+const _scratchTarget = new THREE.Vector3()
+const _scratchLocal = new THREE.Vector3()
+const _scratchWorld = new THREE.Vector3()
+
+// Typical player/vehicle center heights we want to collide at. We test a
+// short vertical pillar instead of a 2D circle so the BVH only considers
+// triangles at body height (most of the mesh is ground or rooftop, which
+// shouldn't block horizontal movement).
+const BVH_CHECK_Y_LO = 0.2
+const BVH_CHECK_Y_HI = 2.5
+
+export function meshColliderHitsCircle(px: number, pz: number, r: number): boolean {
+  if (!_meshCollider) return false
+  const mc = _meshCollider
+  // Box covering the circle × player-height span in world space.
+  _scratchMin.set(px - r, BVH_CHECK_Y_LO, pz - r)
+  _scratchMax.set(px + r, BVH_CHECK_Y_HI, pz + r)
+  _scratchBox.set(_scratchMin, _scratchMax)
+  // Transform into the collider's local space.
+  _scratchBox.applyMatrix4(mc.inverseMatrix)
+  return mc.bvh.intersectsBox(_scratchBox, mc.inverseMatrix)
+}
+
+export function meshColliderPushOutCircle(
+  px: number,
+  pz: number,
+  r: number,
+): BuildingPushOut | null {
+  if (!_meshCollider) return null
+  const mc = _meshCollider
+  // Early reject via box test so we skip the (slightly) pricier closest-point
+  // search when the player isn't near anything.
+  if (!meshColliderHitsCircle(px, pz, r)) return null
+  // Work at body height; query in the collider's local space.
+  _scratchWorld.set(px, (BVH_CHECK_Y_LO + BVH_CHECK_Y_HI) / 2, pz)
+  _scratchLocal.copy(_scratchWorld).applyMatrix4(mc.inverseMatrix)
+  const hit = mc.bvh.closestPointToPoint(_scratchLocal, { point: _scratchPoint, distance: 0, faceIndex: -1 })
+  if (!hit) return null
+  // Back to world space.
+  _scratchTarget.copy(_scratchPoint).applyMatrix4(mc.worldMatrix)
+  const dx = px - _scratchTarget.x
+  const dz = pz - _scratchTarget.z
+  const distSq = dx * dx + dz * dz
+  if (distSq >= r * r) return null
+  const dist = Math.sqrt(distSq)
+  const overlap = r - dist
+  const d = dist > 1e-5 ? dist : 1
+  return { pushX: (dx / d) * overlap, pushZ: (dz / d) * overlap }
+}
+
 // ─── Building ─────────────────────────────────────────────────────────────────
 // (Moved to InstancedLayers.tsx — per-mesh Building/Tree components removed.)
 
@@ -441,6 +515,71 @@ function Ground({ water }: { water: { x: number; z: number; width: number; heigh
   )
 }
 
+// ─── OBJ / GLB City Model ─────────────────────────────────────────────────────
+// Loads a pre-converted GLB and builds a MeshBVH from its merged geometry so
+// the player can collide against real building walls instead of OSM polygon
+// extrusions. Typical use: a detailed SF city scan (public/models/sf_obj).
+function ObjCityModel({ model }: { model: ObjModelRef }) {
+  const gltf = useGLTF(model.url)
+  const groupRef = useRef<THREE.Group>(null)
+
+  // Build BVH + register collider once geometry is available. The BVH tree
+  // takes ~1–2s to build for ~463k tris, which is fine at map-load time;
+  // we cache it per URL so returning to the map doesn't rebuild.
+  useEffect(() => {
+    if (!gltf || !groupRef.current) return
+    const group = groupRef.current
+
+    const geos: THREE.BufferGeometry[] = []
+    gltf.scene.traverse((obj) => {
+      const m = obj as THREE.Mesh
+      if (m.isMesh && m.geometry) {
+        // Clone so we can strip mismatched attributes without mutating the
+        // shared gltf cache (re-entries would blow up otherwise).
+        const g = m.geometry.clone()
+        // Keep only position — merge is strict on attribute presence.
+        const pos = g.getAttribute('position')
+        if (!pos) return
+        const stripped = new THREE.BufferGeometry()
+        stripped.setAttribute('position', pos.clone())
+        if (g.index) stripped.setIndex(g.index.clone())
+        geos.push(stripped)
+      }
+    })
+    if (geos.length === 0) return
+
+    const merged = mergeBufferGeometries(geos, false)
+    for (const g of geos) g.dispose()
+    if (!merged) return
+
+    const bvh = new MeshBVH(merged)
+    group.updateMatrixWorld(true)
+    const worldMatrix = group.matrixWorld.clone()
+    const inverseMatrix = new THREE.Matrix4().copy(worldMatrix).invert()
+    // Cheap world-space y bounds from the merged geometry's bounding box.
+    merged.computeBoundingBox()
+    const bb = merged.boundingBox || new THREE.Box3()
+    const yMin = bb.min.y * model.scale + model.offsetY
+    const yMax = bb.max.y * model.scale + model.offsetY
+
+    setMeshCollider({ bvh, worldMatrix, inverseMatrix, yMin, yMax })
+    return () => {
+      setMeshCollider(null)
+      merged.dispose()
+    }
+  }, [gltf, model.url, model.scale, model.offsetY])
+
+  return (
+    <group
+      ref={groupRef}
+      position={[model.offsetX, model.offsetY, model.offsetZ]}
+      scale={model.scale}
+    >
+      <primitive object={gltf.scene} />
+    </group>
+  )
+}
+
 // ─── Main World ───────────────────────────────────────────────────────────────
 export default function World() {
   const data = useLandscapeData()
@@ -473,6 +612,7 @@ export default function World() {
       <RoadLayer roadPaths={data.roadPaths} roads={data.roads} />
       <RailLayer caltransPaths={data.caltransPaths} />
       <InstancedBuildings buildings={data.buildings} />
+      {data.objModel && <ObjCityModel model={data.objModel} />}
       <InstancedTrees trees={data.trees} />
       <InstancedLamps lamps={data.streetLamps} />
       <InstancedSidewalks sidewalks={data.sidewalks} />

@@ -8,7 +8,7 @@ import type { NPC } from '../game/types'
 import { NPC_COLORS, MAP_SIZE } from '../game/constants'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
 import { vehiclePositions } from '../game/vehicleState'
-import { getNearbyBuildingsGrid, collideCircleWithBuilding, circleHitsBuilding } from '../world/World'
+import { getNearbyBuildingsGrid, collideCircleWithBuilding, circleHitsBuilding, meshColliderPushOutCircle, meshColliderHitsCircle } from '../world/World'
 import { VehicleMesh } from '../vehicles/Vehicle'
 import { useLandscapeData } from '../game/LandscapeContext'
 // @simonsaysgivemesmile
@@ -239,6 +239,12 @@ function PedestrianNPC({ x, z, color, shirt, pants, hair: _hair, seed, buildings
         pos.current.x += push.pushX
         pos.current.z += push.pushZ
       }
+      // Static-mesh (GLB) collider fallback.
+      const meshPush = meshColliderPushOutCircle(pos.current.x, pos.current.z, pR)
+      if (meshPush) {
+        pos.current.x += meshPush.pushX
+        pos.current.z += meshPush.pushZ
+      }
 
       // Tree collision for pedestrians
       const tR = 0.25
@@ -409,6 +415,9 @@ function TrafficCar({ x, z, rotation, color, id, buildings }: { x: number; z: nu
         blocked = true
         break
       }
+    }
+    if (!blocked && meshColliderHitsCircle(nx, nz, tcR)) {
+      blocked = true
     }
 
     // Vehicle-vehicle collision — push traffic cars away from other vehicles
