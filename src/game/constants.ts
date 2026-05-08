@@ -175,7 +175,7 @@ export const NPC_COUNT = 120
 export const TRAFFIC_COUNT = 60
 export const VEHICLE_COUNT = 80
 export const SCOOTER_COUNT = 30
-export const PLANE_COUNT = 4
+export const PLANE_COUNT = 14
 export const BOAT_COUNT = 6
 
 export const NPC_COLORS = [

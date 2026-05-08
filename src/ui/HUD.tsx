@@ -1,7 +1,7 @@
 // @jt886
 import { useState, useMemo } from 'react'
 import { useGameStore } from '../game/store'
-import { CITIES, VEHICLES } from '../game/constants'
+import { CITIES, VEHICLES, MAP_SIZE } from '../game/constants'
 import type { CityId } from '../game/types'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
 import type { PathPoint } from '../game/landscape.types'
@@ -13,6 +13,22 @@ const SIZE = 180
 const CENTER = SIZE / 2
 const MAP_SCALE = (SIZE / 2) / RANGE
 const HALF_SIZE = SIZE / 2
+
+// Named points of interest — stable reference points the player can orient by.
+// Positions are world-space (meters). Kept here rather than in landscape so they
+// don't leak into 3D world rendering.
+type POI = { x: number; z: number; name: string; kind: 'district' | 'landmark' | 'safehouse' }
+const POIS: POI[] = [
+  { x: 0, z: 0, name: 'Downtown', kind: 'district' },
+  { x: -MAP_SIZE * 0.35, z: -MAP_SIZE * 0.2, name: 'Marina', kind: 'district' },
+  { x: MAP_SIZE * 0.3, z: -MAP_SIZE * 0.35, name: 'Airport', kind: 'landmark' },
+  { x: MAP_SIZE * 0.35, z: MAP_SIZE * 0.3, name: 'Stadium', kind: 'landmark' },
+  { x: -MAP_SIZE * 0.2, z: MAP_SIZE * 0.38, name: 'Docks', kind: 'landmark' },
+  { x: MAP_SIZE * 0.15, z: -MAP_SIZE * 0.25, name: 'Civic Center', kind: 'district' },
+  { x: -MAP_SIZE * 0.3, z: MAP_SIZE * 0.15, name: 'Mission', kind: 'district' },
+  { x: MAP_SIZE * 0.25, z: MAP_SIZE * 0.05, name: 'Industrial', kind: 'district' },
+  { x: 10, z: 10, name: 'Safehouse', kind: 'safehouse' },
+]
 
 interface MinimapProps {
   playerPosition: [number, number, number]
@@ -101,7 +117,8 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
     [playerPosition[0], playerPosition[2]] // eslint-disable-line react-hooks/exhaustive-deps
   )
 
-  // Buildings — filter + render
+  // Buildings — filter + render. Larger footprints render darker so downtown
+  // blocks stand out from residential.
   const visibleBuildings = useMemo(() => {
     const bx = playerRelX
     const bz = playerRelZ
@@ -109,6 +126,8 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
       const sx = b.rx - bx
       const sy = b.ry - bz
       if (Math.abs(sx) > HALF_SIZE || Math.abs(sy) > HALF_SIZE) return null
+      const area = b.w * b.h
+      const big = area > 12
       return (
         <rect
           key={`bld-${i}`}
@@ -116,13 +135,13 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
           y={sy - b.h / 2}
           width={b.w}
           height={b.h}
-          fill="rgba(0, 113, 227, 0.12)"
-          stroke="rgba(0, 113, 227, 0.2)"
-          strokeWidth={0.3}
+          fill={big ? 'rgba(0, 113, 227, 0.45)' : 'rgba(0, 113, 227, 0.28)'}
+          stroke="rgba(0, 113, 227, 0.55)"
+          strokeWidth={0.4}
         />
       )
     })
-  }, [playerRelX, playerRelZ])
+  }, [playerRelX, playerRelZ, relativeBuildings])
 
   // Trees — filter + render
   const visibleTrees = useMemo(() => {
@@ -160,6 +179,51 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
     })
   }, [npcs, playerRelX, playerRelZ])
 
+  // Bus stops — small cyan dots; useful for navigation
+  const visibleBusStops = useMemo(() => {
+    return landscapeData.busStops.map((stop, i) => {
+      const sx = stop.x * MAP_SCALE - playerRelX
+      const sy = stop.z * MAP_SCALE - playerRelZ
+      if (Math.abs(sx) > HALF_SIZE || Math.abs(sy) > HALF_SIZE) return null
+      return <circle key={`bus-${i}`} cx={sx} cy={sy} r={1.3} fill="rgba(100,220,255,0.9)" stroke="rgba(30,60,90,0.9)" strokeWidth={0.3} />
+    })
+  }, [landscapeData.busStops, playerRelX, playerRelZ])
+
+  // POIs — diamond markers + counter-rotated label so text stays upright
+  const visiblePois = useMemo(() => {
+    return POIS.map((poi, i) => {
+      const sx = poi.x * MAP_SCALE - playerRelX
+      const sy = poi.z * MAP_SCALE - playerRelZ
+      if (Math.abs(sx) > HALF_SIZE || Math.abs(sy) > HALF_SIZE) return null
+      const color = poi.kind === 'landmark' ? '#ffd84a' : poi.kind === 'safehouse' ? '#7cff7c' : '#ff7ac0'
+      return (
+        <g key={`poi-${i}`}>
+          <polygon
+            points={`${sx},${sy - 4} ${sx + 4},${sy} ${sx},${sy + 4} ${sx - 4},${sy}`}
+            fill={color}
+            stroke="rgba(0,0,0,0.8)"
+            strokeWidth={0.5}
+          />
+          <g transform={`rotate(${-(rotationDeg + 180)} ${sx} ${sy})`}>
+            <text
+              x={sx}
+              y={sy - 6}
+              textAnchor="middle"
+              fontSize={7}
+              fontFamily="var(--font-ui)"
+              fill="#fff"
+              stroke="rgba(0,0,0,0.9)"
+              strokeWidth={0.6}
+              paintOrder="stroke"
+            >
+              {poi.name}
+            </text>
+          </g>
+        </g>
+      )
+    })
+  }, [playerRelX, playerRelZ, rotationDeg])
+
   // Water
   const waterX = CENTER + waterRelX - playerRelX - waterW / 2
   const waterY = CENTER + waterRelZ - playerRelZ - waterH / 2
@@ -175,11 +239,26 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
         <line x1={CENTER} y1={0} x2={CENTER} y2={SIZE} stroke="var(--minimap-stroke)" strokeWidth={0.3} />
         <line x1={0} y1={CENTER} x2={SIZE} y2={CENTER} stroke="var(--minimap-stroke)" strokeWidth={0.3} />
 
-        {/* Roads */}
-        {roadPolylines.map((pts, pi) => pts ? <polyline key={`road-${pi}`} points={pts} fill="none" stroke="rgba(100,100,120,0.7)" strokeWidth={1.2} strokeLinejoin="round" strokeLinecap="round" /> : null)}
+        {/* Roads — wider highways render as thicker strokes so they read from a glance */}
+        {roadPolylines.map((pts, pi) => {
+          if (!pts) return null
+          const w = landscapeData.roads[pi]?.width ?? 10
+          const highway = w >= 14
+          return (
+            <polyline
+              key={`road-${pi}`}
+              points={pts}
+              fill="none"
+              stroke={highway ? 'rgba(230,200,90,0.85)' : 'rgba(190,190,210,0.7)'}
+              strokeWidth={highway ? 2 : 1.2}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          )
+        })}
 
         {/* Caltrain rail tracks */}
-        {railPolylines.map((pts, pi) => pts ? <polyline key={`rail-${pi}`} points={pts} fill="none" stroke="rgba(255,140,0,0.8)" strokeWidth={1.0} strokeLinejoin="round" strokeLinecap="round" /> : null)}
+        {railPolylines.map((pts, pi) => pts ? <polyline key={`rail-${pi}`} points={pts} fill="none" stroke="rgba(255,140,0,0.8)" strokeWidth={1.0} strokeDasharray="3 2" strokeLinejoin="round" strokeLinecap="round" /> : null)}
 
         {/* Trees */}
         {visibleTrees}
@@ -187,8 +266,8 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
         {/* Street lamps */}
         {visibleLamps}
 
-        {/* Water body */}
-        <rect x={waterX} y={waterY} width={waterW} height={waterH} fill="rgba(0,100,200,0.2)" stroke="rgba(0,150,255,0.3)" strokeWidth={0.5} />
+        {/* Water body — stronger fill so the coastline is legible */}
+        <rect x={waterX} y={waterY} width={waterW} height={waterH} fill="rgba(10,100,200,0.55)" stroke="rgba(120,200,255,0.7)" strokeWidth={0.6} />
 
         {/* Buildings */}
         {visibleBuildings}
@@ -202,6 +281,12 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
 
         {/* NPCs */}
         {visibleNpcs}
+
+        {/* Bus stops */}
+        {visibleBusStops}
+
+        {/* Points of interest — rendered last so markers and labels sit on top */}
+        {visiblePois}
       </svg>
       <div className="minimap-scale">
         <span>100m</span>
