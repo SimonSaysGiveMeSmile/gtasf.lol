@@ -146,6 +146,20 @@ def parse_building_height(tags):
     return 14.0
 
 
+def nearest_road_angle(x, z, road_paths):
+    """Return the angle of the nearest road-path point to (x, z).
+    Used to face curb-side props (bus stops, benches) toward the street."""
+    best_angle = 0.0
+    best_dist = float('inf')
+    for path in road_paths:
+        for pt in path:
+            d = (pt['x'] - x) ** 2 + (pt['z'] - z) ** 2
+            if d < best_dist:
+                best_dist = d
+                best_angle = pt['angle']
+    return best_angle
+
+
 def parse_osm(map_id, config):
     osm_path = config['file']
     print(f"\n{'='*60}")
@@ -510,6 +524,93 @@ def parse_osm(map_id, config):
             trees.append({'x': round(tx, 1), 'z': round(tz, 1), 'label': f'Tree #{tree_id+1}'})
             tree_id += 1
 
+    # Also collect individual tagged street trees (natural=tree nodes).
+    # These are offset from the main road by OSM mappers and usually sit on
+    # the sidewalk, so they're great filler in residential blocks.
+    for n in root.findall('.//node'):
+        tags = {tag.get('k'): tag.get('v') for tag in n.findall('tag')}
+        if tags.get('natural') != 'tree':
+            continue
+        lat, lon = float(n.get('lat')), float(n.get('lon'))
+        if not (bounds['minlat'] <= lat <= bounds['maxlat'] and bounds['minlon'] <= lon <= bounds['maxlon']):
+            continue
+        x, z = latlon_to_game(lat, lon, bounds)
+        trees.append({'x': round(x, 1), 'z': round(z, 1), 'label': f'Tree #{tree_id+1}'})
+        tree_id += 1
+
+    # Bus stops — OSM highway=bus_stop nodes. Angle is inferred from the
+    # nearest road segment so the shelter faces the street.
+    bus_stops = []
+    for n in root.findall('.//node'):
+        tags = {tag.get('k'): tag.get('v') for tag in n.findall('tag')}
+        if tags.get('highway') != 'bus_stop':
+            continue
+        lat, lon = float(n.get('lat')), float(n.get('lon'))
+        if not (bounds['minlat'] <= lat <= bounds['maxlat'] and bounds['minlon'] <= lon <= bounds['maxlon']):
+            continue
+        x, z = latlon_to_game(lat, lon, bounds)
+        angle = nearest_road_angle(x, z, road_paths)
+        name = tags.get('name') or tags.get('ref') or 'Bus stop'
+        bus_stops.append({
+            'x': round(x, 1), 'z': round(z, 1),
+            'angle': round(angle, 3), 'name': name,
+        })
+
+    # Fire hydrants — emergency=fire_hydrant nodes.
+    hydrants_list = []
+    for n in root.findall('.//node'):
+        tags = {tag.get('k'): tag.get('v') for tag in n.findall('tag')}
+        if tags.get('emergency') != 'fire_hydrant':
+            continue
+        lat, lon = float(n.get('lat')), float(n.get('lon'))
+        if not (bounds['minlat'] <= lat <= bounds['maxlat'] and bounds['minlon'] <= lon <= bounds['maxlon']):
+            continue
+        x, z = latlon_to_game(lat, lon, bounds)
+        hydrants_list.append({
+            'x': round(x, 1), 'z': round(z, 1), 'label': 'Hydrant',
+        })
+
+    # Benches — amenity=bench nodes. Faces the nearest road so the bench's
+    # back rests toward the building side (close enough for a crowd shot).
+    benches_list = []
+    for n in root.findall('.//node'):
+        tags = {tag.get('k'): tag.get('v') for tag in n.findall('tag')}
+        if tags.get('amenity') != 'bench':
+            continue
+        lat, lon = float(n.get('lat')), float(n.get('lon'))
+        if not (bounds['minlat'] <= lat <= bounds['maxlat'] and bounds['minlon'] <= lon <= bounds['maxlon']):
+            continue
+        x, z = latlon_to_game(lat, lon, bounds)
+        angle = nearest_road_angle(x, z, road_paths)
+        benches_list.append({
+            'x': round(x, 1), 'z': round(z, 1),
+            'angle': round(angle, 3), 'label': 'Bench',
+        })
+
+    # Parking lots — amenity=parking ways (areas). Use centroid.
+    parking_lots = []
+    for w in root.findall('.//way'):
+        tags = {tag.get('k'): tag.get('v') for tag in w.findall('tag')}
+        if tags.get('amenity') != 'parking':
+            continue
+        nds = w.findall('nd')
+        way_nodes = []
+        for nd in nds:
+            ref = nd.get('ref')
+            if ref in nodes:
+                way_nodes.append(nodes[ref])
+        if len(way_nodes) < 3:
+            continue
+        if not way_centroid_in_bounds(way_nodes, bounds):
+            continue
+        x, z, width, depth = compute_aabb(way_nodes, bounds)
+        if width < 5 or depth < 5:
+            continue
+        parking_lots.append({
+            'x': round(x, 1), 'z': round(z, 1), 'angle': 0,
+            'label': 'Parking',
+        })
+
     # Water
     water_polygons = []
     for w in root.findall('.//way'):
@@ -546,12 +647,18 @@ def parse_osm(map_id, config):
     print(f"  Sidewalks: {len(sidewalks)}")
     print(f"  Crosswalks: {len(crosswalks)}")
     print(f"  Traffic lights: {len(trafficLights)}")
+    print(f"  Bus stops: {len(bus_stops)}")
+    print(f"  Benches: {len(benches_list)}")
+    print(f"  Hydrants: {len(hydrants_list)}")
+    print(f"  Parking lots: {len(parking_lots)}")
     print(f"  Water: x={water['x']}, z={water['z']}, w={water['width']}, h={water['height']}")
 
     return {
         'roads': roads, 'roadPaths': road_paths, 'buildings': buildings,
         'trees': trees, 'streetLamps': streetLamps, 'sidewalks': sidewalks,
         'crosswalks': crosswalks, 'trafficLights': trafficLights,
+        'busStops': bus_stops, 'benches': benches_list,
+        'hydrants': hydrants_list, 'parkingLots': parking_lots,
         'water': water, 'mapId': map_id,
         'osmFile': osm_path, 'bounds': bounds,
     }
@@ -686,9 +793,36 @@ def generate_ts(data, output_path, map_label):
                       f"label: '{esc(tl['label'])}' }},")
     output.append("  ],")
 
-    # Empty arrays for unpopulated types
-    for field in ['busStops', 'parkingLots', 'benches',
-                  'hydrants', 'caltransLines', 'caltransPaths']:
+    # Bus stops
+    output.append("  busStops: [")
+    for b in data['busStops']:
+        output.append(f"    {{ x: {b['x']}, z: {b['z']}, angle: {b['angle']}, "
+                      f"name: '{esc(b['name'])}' }},")
+    output.append("  ],")
+
+    # Parking lots
+    output.append("  parkingLots: [")
+    for p in data['parkingLots']:
+        output.append(f"    {{ x: {p['x']}, z: {p['z']}, angle: {p['angle']}, "
+                      f"label: '{esc(p['label'])}' }},")
+    output.append("  ],")
+
+    # Benches
+    output.append("  benches: [")
+    for b in data['benches']:
+        output.append(f"    {{ x: {b['x']}, z: {b['z']}, angle: {b['angle']}, "
+                      f"label: '{esc(b['label'])}' }},")
+    output.append("  ],")
+
+    # Hydrants
+    output.append("  hydrants: [")
+    for h in data['hydrants']:
+        output.append(f"    {{ x: {h['x']}, z: {h['z']}, "
+                      f"label: '{esc(h['label'])}' }},")
+    output.append("  ],")
+
+    # Caltrans rail data — not from OSM yet.
+    for field in ['caltransLines', 'caltransPaths']:
         output.append(f"  {field}: [],")
 
     # Water
