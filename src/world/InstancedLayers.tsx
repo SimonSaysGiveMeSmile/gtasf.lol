@@ -32,6 +32,37 @@ function compose(
 
 // ── Buildings ────────────────────────────────────────────────────────────
 // Boxes → one InstancedMesh with per-instance color + scale.
+// Category-tinted building colours. We multiply this onto the random
+// per-building color so the rendered block still varies, but an area
+// full of hotels reads warmer than a block of warehouses.
+const CATEGORY_TINT: Record<string, string> = {
+  commercial: '#d8b990',   // warm tan — shopfronts / offices
+  hotel: '#c99c6b',        // amber brass — hotels
+  industrial: '#6d6d70',   // cool grey — warehouses
+  residential: '#b7a890',  // beige — apartments / houses
+  school: '#c7b9e0',       // soft lilac — schools
+  religious: '#e6d7a8',    // cream — churches
+  medical: '#a8c8d6',      // pale blue — hospitals
+  transit: '#9bb0c2',      // slate — stations
+  sports: '#a6c89a',       // muted green — stadiums
+  parking: '#8a8a8d',      // dark grey — structures
+  garage: '#7a7a7d',       // darker grey
+  civic: '#c9b8a4',        // stone — civic buildings
+  other: '#b5b5b5',        // neutral
+}
+
+function categoryColor(b: BuildingData): string {
+  const base = b.color || '#1a1a3a'
+  const tint = CATEGORY_TINT[b.category || 'other']
+  if (!tint) return base
+  // 50/50 blend: keeps per-building variety but shifts the hue toward
+  // the category. Cheap to compute and deterministic.
+  const a = new THREE.Color(base)
+  const t = new THREE.Color(tint)
+  a.lerp(t, 0.55)
+  return '#' + a.getHexString()
+}
+
 // Footprints → one merged BufferGeometry with per-vertex color.
 export function InstancedBuildings({ buildings }: { buildings: BuildingData[] }) {
   const isNight = useGameStore((s) => s.timeOfDay === 'night')
@@ -49,7 +80,7 @@ export function InstancedBuildings({ buildings }: { buildings: BuildingData[] })
         shape.closePath()
         const g = new THREE.ExtrudeGeometry(shape, { depth: b.height, bevelEnabled: false })
         g.rotateX(-Math.PI / 2)
-        const col = new THREE.Color(b.color || '#1a1a3a')
+        const col = new THREE.Color(categoryColor(b))
         const count = g.attributes.position.count
         const carr = new Float32Array(count * 3)
         for (let i = 0; i < count; i++) {
@@ -78,7 +109,7 @@ export function InstancedBuildings({ buildings }: { buildings: BuildingData[] })
       const b = boxes[i]
       compose(_m, b.x, b.height / 2, b.z, 0, 0, 0, b.width, b.height, b.depth)
       mesh.setMatrixAt(i, _m)
-      _c.set(b.color || '#1a1a3a')
+      _c.set(categoryColor(b))
       mesh.setColorAt(i, _c)
     }
     mesh.count = boxes.length

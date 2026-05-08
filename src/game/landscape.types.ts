@@ -19,6 +19,11 @@ export interface RailLineData {
   speedLimit: number
 }
 
+export type BuildingCategory =
+  | 'commercial' | 'hotel' | 'industrial' | 'residential' | 'school'
+  | 'religious' | 'medical' | 'transit' | 'sports' | 'parking'
+  | 'garage' | 'civic' | 'other'
+
 export interface BuildingData {
   x: number
   z: number
@@ -27,6 +32,7 @@ export interface BuildingData {
   height: number
   color?: string
   label?: string
+  category?: BuildingCategory
   footprint?: { x: number; z: number }[]
 }
 

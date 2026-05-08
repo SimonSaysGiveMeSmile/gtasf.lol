@@ -160,6 +160,57 @@ def nearest_road_angle(x, z, road_paths):
     return best_angle
 
 
+def pick_building_category(tags):
+    """Map OSM tags on a building to a coarse category. Useful for the
+    renderer to vary colour/theme (a warehouse shouldn't look like a
+    boutique hotel)."""
+    b = tags.get('building', '')
+    if b in ('commercial', 'retail', 'supermarket', 'office'):
+        return 'commercial'
+    if b in ('hotel',) or tags.get('tourism') == 'hotel':
+        return 'hotel'
+    if b in ('industrial', 'warehouse'):
+        return 'industrial'
+    if b in ('apartments', 'residential', 'house', 'terrace', 'dormitory'):
+        return 'residential'
+    if b in ('school', 'university', 'college', 'kindergarten'):
+        return 'school'
+    if b in ('church', 'cathedral', 'chapel', 'mosque', 'synagogue'):
+        return 'religious'
+    if b in ('hospital', 'clinic'):
+        return 'medical'
+    if b in ('train_station', 'transportation'):
+        return 'transit'
+    if b in ('stadium', 'sports_hall'):
+        return 'sports'
+    if b in ('parking',):
+        return 'parking'
+    if b in ('garage', 'garages'):
+        return 'garage'
+    if b in ('civic', 'public', 'government'):
+        return 'civic'
+    if tags.get('shop'):
+        return 'commercial'
+    if tags.get('amenity') in ('restaurant', 'cafe', 'bar', 'pub', 'fast_food'):
+        return 'commercial'
+    return 'other'
+
+
+def pick_building_label(tags):
+    """Best human-readable label for a building. Prefers explicit
+    name/brand, falls back to amenity/shop type so identifiable blocks
+    (hotel, school, church) still read on the map."""
+    for k in ('name', 'brand', 'operator'):
+        v = tags.get(k)
+        if v:
+            return v
+    for k in ('tourism', 'amenity', 'shop', 'office'):
+        v = tags.get(k)
+        if v and v not in ('yes',):
+            return v.replace('_', ' ').title()
+    return None
+
+
 def _segs_intersect(p1, p2, p3, p4):
     def ccw(a, b, c):
         return (c[1] - a[1]) * (b[0] - a[0]) > (b[1] - a[1]) * (c[0] - a[0])
@@ -446,12 +497,14 @@ def parse_osm(map_id, config):
         footprint = [{'x': round(latlon_to_game(lat, lon, bounds)[0], 1),
                        'z': round(latlon_to_game(lat, lon, bounds)[1], 1)}
                       for lat, lon in way_nodes]
-        label = tags.get('name', None)
+        label = pick_building_label(tags)
+        category = pick_building_category(tags)
         color_idx = int(abs(x + z) / 10) % len(BUILDING_COLORS)
         buildings.append({
             'x': round(x, 1), 'z': round(z, 1), 'width': round(width, 1),
             'depth': round(depth, 1), 'height': round(h, 1),
             'color': BUILDING_COLORS[color_idx], 'label': label,
+            'category': category,
             'footprint': footprint,
         })
 
@@ -467,7 +520,8 @@ def parse_osm(map_id, config):
         if not (tags.get('building') or tags.get('building:levels')):
             continue
         h = parse_building_height(tags)
-        label = tags.get('name', None)
+        label = pick_building_label(tags)
+        category = pick_building_category(tags)
 
         outer_ways = []
         for member in rel.findall('member'):
@@ -505,6 +559,7 @@ def parse_osm(map_id, config):
                 'x': round(x, 1), 'z': round(z, 1), 'width': round(width, 1),
                 'depth': round(depth, 1), 'height': round(h, 1),
                 'color': BUILDING_COLORS[color_idx], 'label': label,
+                'category': category,
                 'footprint': footprint,
             })
 
@@ -901,15 +956,17 @@ def generate_ts(data, output_path, map_label):
     output.append("  buildings: [")
     for b in data['buildings']:
         lbl = f"'{esc(b['label'])}'" if b['label'] else 'undefined'
+        cat = b.get('category') or 'other'
         fp = b.get('footprint')
         if fp and len(fp) >= 3:
             fp_str = ', '.join(f'{{x:{p["x"]},z:{p["z"]}}}' for p in fp)
             output.append(f"  {{ x: {b['x']}, z: {b['z']}, width: {b['width']}, depth: {b['depth']}, "
                           f"height: {b['height']}, color: '{b['color']}', label: {lbl}, "
-                          f"footprint: [{fp_str}] }},")
+                          f"category: '{cat}', footprint: [{fp_str}] }},")
         else:
             output.append(f"  {{ x: {b['x']}, z: {b['z']}, width: {b['width']}, depth: {b['depth']}, "
-                          f"height: {b['height']}, color: '{b['color']}', label: {lbl} }},")
+                          f"height: {b['height']}, color: '{b['color']}', label: {lbl}, "
+                          f"category: '{cat}' }},")
     output.append("  ],")
     # Trees
     output.append("")
