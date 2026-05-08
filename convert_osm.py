@@ -160,6 +160,71 @@ def nearest_road_angle(x, z, road_paths):
     return best_angle
 
 
+def _segs_intersect(p1, p2, p3, p4):
+    def ccw(a, b, c):
+        return (c[1] - a[1]) * (b[0] - a[0]) > (b[1] - a[1]) * (c[0] - a[0])
+    return ccw(p1, p3, p4) != ccw(p2, p3, p4) and ccw(p1, p2, p3) != ccw(p1, p2, p4)
+
+
+def polygon_self_intersects(pts):
+    """Return True if any two non-adjacent edges of the polygon cross.
+
+    A self-intersecting footprint confuses the in-game circle-vs-polygon
+    collider (even-odd fill marks the crossed region as "inside"), so it
+    produces phantom collision areas — airwalls. We detect + replace with
+    convex hull instead."""
+    n = len(pts)
+    if n < 4:
+        return False
+    for i in range(n):
+        for j in range(i + 2, n):
+            if i == 0 and j == n - 1:
+                continue
+            if _segs_intersect(pts[i], pts[(i + 1) % n], pts[j], pts[(j + 1) % n]):
+                return True
+    return False
+
+
+def convex_hull(points):
+    """Andrew's monotone chain — returns CCW convex hull of points (lat, lon).
+
+    Used as a safe fallback footprint when the original polygon self-
+    intersects: preserves orientation + rough shape, no phantom regions."""
+    pts = sorted(set(points))
+    if len(pts) <= 2:
+        return list(pts)
+
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+
+    lower = []
+    for p in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+            lower.pop()
+        lower.append(p)
+    upper = []
+    for p in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+            upper.pop()
+        upper.append(p)
+    hull = lower[:-1] + upper[:-1]
+    # Close the ring for downstream consumers that expect first==last.
+    if hull and hull[0] != hull[-1]:
+        hull.append(hull[0])
+    return hull
+
+
+def sanitize_footprint(way_nodes, bounds):
+    """Convert way_nodes to game-space footprint, swapping in the convex
+    hull if the polygon self-intersects. Returns the sanitized list of
+    (lat, lon) ring points."""
+    # Run intersection test in game space (what the collider sees).
+    game_pts = [latlon_to_game(lat, lon, bounds) for lat, lon in way_nodes]
+    if polygon_self_intersects(game_pts):
+        return convex_hull(way_nodes)
+    return way_nodes
+
+
 def chain_ways_into_rings(ways):
     """Chain a list of ways into ordered closed rings by matching endpoints.
 
@@ -366,6 +431,9 @@ def parse_osm(map_id, config):
             continue
         if not way_centroid_in_bounds(way_nodes, bounds):
             continue
+        way_nodes = sanitize_footprint(way_nodes, bounds)
+        if len(way_nodes) < 4:
+            continue
         area = polygon_area(way_nodes, bounds)
         if area < 5:
             continue
@@ -417,6 +485,9 @@ def parse_osm(map_id, config):
             if len(way_nodes) < 4:
                 continue
             if not way_centroid_in_bounds(way_nodes, bounds):
+                continue
+            way_nodes = sanitize_footprint(way_nodes, bounds)
+            if len(way_nodes) < 4:
                 continue
             area = polygon_area(way_nodes, bounds)
             if area < 5:
