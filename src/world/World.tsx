@@ -1,6 +1,12 @@
 // @simonsaysgivemesmile
-import { useMemo, useRef, useLayoutEffect, useEffect } from 'react'
+import { useMemo, useRef, useLayoutEffect, useEffect, Component } from 'react'
+import type { ReactNode } from 'react'
 import { Sky, useGLTF } from '@react-three/drei'
+
+// Serve the Draco decoder from /public/draco/ instead of the default
+// gstatic.com CDN. Two wins: (1) works offline and under strict CSPs,
+// (2) no external network hop blocking the first paint of the scan map.
+useGLTF.setDecoderPath('/draco/')
 import * as THREE from 'three'
 import { mergeBufferGeometries } from 'three-stdlib'
 import { MeshBVH } from 'three-mesh-bvh'
@@ -519,25 +525,26 @@ function Ground({ water }: { water: { x: number; z: number; width: number; heigh
 // Loads a pre-converted GLB and builds a MeshBVH from its merged geometry so
 // the player can collide against real building walls instead of OSM polygon
 // extrusions. Typical use: a detailed SF city scan (public/models/sf_obj).
-function ObjCityModel({ model }: { model: ObjModelRef }) {
+//
+// Wrapped in GlbErrorBoundary below so a load failure (missing file, decoder
+// error, corrupted bytes) doesn't blank the entire world.
+function ObjCityModelInner({ model }: { model: ObjModelRef }) {
   const gltf = useGLTF(model.url)
   const groupRef = useRef<THREE.Group>(null)
 
-  // Build BVH + register collider once geometry is available. The BVH tree
-  // takes ~1–2s to build for ~463k tris, which is fine at map-load time;
-  // we cache it per URL so returning to the map doesn't rebuild.
   useEffect(() => {
     if (!gltf || !groupRef.current) return
     const group = groupRef.current
 
     const geos: THREE.BufferGeometry[] = []
+    let meshCount = 0
     gltf.scene.traverse((obj) => {
       const m = obj as THREE.Mesh
       if (m.isMesh && m.geometry) {
+        meshCount++
         // Clone so we can strip mismatched attributes without mutating the
         // shared gltf cache (re-entries would blow up otherwise).
         const g = m.geometry.clone()
-        // Keep only position — merge is strict on attribute presence.
         const pos = g.getAttribute('position')
         if (!pos) return
         const stripped = new THREE.BufferGeometry()
@@ -546,22 +553,29 @@ function ObjCityModel({ model }: { model: ObjModelRef }) {
         geos.push(stripped)
       }
     })
-    if (geos.length === 0) return
+    console.info(`[ObjCityModel] ${model.url}: ${meshCount} meshes, ${geos.length} with positions`)
+    if (geos.length === 0) {
+      console.warn('[ObjCityModel] no geometry — BVH collider skipped')
+      return
+    }
 
     const merged = mergeBufferGeometries(geos, false)
     for (const g of geos) g.dispose()
-    if (!merged) return
+    if (!merged) {
+      console.warn('[ObjCityModel] merge failed — BVH collider skipped')
+      return
+    }
 
     const bvh = new MeshBVH(merged)
     group.updateMatrixWorld(true)
     const worldMatrix = group.matrixWorld.clone()
     const inverseMatrix = new THREE.Matrix4().copy(worldMatrix).invert()
-    // Cheap world-space y bounds from the merged geometry's bounding box.
     merged.computeBoundingBox()
     const bb = merged.boundingBox || new THREE.Box3()
     const yMin = bb.min.y * model.scale + model.offsetY
     const yMax = bb.max.y * model.scale + model.offsetY
 
+    console.info(`[ObjCityModel] BVH built; world y bounds [${yMin.toFixed(1)}, ${yMax.toFixed(1)}]`)
     setMeshCollider({ bvh, worldMatrix, inverseMatrix, yMin, yMax })
     return () => {
       setMeshCollider(null)
@@ -577,6 +591,28 @@ function ObjCityModel({ model }: { model: ObjModelRef }) {
     >
       <primitive object={gltf.scene} />
     </group>
+  )
+}
+
+// Catch GLB load / decode failures. The fallback is null — road network and
+// props keep rendering so the user isn't staring at a blank scene while they
+// look at the devtools console for the real error.
+class GlbErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null }
+  static getDerivedStateFromError(error: Error) { return { error } }
+  componentDidCatch(err: Error) {
+    console.error('[ObjCityModel] GLB failed to load:', err)
+  }
+  render() {
+    return this.state.error ? null : this.props.children
+  }
+}
+
+function ObjCityModel({ model }: { model: ObjModelRef }) {
+  return (
+    <GlbErrorBoundary>
+      <ObjCityModelInner model={model} />
+    </GlbErrorBoundary>
   )
 }
 
