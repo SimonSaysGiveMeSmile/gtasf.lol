@@ -2,7 +2,7 @@
 import { useMemo, useRef, useLayoutEffect, useEffect, Component } from 'react'
 import type { ReactNode } from 'react'
 import { Sky, useGLTF } from '@react-three/drei'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 
 // Serve the Draco decoder from /public/draco/ instead of the default
 // gstatic.com CDN. Two wins: (1) works offline and under strict CSPs,
@@ -543,6 +543,63 @@ function Ground({ water }: { water: { x: number; z: number; width: number; heigh
 function ObjCityModelInner({ model }: { model: ObjModelRef }) {
   const gltf = useGLTF(model.url)
   const groupRef = useRef<THREE.Group>(null)
+  const gl = useThree((s) => s.gl)
+
+  // Photogrammetry scans like this one ship with lighting/shadows baked
+  // directly into the texture atlas. Rendering them through our scene's
+  // ambient + directional lights double-applies lighting and flattens the
+  // textures. We swap each material for MeshBasicMaterial (unlit) so the
+  // baked lighting shows through exactly as it did in the source file.
+  //
+  // Also: three.js defaults texture.anisotropy to 1, which makes any
+  // texture viewed at a grazing angle (looking down a street) blur to
+  // mush. Setting it to the GPU maximum (usually 16) eliminates that
+  // street-level blurriness with ~zero perf cost.
+  useEffect(() => {
+    if (!gltf) return
+    const maxAnisotropy = gl.capabilities.getMaxAnisotropy?.() ?? 1
+    const replaced: THREE.Material[] = []
+    const touched = new Set<THREE.Texture>()
+
+    gltf.scene.traverse((obj) => {
+      const m = obj as THREE.Mesh
+      if (!m.isMesh) return
+      const src = m.material as THREE.MeshStandardMaterial | THREE.MeshStandardMaterial[]
+      const upgradeOne = (orig: THREE.MeshStandardMaterial): THREE.MeshBasicMaterial => {
+        const map = orig.map
+        if (map && !touched.has(map)) {
+          map.anisotropy = maxAnisotropy
+          map.colorSpace = THREE.SRGBColorSpace
+          map.needsUpdate = true
+          touched.add(map)
+        }
+        const basic = new THREE.MeshBasicMaterial({
+          map: map ?? null,
+          color: orig.color ?? new THREE.Color(0xffffff),
+          transparent: orig.transparent,
+          opacity: orig.opacity,
+          side: orig.side,
+          toneMapped: false,      // preserve baked colours 1:1
+          alphaTest: orig.alphaTest,
+        })
+        replaced.push(basic)
+        return basic
+      }
+      if (Array.isArray(src)) {
+        m.material = src.map((s) => upgradeOne(s as THREE.MeshStandardMaterial))
+      } else {
+        m.material = upgradeOne(src as THREE.MeshStandardMaterial)
+      }
+    })
+
+    console.info(
+      `[ObjCityModel] unlit materials applied, anisotropy=${maxAnisotropy}, textures=${touched.size}`,
+    )
+
+    return () => {
+      for (const mat of replaced) mat.dispose()
+    }
+  }, [gltf, gl])
 
   useEffect(() => {
     if (!gltf || !groupRef.current) return
