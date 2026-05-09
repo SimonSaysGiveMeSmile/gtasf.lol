@@ -2,6 +2,7 @@
 import { useMemo, useRef, useLayoutEffect, useEffect, Component } from 'react'
 import type { ReactNode } from 'react'
 import { Sky, useGLTF } from '@react-three/drei'
+import { useFrame } from '@react-three/fiber'
 
 // Serve the Draco decoder from /public/draco/ instead of the default
 // gstatic.com CDN. Two wins: (1) works offline and under strict CSPs,
@@ -502,21 +503,32 @@ function RailLayer({ caltransPaths }: { caltransPaths: { x: number; z: number; a
 function Ground({ water }: { water: { x: number; z: number; width: number; height: number } }) {
   const groundColor = '#2a3a20'
   const waterColor = '#1a3a5a'
-  // Large enough to cover the camera's 8000-unit far plane at any position
-  const GROUND_SIZE = 20000
+  // The ground follows the camera in X/Z so its far edge never enters view
+  // — otherwise players past the map center would see drei's Sky horizon
+  // through the gap and the world appears to "go dark" at distance.
+  const GROUND_SIZE = 24000
+  const groundRef = useRef<THREE.Mesh>(null)
+  useFrame(({ camera }) => {
+    if (groundRef.current) {
+      groundRef.current.position.x = camera.position.x
+      groundRef.current.position.z = camera.position.z
+    }
+  })
 
   return (
     <>
-      {/* Main ground */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
+      {/* Main ground — tracks the camera */}
+      <mesh ref={groundRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
         <planeGeometry args={[GROUND_SIZE, GROUND_SIZE]} />
         <meshStandardMaterial color={groundColor} roughness={0.95} />
       </mesh>
-      {/* Water */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[water.x, -0.04, water.z]}>
-        <planeGeometry args={[water.width, water.height]} />
-        <meshStandardMaterial color={waterColor} roughness={0.3} metalness={0.1} transparent opacity={0.85} />
-      </mesh>
+      {/* Water — stays world-anchored; skipped for scan maps that bake in their own water */}
+      {water.width > 0 && water.height > 0 && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[water.x, -0.04, water.z]}>
+          <planeGeometry args={[water.width, water.height]} />
+          <meshStandardMaterial color={waterColor} roughness={0.3} metalness={0.1} transparent opacity={0.85} />
+        </mesh>
+      )}
     </>
   )
 }
@@ -652,6 +664,10 @@ export default function World() {
       <Sky {...skyProps} />
 
       {data.objModel && <ObjCityModel model={data.objModel} />}
+      {/* Render ground for every map — OBJ scans have finite extents and
+          without a backstop plane the horizon reveals the Sky dome at a
+          dark grazing angle, reading as "lighting falloff" at distance. */}
+      {useObjWorld && <Ground water={{ x: 0, z: 0, width: 0, height: 0 }} />}
 
       {!useObjWorld && <Ground water={data.water} />}
       {!useObjWorld && <RoadLayer roadPaths={data.roadPaths} roads={data.roads} />}
