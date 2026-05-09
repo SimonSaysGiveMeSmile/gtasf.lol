@@ -546,6 +546,24 @@ function ObjCityModelInner({ model }: { model: ObjModelRef }) {
   const groupRef = useRef<THREE.Group>(null)
   const gl = useThree((s) => s.gl)
 
+  // Disable the whole renderer's tone mapping while the scan is mounted.
+  // R3F defaults to ACESFilmicToneMapping, which compresses highlights and
+  // shifts colours warm — great for PBR, terrible for photogrammetry where
+  // final colours are baked in. Per-material `toneMapped: false` only
+  // covers the basic materials we override below; the sky and lights still
+  // go through ACES and the scene looks mismatched. Flip to NoToneMapping
+  // whenever the scan map is active, and restore on unmount.
+  useEffect(() => {
+    const prev = gl.toneMapping
+    const prevExposure = gl.toneMappingExposure
+    gl.toneMapping = THREE.NoToneMapping
+    gl.toneMappingExposure = 1
+    return () => {
+      gl.toneMapping = prev
+      gl.toneMappingExposure = prevExposure
+    }
+  }, [gl])
+
   // Photogrammetry scans like this one ship with lighting/shadows baked
   // directly into the texture atlas. Rendering them through our scene's
   // ambient + directional lights double-applies lighting and flattens the

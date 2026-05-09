@@ -36,13 +36,17 @@ export default function App() {
   const qualityPreset = useGameStore((s) => s.qualityPreset)
   const setQualityCounts = useGameStore((s) => s.setQualityCounts)
 
+  // dpr: render at the physical pixel density on anything but 'low'. Capping
+  // at 1.5 on high used to render 75% of retina pixels then upscale, which
+  // blurred detail-dense textures (the SF scan especially). Full DPR is the
+  // single biggest visual-quality win at negligible perf cost on modern GPUs.
   const dpr = qualityPreset === 'low' ? 1
-    : qualityPreset === 'med' ? 1.25
-    : qualityPreset === 'high' ? Math.min(window.devicePixelRatio, 1.5)
-    : qualityPreset === 'ultra' ? Math.min(window.devicePixelRatio, 2)
+    : qualityPreset === 'med' ? Math.min(window.devicePixelRatio, 1.5)
     : window.devicePixelRatio
 
-  const antialias = qualityPreset === 'ultra'
+  // MSAA on anything but 'low'. The perceived "rough" texture edges come
+  // mostly from aliasing, not from the textures themselves.
+  const antialias = qualityPreset !== 'low'
 
   // Sync quality counts into store so NPC/VehicleSpawner can read them
   useEffect(() => {
