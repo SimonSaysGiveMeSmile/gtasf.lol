@@ -11,6 +11,7 @@ useGLTF.setDecoderPath('/draco/')
 import * as THREE from 'three'
 import { mergeBufferGeometries } from 'three-stdlib'
 import { MeshBVH } from 'three-mesh-bvh'
+import { GenerateMeshBVHWorker } from 'three-mesh-bvh/worker'
 import { useGameStore } from '../game/store'
 import { MAP_SIZE } from '../game/constants'
 import { default as BillboardLayer } from '../systems/billboards/BillboardLayer'
@@ -604,6 +605,9 @@ function ObjCityModelInner({ model }: { model: ObjModelRef }) {
   useEffect(() => {
     if (!gltf || !groupRef.current) return
     const group = groupRef.current
+    let cancelled = false
+    let disposeMerged: (() => void) | null = null
+    let disposeWorker: (() => void) | null = null
 
     const geos: THREE.BufferGeometry[] = []
     let meshCount = 0
@@ -611,14 +615,30 @@ function ObjCityModelInner({ model }: { model: ObjModelRef }) {
       const m = obj as THREE.Mesh
       if (m.isMesh && m.geometry) {
         meshCount++
-        // Clone so we can strip mismatched attributes without mutating the
-        // shared gltf cache (re-entries would blow up otherwise).
-        const g = m.geometry.clone()
+        // Copy position into a flat Float32Array so mergeBufferGeometries and
+        // the BVH worker both see a plain BufferAttribute, not the GLB's
+        // interleaved attribute. Cloning the interleaved attribute triggers
+        // three.js's "de-interleave" warning — this avoids it.
+        const g = m.geometry
         const pos = g.getAttribute('position')
         if (!pos) return
         const stripped = new THREE.BufferGeometry()
-        stripped.setAttribute('position', pos.clone())
-        if (g.index) stripped.setIndex(g.index.clone())
+        const flat = new Float32Array(pos.count * 3)
+        for (let i = 0; i < pos.count; i++) {
+          flat[i * 3 + 0] = pos.getX(i)
+          flat[i * 3 + 1] = pos.getY(i)
+          flat[i * 3 + 2] = pos.getZ(i)
+        }
+        stripped.setAttribute('position', new THREE.BufferAttribute(flat, 3))
+        if (g.index) {
+          // Index is usually already a flat Uint16/32 attribute in GLBs; copy
+          // defensively.
+          const ix = g.index
+          const flatIdx = ix.array instanceof Uint32Array
+            ? new Uint32Array(ix.array)
+            : new Uint16Array(ix.array as ArrayLike<number>)
+          stripped.setIndex(new THREE.BufferAttribute(flatIdx, 1))
+        }
         geos.push(stripped)
       }
     })
@@ -634,21 +654,47 @@ function ObjCityModelInner({ model }: { model: ObjModelRef }) {
       console.warn('[ObjCityModel] merge failed — BVH collider skipped')
       return
     }
+    disposeMerged = () => merged.dispose()
 
-    const bvh = new MeshBVH(merged)
-    group.updateMatrixWorld(true)
-    const worldMatrix = group.matrixWorld.clone()
-    const inverseMatrix = new THREE.Matrix4().copy(worldMatrix).invert()
-    merged.computeBoundingBox()
-    const bb = merged.boundingBox || new THREE.Box3()
-    const yMin = bb.min.y * model.scale + model.offsetY
-    const yMax = bb.max.y * model.scale + model.offsetY
+    // Build the BVH off the main thread so the ~600ms construction doesn't
+    // stall the render loop. Once the worker resolves, register the
+    // collider; if the component unmounted during build, throw the result
+    // away cleanly.
+    // WorkerBase.dispose() exists at runtime but isn't in three-mesh-bvh's
+    // type surface, so cast once to a narrow interface here.
+    const worker = new GenerateMeshBVHWorker() as GenerateMeshBVHWorker & { dispose(): void }
+    disposeWorker = () => worker.dispose()
+    const t0 = performance.now()
+    worker
+      .generate(merged, {})
+      .then((bvh: MeshBVH) => {
+        if (cancelled) return
+        group.updateMatrixWorld(true)
+        const worldMatrix = group.matrixWorld.clone()
+        const inverseMatrix = new THREE.Matrix4().copy(worldMatrix).invert()
+        merged.computeBoundingBox()
+        const bb = merged.boundingBox || new THREE.Box3()
+        const yMin = bb.min.y * model.scale + model.offsetY
+        const yMax = bb.max.y * model.scale + model.offsetY
+        console.info(
+          `[ObjCityModel] BVH built off-thread in ${(performance.now() - t0).toFixed(0)}ms; ` +
+          `world y bounds [${yMin.toFixed(1)}, ${yMax.toFixed(1)}]`,
+        )
+        setMeshCollider({ bvh, worldMatrix, inverseMatrix, yMin, yMax })
+      })
+      .catch((err: unknown) => {
+        console.error('[ObjCityModel] BVH worker failed:', err)
+      })
+      .finally(() => {
+        worker.dispose()
+        disposeWorker = null
+      })
 
-    console.info(`[ObjCityModel] BVH built; world y bounds [${yMin.toFixed(1)}, ${yMax.toFixed(1)}]`)
-    setMeshCollider({ bvh, worldMatrix, inverseMatrix, yMin, yMax })
     return () => {
+      cancelled = true
       setMeshCollider(null)
-      merged.dispose()
+      disposeWorker?.()
+      disposeMerged?.()
     }
   }, [gltf, model.url, model.scale, model.offsetY])
 
