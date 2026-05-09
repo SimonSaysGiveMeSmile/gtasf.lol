@@ -1,6 +1,8 @@
 // @jt886
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useProgress } from '@react-three/drei'
 import { useGameStore } from '../game/store'
+import { useLandscapeData } from '../game/LandscapeContext'
 import './LoadingScreen.css' // @jiahe
 
 const TIPS = [
@@ -103,26 +105,41 @@ const FIRST_PART = LOGO_TEXT.slice(0, LOGO_SPLIT)
 const SECOND_PART = LOGO_TEXT.slice(LOGO_SPLIT + 1)
 
 export default function LoadingScreen() {
-  const [progress, setProgress] = useState(0)
+  const [baseline, setBaseline] = useState(0)
   const [tipIndex, setTipIndex] = useState(Math.floor(Math.random() * TIPS.length))
   const [msgIndex, setMsgIndex] = useState(0)
   const isLoading = useGameStore((s) => s.isLoading)
 
+  // Real loader progress from three.js's DefaultLoadingManager — drei's
+  // useGLTF, useTexture, etc. all route through it, so this tracks the GLB
+  // byte stream for the scan map.
+  const { progress: realProgress, active, loaded, total, item } = useProgress()
+  const assetSeen = useRef(false)
+  if (active) assetSeen.current = true
+
+  // Is there a GLB coming for this map at all? If yes, we gate dismissal on
+  // the real loader finishing (active=false AND we saw at least one load).
+  const data = useLandscapeData()
+  const expectsGlb = !!data.objModel
+
   useEffect(() => {
     if (!isLoading) return
 
+    // Reset per-cycle state so switching maps doesn't inherit the previous
+    // session's progress or "already loaded" flag.
+    setBaseline(0)
+    setMsgIndex(0)
+    assetSeen.current = false
+
+    // Baseline animation — 4s from 0→100, mostly for cosmetic continuity.
+    // When a real asset is loading we cap at whichever is smaller so the
+    // number only moves forward and never overstates progress.
     const steps = 100
     let step = 0
     const interval = setInterval(() => {
       step++
-      setProgress(Math.min(step, steps))
+      setBaseline(Math.min(step, steps))
       setMsgIndex(Math.floor((step / steps) * PROGRESS_MESSAGES.length))
-      if (step >= steps) {
-        clearInterval(interval)
-        setTimeout(() => {
-          useGameStore.getState().setIsLoading(false)
-        }, 400)
-      }
     }, 40)
 
     const tipInterval = setInterval(() => {
@@ -135,7 +152,27 @@ export default function LoadingScreen() {
     }
   }, [isLoading])
 
+  // Dismiss when baseline + (real loader, if any) are done.
+  useEffect(() => {
+    if (!isLoading) return
+    const baselineDone = baseline >= 100
+    const glbDone = expectsGlb ? (assetSeen.current && !active) : true
+    if (baselineDone && glbDone) {
+      const t = setTimeout(() => useGameStore.getState().setIsLoading(false), 400)
+      return () => clearTimeout(t)
+    }
+  }, [isLoading, baseline, active, expectsGlb])
+
   if (!isLoading) return null
+
+  // Display: if the GLB is currently loading, show real progress so the 148 MB
+  // download feels honest. Otherwise show the baseline. Always monotonic.
+  const displayProgress = active
+    ? Math.min(Math.max(realProgress, baseline), 99)
+    : Math.max(baseline, assetSeen.current ? 100 : baseline)
+
+  const sizeMb = total > 0 ? (loaded / 1024 / 1024).toFixed(1) : null
+  const totalMb = total > 0 ? (total / 1024 / 1024).toFixed(1) : null
 
   const tip = TIPS[tipIndex]
   const px = 5
@@ -232,15 +269,19 @@ export default function LoadingScreen() {
           </div>
 
           <div className="ls-progress-track">
-            <div className="ls-progress-fill" style={{ width: `${progress}%` }} />
+            <div className="ls-progress-fill" style={{ width: `${displayProgress}%` }} />
             {Array.from({ length: 9 }, (_, i) => (
               <div key={i} className="ls-progress-notch" style={{ left: `${((i + 1) / 10) * 100}%` }} />
             ))}
           </div>
 
           <div className="ls-progress-text">
-            <span className="ls-progress-pct">{progress}%</span>
-            <span className="ls-progress-msg">{PROGRESS_MESSAGES[msgIndex]}</span>
+            <span className="ls-progress-pct">{Math.floor(displayProgress)}%</span>
+            <span className="ls-progress-msg">
+              {active && sizeMb && totalMb
+                ? `Downloading ${item.split('/').pop() || 'assets'} — ${sizeMb} / ${totalMb} MB`
+                : PROGRESS_MESSAGES[Math.min(msgIndex, PROGRESS_MESSAGES.length - 1)]}
+            </span>
           </div>
         </div>
 

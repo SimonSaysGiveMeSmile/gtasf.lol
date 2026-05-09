@@ -214,6 +214,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   setCurrentMapName: (name) => {
     // Also teleport the player to the new map's spawn so they don't end up
     // inside a building or in mid-air from the previous map's coordinates.
+    // Flip isLoading back on so the LoadingScreen shows while the new map's
+    // assets (OSM data + any GLB) resolve.
     const spawn = SPAWN_POINTS[name] || [0, 3, 0]
     set({
       currentMapName: name,
@@ -223,6 +225,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       currentVehicleType: null,
       npcs: [],
       activeVehicles: [],
+      isLoading: true,
     })
   },
   setGodMode: (v) => set({ godMode: v }),
