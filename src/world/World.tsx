@@ -629,6 +629,13 @@ export default function World() {
     ? { sunPosition: [-100, 20, -50] as [number,number,number], turbidity: 10, rayleigh: 0.5, mieCoefficient: 0.005, mieDirectionalG: 0.8 }
     : { sunPosition: [100, 80, -50] as [number,number,number], turbidity: 3, rayleigh: 0.5, mieCoefficient: 0.002, mieDirectionalG: 0.8 }
 
+  // When the map ships a static-mesh city (OBJ/GLB scan), the visual world
+  // is entirely inside that mesh — roads, sidewalks, crosswalks, trees, and
+  // curb furniture are all baked into the texture atlas. Drawing OSM
+  // overlays on top double-draws every feature and causes z-fighting. In
+  // this mode we skip the overlays and just render sky + lights + the mesh.
+  const useObjWorld = !!data.objModel
+
   return (
     <>
       <ambientLight intensity={isNight ? 0.4 : 3.0} />
@@ -644,21 +651,22 @@ export default function World() {
       />
       <Sky {...skyProps} />
 
-      <Ground water={data.water} />
-      <RoadLayer roadPaths={data.roadPaths} roads={data.roads} />
-      <RailLayer caltransPaths={data.caltransPaths} />
-      <InstancedBuildings buildings={data.buildings} />
       {data.objModel && <ObjCityModel model={data.objModel} />}
-      <InstancedTrees trees={data.trees} />
-      <InstancedLamps lamps={data.streetLamps} />
-      <InstancedSidewalks sidewalks={data.sidewalks} />
-      <InstancedCrosswalks crosswalks={data.crosswalks} />
-      <InstancedBusStops busStops={data.busStops} />
-      <InstancedParkingLots lots={data.parkingLots} />
-      <InstancedHydrants hydrants={data.hydrants} />
-      <InstancedBenches benches={data.benches} />
-      <InstancedTrafficLights lights={data.trafficLights} />
-      <BillboardLayer />
+
+      {!useObjWorld && <Ground water={data.water} />}
+      {!useObjWorld && <RoadLayer roadPaths={data.roadPaths} roads={data.roads} />}
+      {!useObjWorld && <RailLayer caltransPaths={data.caltransPaths} />}
+      {!useObjWorld && <InstancedBuildings buildings={data.buildings} />}
+      {!useObjWorld && <InstancedTrees trees={data.trees} />}
+      {!useObjWorld && <InstancedLamps lamps={data.streetLamps} />}
+      {!useObjWorld && <InstancedSidewalks sidewalks={data.sidewalks} />}
+      {!useObjWorld && <InstancedCrosswalks crosswalks={data.crosswalks} />}
+      {!useObjWorld && <InstancedBusStops busStops={data.busStops} />}
+      {!useObjWorld && <InstancedParkingLots lots={data.parkingLots} />}
+      {!useObjWorld && <InstancedHydrants hydrants={data.hydrants} />}
+      {!useObjWorld && <InstancedBenches benches={data.benches} />}
+      {!useObjWorld && <InstancedTrafficLights lights={data.trafficLights} />}
+      {!useObjWorld && <BillboardLayer />}
     </>
   )
 }
