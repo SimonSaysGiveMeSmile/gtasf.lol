@@ -489,10 +489,11 @@ const VEHICLE_GLB_YAW: Partial<Record<VehicleType, number>> = {
   sports: Math.PI, // CarConcept is authored facing -Z by default
 }
 
-function GLBVehicle({ type, color }: { type: VehicleType; color: string }) {
+function GLBVehicle({ type, color, speedRef }: { type: VehicleType; color: string; speedRef?: React.MutableRefObject<number> }) {
   const url = VEHICLE_GLB[type]!
   const gltf = useGLTF(url)
   const spec = VEHICLES.find((v) => v.type === type)!
+  const wheelMeshes = useRef<THREE.Object3D[]>([])
 
   const root = useMemo(() => {
     const inner = gltf.scene.clone(true)
@@ -572,6 +573,13 @@ function GLBVehicle({ type, color }: { type: VehicleType; color: string }) {
     const finalBox = new THREE.Box3().setFromObject(outer)
     outer.position.y = -finalBox.min.y
 
+    // Collect wheel meshes by name for per-frame spin.
+    const wheels: THREE.Object3D[] = []
+    inner.traverse((obj) => {
+      if (/wheel|tire|tyre|rim/i.test(obj.name)) wheels.push(obj)
+    })
+    wheelMeshes.current = wheels
+
     // Tint body paint — bright untextured MeshStandard materials only.
     const tint = new THREE.Color(color)
     inner.traverse((obj) => {
@@ -596,6 +604,13 @@ function GLBVehicle({ type, color }: { type: VehicleType; color: string }) {
     return outer
   }, [gltf.scene, color, spec.dimensions.z, type])
 
+  useFrame((_, delta) => {
+    if (!speedRef?.current || wheelMeshes.current.length === 0) return
+    // vel.z is in frame-units; convert to rad/frame for a ~0.35m wheel radius
+    const rot = speedRef.current * delta * 60 * 0.5
+    for (const w of wheelMeshes.current) w.rotation.x += rot
+  })
+
   return <primitive object={root} />
 }
 
@@ -617,11 +632,11 @@ function FallbackVehicleMesh({ type, color }: { type: VehicleType; color: string
   }
 }
 
-export function VehicleMesh({ type, color }: { type: VehicleType; color: string }) {
+export function VehicleMesh({ type, color, speedRef }: { type: VehicleType; color: string; speedRef?: React.MutableRefObject<number> }) {
   if (VEHICLE_GLB[type]) {
     return (
       <Suspense fallback={<FallbackVehicleMesh type={type} color={color} />}>
-        <GLBVehicle type={type} color={color} />
+        <GLBVehicle type={type} color={color} speedRef={speedRef} />
       </Suspense>
     )
   }
@@ -646,6 +661,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
 
   const pos = useRef(new THREE.Vector3(x, type === 'plane' ? 50 : 0, z))
   const vel = useRef(new THREE.Vector3(0, 0, 0))
+  const velZRef = useRef(0)
   const angle = useRef(rotation)
   const throttleRef = useRef(0)
   const pitchRef = useRef(0)
@@ -653,6 +669,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
   const prevInteract = useRef(false)
   const prevVelZ = useRef(0)
   const lastImpactAt = useRef(0)
+  const engineUid = useRef<string>('')
 
   const isPlane = type === 'plane'
   const isBoat = type === 'boat'
@@ -687,6 +704,16 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
     window.addEventListener('mousemove', handleMouseMove)
     return () => window.removeEventListener('mousemove', handleMouseMove)
   }, [isPlane])
+
+  // Engine sound — start looping when player enters, stop on exit.
+  useEffect(() => {
+    if (!playerInThis || isPlane || isBoat || isCaltrain) return
+    engineUid.current = soundManager.play('engine_idle', { volume: 0.4, loop: true })
+    return () => {
+      soundManager.stop(engineUid.current)
+      engineUid.current = ''
+    }
+  }, [playerInThis, isPlane, isBoat, isCaltrain])
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05)
@@ -875,7 +902,21 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       }
 
       if (playerInThis) setVehicleSpeed(Math.abs(vel.current.z) * 216)
+      velZRef.current = vel.current.z
       prevVelZ.current = vel.current.z
+
+      // Engine pitch/volume modulation
+      if (playerInThis && engineUid.current) {
+        const spd = Math.abs(vel.current.z)
+        const maxSpd = spec.maxSpeed * 0.005
+        const t = Math.min(1, spd / Math.max(maxSpd, 0.001))
+        soundManager.setVolume(engineUid.current, 0.25 + t * 0.55)
+        // detune: 0 at idle, +600 cents (~half octave) at top speed
+        const gainNode = (soundManager as any).gainNodes?.get(engineUid.current)
+        const src = (soundManager as any).activeSources?.get(engineUid.current)
+        if (src) src.detune.value = t * 600
+        void gainNode
+      }
 
     } else if (isBoat) {
       // Boat physics — W moves forward toward camera
@@ -1083,7 +1124,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
 
   return (
     <group ref={meshRef} position={[x, isPlane ? 50 : 0, z]}>
-      <VehicleMesh type={type} color={color} />
+      <VehicleMesh type={type} color={color} speedRef={velZRef} />
       <VehicleAdWrap vehicleId={id} vehicleType={type} />
       {isCaltrain && <CaltrainAdWrap index={Math.floor(Math.abs(x * 7 + z * 13)) % 10} seedX={x} seedZ={z} />}
     </group>

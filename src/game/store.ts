@@ -63,6 +63,8 @@ interface GameState {
   } | null
   missionsCompleted: number
   missionCash: number
+  wantedLevel: number // 0–5 stars
+  lastOffenseAt: number
 
   // Actions
   takeDamage: (amount: number) => void
@@ -103,6 +105,10 @@ interface GameState {
   startMission: (mission: NonNullable<GameState['activeMission']>) => void
   reachMissionWaypoint: () => void
   cancelMission: () => void
+  // Wanted
+  addWanted: (amount: number) => void
+  clearWanted: () => void
+  tickWantedDecay: () => void
   // Cheat system
   spawnVehicle: (type: VehicleType) => void
 }
@@ -134,6 +140,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   activeMission: null,
   missionsCompleted: 0,
   missionCash: 0,
+  wantedLevel: 0,
+  lastOffenseAt: 0,
   qualityPreset: 'high',
   qualityNpcCount: 50,
   qualityVehicleCount: 30,
@@ -265,6 +273,17 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
   }),
   cancelMission: () => set({ activeMission: null }),
+
+  addWanted: (amount) => set((s) => ({
+    wantedLevel: Math.min(5, s.wantedLevel + amount),
+    lastOffenseAt: Date.now(),
+  })),
+  clearWanted: () => set({ wantedLevel: 0 }),
+  tickWantedDecay: () => set((s) => {
+    if (s.wantedLevel === 0) return {}
+    if (Date.now() - s.lastOffenseAt < 8000) return {}
+    return { wantedLevel: Math.max(0, s.wantedLevel - 1), lastOffenseAt: Date.now() }
+  }),
 
   switchMap: (mapId, spawnPos) => {
     set({

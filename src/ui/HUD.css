@@ -617,6 +617,27 @@
   font-weight: 600;
 }
 
+/* === WANTED STARS === */
+.wanted-stars {
+  position: fixed;
+  bottom: 120px;
+  right: 24px;
+  display: flex;
+  gap: 4px;
+  z-index: 100;
+}
+
+.wanted-stars .star {
+  font-size: 18px;
+  color: rgba(255,255,255,0.2);
+  text-shadow: none;
+}
+
+.wanted-stars .star.active {
+  color: #ffd166;
+  text-shadow: 0 0 8px rgba(255,209,102,0.8);
+}
+
 /* === CROSSHAIR === */
 .crosshair {
   position: fixed;

@@ -82,6 +82,7 @@ function getClippedRail(path: PathPoint[], playerPos: [number, number, number]):
 // Pre-compute relative positions for buildings/trees/lamps — only re-run when map changes
 function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
   const landscapeData = useLandscapeData()
+  const activeMission = useGameStore((s) => s.activeMission)
   // Pre-compute relative positions from active map data
   const relativeBuildings = useMemo(() =>
     landscapeData.buildings.map((b) => ({
@@ -280,6 +281,58 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
           opacity="0.9"
         />
 
+        {/* Active mission waypoint — drawn after everything else so it's on top */}
+        {activeMission && (() => {
+          const target = activeMission.phase === 'pickup' ? activeMission.pickup : activeMission.dropoff
+          const color = activeMission.phase === 'pickup' ? '#ffd166' : '#06d6a0'
+          const dx = target.x * MAP_SCALE - playerRelX
+          const dy = target.z * MAP_SCALE - playerRelZ
+          const absX = CENTER + dx
+          const absY = CENTER + dy
+          const onScreen = Math.abs(dx) <= HALF_SIZE - 6 && Math.abs(dy) <= HALF_SIZE - 6
+
+          if (onScreen) {
+            // On-map pulsing dot with a label that counter-rotates so it stays upright.
+            return (
+              <g>
+                <circle cx={absX} cy={absY} r={4.5} fill={color} stroke="rgba(0,0,0,0.9)" strokeWidth={0.8} />
+                <circle cx={absX} cy={absY} r={7.5} fill="none" stroke={color} strokeWidth={0.8} opacity={0.6}>
+                  <animate attributeName="r" values="4.5;10;4.5" dur="1.4s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.7;0;0.7" dur="1.4s" repeatCount="indefinite" />
+                </circle>
+                <g transform={`rotate(${-(rotationDeg + 180)} ${absX} ${absY})`}>
+                  <text
+                    x={absX}
+                    y={absY - 7}
+                    textAnchor="middle"
+                    fontSize={7}
+                    fontFamily="var(--font-ui)"
+                    fill="#fff"
+                    stroke="rgba(0,0,0,0.9)"
+                    strokeWidth={0.6}
+                    paintOrder="stroke"
+                  >
+                    {activeMission.phase === 'pickup' ? 'PICKUP' : activeMission.dropoff.label.toUpperCase()}
+                  </text>
+                </g>
+              </g>
+            )
+          }
+
+          // Off-map — clamp to the minimap edge and draw an arrow pointing
+          // outward along the direction from player to target.
+          const ang = Math.atan2(dy, dx)
+          const edge = HALF_SIZE - 8
+          const ex = CENTER + Math.cos(ang) * edge
+          const ey = CENTER + Math.sin(ang) * edge
+          const arrowDeg = (ang * 180) / Math.PI + 90
+          return (
+            <g transform={`translate(${ex} ${ey}) rotate(${arrowDeg})`}>
+              <polygon points="0,-6 5,5 -5,5" fill={color} stroke="rgba(0,0,0,0.9)" strokeWidth={0.6} />
+            </g>
+          )
+        })()}
+
         {/* NPCs */}
         {visibleNpcs}
 
@@ -306,6 +359,7 @@ export default function HUD() {
   const missionCash = useGameStore((s) => s.missionCash)
   const missionsCompleted = useGameStore((s) => s.missionsCompleted)
   const playerPos = useGameStore((s) => s.playerPosition)
+  const wantedLevel = useGameStore((s) => s.wantedLevel)
   const damageFlash = useGameStore((s) => s.damageFlash)
   const isDead = useGameStore((s) => s.isDead)
   const isRespawning = useGameStore((s) => s.isRespawning)
@@ -739,6 +793,15 @@ const setPlayerFaceTexture = useGameStore((s) => s.setPlayerFaceTexture)
         <div className="mission-stats">
           <span className="mission-cash">${missionCash.toLocaleString()}</span>
           <span className="mission-count">{missionsCompleted} done</span>
+        </div>
+      )}
+
+      {/* Wanted level stars */}
+      {wantedLevel > 0 && (
+        <div className="wanted-stars">
+          {Array.from({ length: 5 }, (_, i) => (
+            <span key={i} className={i < wantedLevel ? 'star active' : 'star'}>★</span>
+          ))}
         </div>
       )}
 

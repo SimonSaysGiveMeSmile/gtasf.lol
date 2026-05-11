@@ -11,6 +11,7 @@ import { vehiclePositions } from '../game/vehicleState'
 import { getNearbyBuildingsGrid, collideCircleWithBuilding, circleHitsBuilding, meshColliderPushOutCircle, meshColliderHitsCircle } from '../world/World'
 import { VehicleMesh } from '../vehicles/VehicleSpawner'
 import { useLandscapeData } from '../game/LandscapeContext'
+import { soundManager } from '../systems/audio/SoundManager'
 // @simonsaysgivemesmile
 
 function seededRandom(seed: number) { // @t1an
@@ -210,6 +211,11 @@ function PedestrianNPC({ id, x, z, color, shirt, pants, hair: _hair, seed, build
   const timer = useRef(0)
   const tgtX = useRef(x)
   const tgtZ = useRef(z)
+  const isFleeing = useRef(false)
+  const isHit = useRef(false)
+  const hitTimer = useRef(0)
+  const hitVelX = useRef(0)
+  const hitVelZ = useRef(0)
   const pLL = useRef(0)
   const pRL = useRef(0)
   const pLA = useRef(0)
@@ -223,6 +229,53 @@ function PedestrianNPC({ id, x, z, color, shirt, pants, hair: _hair, seed, build
     const dt = Math.min(delta, 0.05)
     timer.current += dt
 
+    // ── Hit ragdoll ───────────────────────────────────────────────────────
+    if (isHit.current) {
+      hitTimer.current -= dt
+      pos.current.x += hitVelX.current * dt
+      pos.current.z += hitVelZ.current * dt
+      hitVelX.current *= 0.85
+      hitVelZ.current *= 0.85
+      pos.current.y = Math.max(0, pos.current.y - 12 * dt)
+      if (hitTimer.current <= 0) {
+        isHit.current = false
+        pos.current.y = 0
+      }
+      if (groupRef.current) {
+        groupRef.current.position.set(pos.current.x, pos.current.y, pos.current.z)
+        groupRef.current.rotation.z += 8 * dt
+      }
+      pedPositions.set(id, { x: pos.current.x, z: pos.current.z })
+      return
+    }
+
+    // ── Vehicle proximity — flee or detect hit ────────────────────────────
+    for (const [, v] of vehiclePositions) {
+      const vdx = pos.current.x - v.x
+      const vdz = pos.current.z - v.z
+      const vDist = Math.sqrt(vdx * vdx + vdz * vdz)
+      const minDist = 0.3 + v.radius
+
+      if (vDist < minDist && vDist > 0.001) {
+        // Direct hit — launch the ped
+        isHit.current = true
+        hitTimer.current = 0.8
+        const spd = 8
+        hitVelX.current = (vdx / vDist) * spd
+        hitVelZ.current = (vdz / vDist) * spd
+        pos.current.y = 0.5
+        soundManager.play('metal_impact', { volume: 0.5 })
+        useGameStore.getState().addWanted(1)
+        isFleeing.current = false
+      } else if (vDist < 15) {
+        // Nearby fast vehicle — flee away from it
+        isFleeing.current = true
+        tgtX.current = pos.current.x + (vdx / vDist) * 20
+        tgtZ.current = pos.current.z + (vdz / vDist) * 20
+        timer.current = 0
+      }
+    }
+
     const dx = tgtX.current - pos.current.x
     const dz = tgtZ.current - pos.current.z
     const dist = Math.sqrt(dx * dx + dz * dz)
@@ -230,16 +283,19 @@ function PedestrianNPC({ id, x, z, color, shirt, pants, hair: _hair, seed, build
 
     if (dist < 1.5 || timer.current > 4) {
       timer.current = 0
+      isFleeing.current = false
       tgtX.current = x + (seededRandom(timer.current + seed) - 0.5) * 40
       tgtZ.current = z + (seededRandom(timer.current + seed * 3) - 0.5) * 40
     }
 
+    const effectiveSpeed = isFleeing.current ? walkSpeed * 2.5 : walkSpeed
+
     if (dist > 0.1) {
-      pos.current.x += (dx / dist) * walkSpeed * dt
-      pos.current.z += (dz / dist) * walkSpeed * dt
+      pos.current.x += (dx / dist) * effectiveSpeed * dt
+      pos.current.z += (dz / dist) * effectiveSpeed * dt
       angle.current = Math.atan2(dx, dz)
 
-      // Building collision for pedestrians — polygon-accurate
+      // Building collision
       const pR = 0.3
       const nearbyBuildings = getNearbyBuildingsGrid(pos.current.x, pos.current.z, pR + 10)
       for (const bi of nearbyBuildings) {
@@ -248,14 +304,13 @@ function PedestrianNPC({ id, x, z, color, shirt, pants, hair: _hair, seed, build
         pos.current.x += push.pushX
         pos.current.z += push.pushZ
       }
-      // Static-mesh (GLB) collider fallback.
       const meshPush = meshColliderPushOutCircle(pos.current.x, pos.current.z, pR)
       if (meshPush) {
         pos.current.x += meshPush.pushX
         pos.current.z += meshPush.pushZ
       }
 
-      // Tree collision for pedestrians
+      // Tree collision
       const tR = 0.25
       for (const t of trees) {
         const tdx = pos.current.x - t.x
@@ -267,19 +322,6 @@ function PedestrianNPC({ id, x, z, color, shirt, pants, hair: _hair, seed, build
           pos.current.z -= (tdz / tDist) * nd
         }
       }
-
-    // Vehicle collision — push pedestrians away from vehicles
-    for (const [, v] of vehiclePositions) {
-      const vdx = pos.current.x - v.x
-      const vdz = pos.current.z - v.z
-      const vDist = Math.sqrt(vdx * vdx + vdz * vdz)
-      const minDist = 0.3 + v.radius
-      if (vDist < minDist && vDist > 0.001) {
-        const nd = minDist - vDist
-        pos.current.x += (vdx / vDist) * nd
-        pos.current.z += (vdz / vDist) * nd
-      }
-    }
     }
 
     // Ped-ped separation — runs every frame so crowds don't overlap.
