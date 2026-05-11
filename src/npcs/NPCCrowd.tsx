@@ -1,5 +1,5 @@
 // @jiahe
-import { useRef, useMemo, useState } from 'react'
+import { useRef, useMemo, useState, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -28,8 +28,13 @@ function isClearOfBuildings(x: number, z: number, r: number, buildings: typeof L
   return true
 }
 
-// NPC spawn registry — prevents overlapping NPCs at spawn time
+// NPC spawn registry — prevents overlapping NPCs at spawn time.
+// Cleared at the start of every crowd rebuild so it doesn't accumulate
+// across map switches.
 const _spawnedNPCs: { x: number; z: number }[] = []
+
+// Live pedestrian positions, keyed by id — used for ped-ped separation each frame.
+const pedPositions = new Map<string, { x: number; z: number }>()
 
 function findNPCSpawn(seed: number, roadPaths: typeof LANDSCAPE_CONFIG.roadPaths, buildings: typeof LANDSCAPE_CONFIG.buildings): { x: number; z: number } | null {
   const allPoints: { x: number; z: number }[] = []
@@ -185,12 +190,12 @@ const PANTS = ['#1a1a3a', '#2a2a2a', '#3a3020', '#1a2a1a', '#2a1a2a', '#1a1a1a',
 const HAIR_COLORS = ['#0a0505', '#1a0f08', '#2a1a10', '#3a2515', '#8a6030', '#c0a060', '#404040', '#c0c0c0']
 
 interface PedProps {
-  x: number; z: number; color: string; shirt: string; pants: string; hair: string; seed: number
+  id: string; x: number; z: number; color: string; shirt: string; pants: string; hair: string; seed: number
   buildings: { x: number; z: number; width: number; depth: number }[]
   trees: { x: number; z: number }[]
 }
 
-function PedestrianNPC({ x, z, color, shirt, pants, hair: _hair, seed, buildings, trees }: PedProps) {
+function PedestrianNPC({ id, x, z, color, shirt, pants, hair: _hair, seed, buildings, trees }: PedProps) {
   const groupRef = useRef<THREE.Group>(null!)
   const bodyGroupRef = useRef<THREE.Group>(null!)
   const leftLegRef = useRef<THREE.Group>(null!)
@@ -209,6 +214,10 @@ function PedestrianNPC({ x, z, color, shirt, pants, hair: _hair, seed, buildings
   const pRL = useRef(0)
   const pLA = useRef(0)
   const pRA = useRef(0)
+
+  useEffect(() => {
+    return () => { pedPositions.delete(id) }
+  }, [id])
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05)
@@ -273,18 +282,22 @@ function PedestrianNPC({ x, z, color, shirt, pants, hair: _hair, seed, buildings
     }
     }
 
-    // Vehicle collision — push pedestrians away from vehicles
-    for (const [, v] of vehiclePositions) {
-      const vdx = pos.current.x - v.x
-      const vdz = pos.current.z - v.z
-      const vDist = Math.sqrt(vdx * vdx + vdz * vdz)
-      const minDist = 0.3 + v.radius
-      if (vDist < minDist && vDist > 0.001) {
-        const nd = minDist - vDist
-        pos.current.x += (vdx / vDist) * nd
-        pos.current.z += (vdz / vDist) * nd
+    // Ped-ped separation — runs every frame so crowds don't overlap.
+    const myR = 0.3
+    for (const [otherId, p] of pedPositions) {
+      if (otherId === id) continue
+      const pdx = pos.current.x - p.x
+      const pdz = pos.current.z - p.z
+      const pDist = Math.sqrt(pdx * pdx + pdz * pdz)
+      const minPedDist = myR * 2
+      if (pDist < minPedDist && pDist > 0.001) {
+        const nd = (minPedDist - pDist) * 0.5
+        pos.current.x += (pdx / pDist) * nd
+        pos.current.z += (pdz / pDist) * nd
       }
     }
+
+    pedPositions.set(id, { x: pos.current.x, z: pos.current.z })
 
     // Animation
     if (isMoving) animTime.current += dt * 9
@@ -381,7 +394,30 @@ function PedestrianNPC({ x, z, color, shirt, pants, hair: _hair, seed, buildings
 // Traffic cars are AI-driven until the player hijacks them. On hijack, the
 // traffic entry is removed and a real player-drivable Vehicle spawns at the
 // same pose via the existing 'cheat-spawn' pipe in VehicleSpawner.
-function TrafficCar({ x, z, rotation, color, id, buildings }: { x: number; z: number; rotation: number; color: string; id: string; buildings: { x: number; z: number; width: number; depth: number }[] }) {
+type RoadPath = { x: number; z: number }[]
+
+function pickRoadPath(x: number, z: number, roadPaths: RoadPath[]): { pathIdx: number; ptIdx: number; dir: 1 | -1 } | null {
+  let bestPath = -1
+  let bestPt = -1
+  let bestDist = Infinity
+  for (let p = 0; p < roadPaths.length; p++) {
+    const path = roadPaths[p]
+    if (path.length < 2) continue
+    for (let i = 0; i < path.length; i++) {
+      const dx = path[i].x - x
+      const dz = path[i].z - z
+      const d = dx * dx + dz * dz
+      if (d < bestDist) { bestDist = d; bestPath = p; bestPt = i }
+    }
+  }
+  if (bestPath < 0) return null
+  // Prefer advancing forward along the path; flip direction at the tail end.
+  const path = roadPaths[bestPath]
+  const dir: 1 | -1 = bestPt < path.length - 1 ? 1 : -1
+  return { pathIdx: bestPath, ptIdx: bestPt, dir }
+}
+
+function TrafficCar({ x, z, rotation, color, id, buildings, roadPaths }: { x: number; z: number; rotation: number; color: string; id: string; buildings: { x: number; z: number; width: number; depth: number }[]; roadPaths: RoadPath[] }) {
   const meshRef = useRef<THREE.Group>(null)
   const carAngle = useRef(rotation)
   const timer = useRef(0)
@@ -390,6 +426,10 @@ function TrafficCar({ x, z, rotation, color, id, buildings }: { x: number; z: nu
   const driverRef = useRef<THREE.Group>(null!)
   const [hijacked, setHijacked] = useState(false)
   const prevInteract = useRef(false)
+
+  // Route state — populated from roadPaths at mount, refreshed if path data changes.
+  const route = useRef(pickRoadPath(x, z, roadPaths))
+  const stuckTimer = useRef(0)
 
   const [, getKeys] = useKeyboardControls()
   const inVehicle = useGameStore((s) => s.inVehicle)
@@ -401,8 +441,69 @@ function TrafficCar({ x, z, rotation, color, id, buildings }: { x: number; z: nu
     const dt = Math.min(delta, 0.05)
     timer.current += dt
 
-    const dx = Math.sin(carAngle.current) * speed * dt
-    const dz = Math.cos(carAngle.current) * speed * dt
+    // ── Waypoint steering ─────────────────────────────────────────────────
+    // If we have a route, steer the car toward the next waypoint along the
+    // chosen road path. Falls back to straight-line travel if no roadPaths.
+    const r = route.current
+    let targetAngle: number | null = null
+    if (r && roadPaths[r.pathIdx]) {
+      const path = roadPaths[r.pathIdx]
+      const tgt = path[r.ptIdx]
+      if (tgt) {
+        const ddx = tgt.x - pos.current.x
+        const ddz = tgt.z - pos.current.z
+        const dd = Math.sqrt(ddx * ddx + ddz * ddz)
+        if (dd < 3) {
+          // Reached waypoint — advance. If we fall off the end, flip direction.
+          r.ptIdx += r.dir
+          if (r.ptIdx < 0 || r.ptIdx >= path.length) {
+            r.dir = (r.dir * -1) as 1 | -1
+            r.ptIdx = Math.max(0, Math.min(path.length - 1, r.ptIdx + r.dir))
+          }
+        } else {
+          targetAngle = Math.atan2(ddx, ddz)
+        }
+      }
+    }
+
+    // Steer toward target angle (wrapped). Smooth turn rate so cars don't pivot in place.
+    if (targetAngle !== null) {
+      let diff = targetAngle - carAngle.current
+      while (diff > Math.PI) diff -= Math.PI * 2
+      while (diff < -Math.PI) diff += Math.PI * 2
+      const maxTurn = 2.5 * dt
+      carAngle.current += Math.max(-maxTurn, Math.min(maxTurn, diff))
+    }
+
+    // ── Obstacle look-ahead ───────────────────────────────────────────────
+    // Slow down (don't pancake the brake) if another vehicle is within
+    // ~6 m in our forward cone. Keeps traffic from piling up at intersections.
+    let speedScale = 1
+    const fwdX = Math.sin(carAngle.current)
+    const fwdZ = Math.cos(carAngle.current)
+    for (const [otherId, other] of vehiclePositions) {
+      if (otherId === id) continue
+      const ox = other.x - pos.current.x
+      const oz = other.z - pos.current.z
+      const dot = ox * fwdX + oz * fwdZ
+      if (dot < 0 || dot > 6) continue
+      const perp = Math.abs(ox * -fwdZ + oz * fwdX)
+      if (perp < 2.2) {
+        speedScale = Math.min(speedScale, dot / 6)
+      }
+    }
+    // Yield to player on foot in the same cone.
+    if (!inVehicle) {
+      const px = playerPosition[0] - pos.current.x
+      const pz = playerPosition[2] - pos.current.z
+      const dot = px * fwdX + pz * fwdZ
+      const perp = Math.abs(px * -fwdZ + pz * fwdX)
+      if (dot > 0 && dot < 4 && perp < 2) speedScale = 0
+    }
+
+    const effSpeed = speed * speedScale
+    const dx = fwdX * effSpeed * dt
+    const dz = fwdZ * effSpeed * dt
     const nx = pos.current.x + dx
     const nz = pos.current.z + dz
 
@@ -437,8 +538,19 @@ function TrafficCar({ x, z, rotation, color, id, buildings }: { x: number; z: nu
     if (!blocked) {
       pos.current.x = nx
       pos.current.z = nz
+      stuckTimer.current = 0
     } else {
-      carAngle.current += Math.PI / 2 + seededRandom(timer.current * 17) * Math.PI
+      // Wall ahead — increment stuck timer. If we've been stuck for a
+      // while, re-pick a route from our current position and try again.
+      stuckTimer.current += dt
+      if (stuckTimer.current > 1.2) {
+        route.current = pickRoadPath(pos.current.x, pos.current.z, roadPaths)
+        stuckTimer.current = 0
+      } else {
+        // Nudge the angle a bit to escape grazing collisions without the
+        // old random flail.
+        carAngle.current += (seededRandom(timer.current * 7 + x) - 0.5) * 0.5
+      }
     }
 
     // Wrap around map edges
@@ -523,6 +635,10 @@ export default function NPCCrowd() {
   const qualityVehicleCount = useGameStore((s) => s.qualityVehicleCount)
 
   const { pedestrians, cars } = useMemo(() => {
+    // Clear registries — each rebuild (map switch, quality slider) starts fresh.
+    _spawnedNPCs.length = 0
+    pedPositions.clear()
+
     const peds: { id: string; x: number; z: number; color: string; shirt: string; pants: string; hair: string; seed: number }[] = []
     const cars: { id: string; x: number; z: number; rotation: number; color: string }[] = []
     const carColors = ['#334488', '#883333', '#338833', '#aaaaaa', '#444444', '#665522']
@@ -578,7 +694,7 @@ export default function NPCCrowd() {
         <PedestrianNPC key={p.id} {...p} buildings={data.buildings} trees={data.trees} />
       ))}
       {cars.map(c => (
-        <TrafficCar key={c.id} {...c} id={c.id} buildings={data.buildings} />
+        <TrafficCar key={c.id} {...c} id={c.id} buildings={data.buildings} roadPaths={data.roadPaths} />
       ))}
     </>
   )

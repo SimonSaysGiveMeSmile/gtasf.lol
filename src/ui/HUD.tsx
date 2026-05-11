@@ -302,6 +302,10 @@ export default function HUD() {
   const city = useGameStore((s) => s.currentCity)
   const inVehicle = useGameStore((s) => s.inVehicle)
   const interactionPrompt = useGameStore((s) => s.interactionPrompt)
+  const activeMission = useGameStore((s) => s.activeMission)
+  const missionCash = useGameStore((s) => s.missionCash)
+  const missionsCompleted = useGameStore((s) => s.missionsCompleted)
+  const playerPos = useGameStore((s) => s.playerPosition)
   const damageFlash = useGameStore((s) => s.damageFlash)
   const isDead = useGameStore((s) => s.isDead)
   const isRespawning = useGameStore((s) => s.isRespawning)
@@ -708,6 +712,33 @@ const setPlayerFaceTexture = useGameStore((s) => s.setPlayerFaceTexture)
         <div className="interaction-prompt">
           <div className="interact-key">F</div>
           <span className="interact-text">{interactionPrompt}</span>
+        </div>
+      )}
+
+      {/* Mission tracker */}
+      {activeMission && (() => {
+        const tgt = activeMission.phase === 'pickup' ? activeMission.pickup : activeMission.dropoff
+        const dx = tgt.x - playerPos[0]
+        const dz = tgt.z - playerPos[2]
+        const dist = Math.round(Math.sqrt(dx * dx + dz * dz))
+        const label = activeMission.phase === 'pickup' ? 'Pickup package' : `Deliver to ${activeMission.dropoff.label}`
+        return (
+          <div className="mission-panel">
+            <div className="mission-phase">{activeMission.phase === 'pickup' ? 'PICKUP' : 'DROPOFF'}</div>
+            <div className="mission-label">{label}</div>
+            <div className="mission-meta">
+              <span>{dist} m</span>
+              <span>${activeMission.reward}</span>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Mission stats (cash + completion count) */}
+      {(missionCash > 0 || missionsCompleted > 0) && (
+        <div className="mission-stats">
+          <span className="mission-cash">${missionCash.toLocaleString()}</span>
+          <span className="mission-count">{missionsCompleted} done</span>
         </div>
       )}
 

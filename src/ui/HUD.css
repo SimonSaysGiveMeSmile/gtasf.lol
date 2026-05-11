@@ -554,6 +554,69 @@
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
+/* === MISSION === */
+.mission-panel {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-left: 2px solid #ffd166;
+  padding: 10px 14px;
+  border-radius: 3px;
+  z-index: 100;
+  min-width: 180px;
+}
+
+.mission-panel .mission-phase {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #ffd166;
+  text-shadow: 0 0 8px rgba(255, 209, 102, 0.5);
+}
+
+.mission-panel .mission-label {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: #fff;
+  font-weight: 500;
+}
+
+.mission-panel .mission-meta {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 2px;
+}
+
+.mission-stats {
+  position: fixed;
+  top: 82px;
+  right: 24px;
+  display: flex;
+  gap: 10px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.85);
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 2px;
+  z-index: 100;
+}
+
+.mission-stats .mission-cash {
+  color: #06d6a0;
+  font-weight: 600;
+}
+
 /* === CROSSHAIR === */
 .crosshair {
   position: fixed;

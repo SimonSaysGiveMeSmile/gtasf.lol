@@ -6,6 +6,7 @@ import World from './world/World'
 import Player from './player/Player'
 import VehicleSpawner from './vehicles/VehicleSpawner'
 import NPCCrowd from './npcs/NPCCrowd'
+import MissionRunner from './game/MissionRunner'
 import HUD from './ui/HUD'
 import LoadingScreen from './ui/LoadingScreen'
 import InputManager from './systems/InputManager'
@@ -103,6 +104,7 @@ export default function App() {
                   <Player />
                   <VehicleSpawner />
                   <NPCCrowd />
+                  <MissionRunner />
                   <FPSTracker />
               </Physics>
             </Suspense>

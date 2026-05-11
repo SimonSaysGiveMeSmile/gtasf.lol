@@ -52,6 +52,18 @@ interface GameState {
   playerFaceTexture: string | null
   godMode: boolean
 
+  // Missions — simple pickup → dropoff loop with cash reward.
+  // Only one active mission at a time; completing it seeds the next one.
+  activeMission: {
+    id: string
+    pickup: { x: number; z: number; label: string }
+    dropoff: { x: number; z: number; label: string }
+    phase: 'pickup' | 'dropoff'
+    reward: number
+  } | null
+  missionsCompleted: number
+  missionCash: number
+
   // Actions
   takeDamage: (amount: number) => void
   setIsFalling: (falling: boolean) => void
@@ -87,6 +99,10 @@ interface GameState {
   setPlayerFaceTexture: (texture: string | null) => void
   setGodMode: (v: boolean) => void
   switchMap: (mapId: string, spawnPos: [number, number, number]) => void
+  // Missions
+  startMission: (mission: NonNullable<GameState['activeMission']>) => void
+  reachMissionWaypoint: () => void
+  cancelMission: () => void
   // Cheat system
   spawnVehicle: (type: VehicleType) => void
 }
@@ -115,6 +131,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   altitude: 0,
   fps: 60,
   isLoading: true,
+  activeMission: null,
+  missionsCompleted: 0,
+  missionCash: 0,
   qualityPreset: 'high',
   qualityNpcCount: 50,
   qualityVehicleCount: 30,
@@ -229,6 +248,23 @@ export const useGameStore = create<GameState>((set, get) => ({
     })
   },
   setGodMode: (v) => set({ godMode: v }),
+
+  startMission: (mission) => set({ activeMission: mission }),
+  reachMissionWaypoint: () => set((state) => {
+    const m = state.activeMission
+    if (!m) return {}
+    if (m.phase === 'pickup') {
+      return { activeMission: { ...m, phase: 'dropoff' } }
+    }
+    // dropoff reached — complete and clear. Next mission is seeded externally
+    // (by MissionRunner) so the store stays decoupled from landscape data.
+    return {
+      activeMission: null,
+      missionsCompleted: state.missionsCompleted + 1,
+      missionCash: state.missionCash + m.reward,
+    }
+  }),
+  cancelMission: () => set({ activeMission: null }),
 
   switchMap: (mapId, spawnPos) => {
     set({

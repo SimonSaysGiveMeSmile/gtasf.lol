@@ -1,7 +1,7 @@
 // @t1an
-import { useRef, useMemo, useEffect, useState } from 'react'
+import { useRef, useMemo, useEffect, useState, Suspense } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { useKeyboardControls } from '@react-three/drei'
+import { useKeyboardControls, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '../game/store'
 import type { VehicleType } from '../game/types'
@@ -13,6 +13,8 @@ import { vehiclePositions, vehicleRadius, OBSTACLE_RADIUS } from '../game/vehicl
 import { getNearbyBuildingsGrid, circleHitsBuilding, meshColliderHitsCircle } from '../world/World'
 import { VehicleAdWrap } from '../systems/billboards/VehicleAdWraps'
 import CaltrainAdWrap from '../systems/billboards/CaltrainAdWrap'
+import { pulseCameraShake, applyCameraShake } from '../game/cameraShake'
+import { soundManager } from '../systems/audio/SoundManager'
 
 let _activeLandscape: LandscapeData = LANDSCAPE_CONFIG
 
@@ -463,7 +465,80 @@ function Boat({ color }: { color: string }) {
   )
 }
 
-export function VehicleMesh({ type, color }: { type: VehicleType; color: string }) {
+// Vehicle GLB registry — maps a VehicleType to a CC-licensed model in public/models/.
+// Types missing from this map fall through to the procedural meshes below.
+const VEHICLE_GLB: Partial<Record<VehicleType, string>> = {
+  modelS: '/models/ToyCar.glb',
+  sedan: '/models/ToyCar.glb',
+  sports: '/models/CarConcept.glb',
+  cybertruck: '/models/CesiumMilkTruck.glb',
+}
+
+// Preload so first spawn doesn't hitch. Safe to call with paths that don't exist —
+// useGLTF will reject and the Suspense fallback (the procedural mesh) handles it.
+for (const url of Object.values(VEHICLE_GLB)) if (url) useGLTF.preload(url)
+
+// GLB vehicle wrapper — loads the glb, normalises to the spec dimensions, clones
+// so each instance has its own material (for per-vehicle tint), and renders with
+// the wheels spinning around the existing `Wheel` component positions since the
+// GLB wheels would need per-model remapping to animate.
+function GLBVehicle({ type, color }: { type: VehicleType; color: string }) {
+  const url = VEHICLE_GLB[type]!
+  const gltf = useGLTF(url)
+  const spec = VEHICLES.find((v) => v.type === type)!
+
+  const scene = useMemo(() => {
+    const cloned = gltf.scene.clone(true)
+    const box = new THREE.Box3().setFromObject(cloned)
+    const size = new THREE.Vector3()
+    box.getSize(size)
+    const centre = new THREE.Vector3()
+    box.getCenter(centre)
+
+    // Normalise: fit tightly to spec dimensions (x = width, y = height, z = length).
+    // Models arrive in arbitrary orientations and scales — GLB authors don't agree
+    // on "forward". We scale uniformly to the smallest ratio so nothing gets stretched,
+    // then recentre on x/z and ground on y.
+    const sx = spec.dimensions.x / Math.max(size.x, 0.001)
+    const sy = spec.dimensions.y / Math.max(size.y, 0.001)
+    const sz = spec.dimensions.z / Math.max(size.z, 0.001)
+    const s = Math.min(sx, sy, sz)
+
+    cloned.scale.setScalar(s)
+    cloned.position.set(-centre.x * s, -box.min.y * s, -centre.z * s)
+
+    const tint = new THREE.Color(color)
+    cloned.traverse((obj) => {
+      const m = obj as THREE.Mesh
+      if (!m.isMesh) return
+      m.castShadow = false
+      m.receiveShadow = false
+      const mats = Array.isArray(m.material) ? m.material : [m.material]
+      m.material = mats.map((orig) => {
+        const mat = (orig as THREE.Material).clone() as THREE.MeshStandardMaterial
+        // Tint only materials that clearly represent body paint. Heuristic:
+        // bright-ish standard materials without a baseColor texture. Leaves wheels,
+        // tires, glass and details alone.
+        if (
+          (mat as THREE.MeshStandardMaterial).isMeshStandardMaterial &&
+          !(mat as THREE.MeshStandardMaterial).map
+        ) {
+          const base = (mat as THREE.MeshStandardMaterial).color
+          const luminance = 0.299 * base.r + 0.587 * base.g + 0.114 * base.b
+          if (luminance > 0.25) (mat as THREE.MeshStandardMaterial).color = tint
+        }
+        return mat
+      })
+    })
+    return cloned
+  }, [gltf.scene, color, spec.dimensions.x, spec.dimensions.y, spec.dimensions.z])
+
+  return <primitive object={scene} />
+}
+
+// Fallback mesh — the original procedural versions, used when the GLB fails to
+// load. Also used directly for vehicle types without a GLB mapping.
+function FallbackVehicleMesh({ type, color }: { type: VehicleType; color: string }) {
   switch (type) {
     case 'cybertruck': return <TeslaCybertruck color={color} />
     case 'modelS': return <TeslaModelS color={color} />
@@ -477,6 +552,17 @@ export function VehicleMesh({ type, color }: { type: VehicleType; color: string 
     case 'boat': return <Boat color={color} />
     default: return <TeslaCybertruck color={color} />
   }
+}
+
+export function VehicleMesh({ type, color }: { type: VehicleType; color: string }) {
+  if (VEHICLE_GLB[type]) {
+    return (
+      <Suspense fallback={<FallbackVehicleMesh type={type} color={color} />}>
+        <GLBVehicle type={type} color={color} />
+      </Suspense>
+    )
+  }
+  return <FallbackVehicleMesh type={type} color={color} />
 }
 
 // Individual vehicle component with position-based physics
@@ -502,6 +588,8 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
   const pitchRef = useRef(0)
   const interactCooldown = useRef(false)
   const prevInteract = useRef(false)
+  const prevVelZ = useRef(0)
+  const lastImpactAt = useRef(0)
 
   const isPlane = type === 'plane'
   const isBoat = type === 'boat'
@@ -520,6 +608,9 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
   const setIsFlying = useGameStore(s => s.setIsFlying)
   const setAltitude = useGameStore(s => s.setAltitude)
   const setPlayerPosition = useGameStore(s => s.setPlayerPosition)
+  const takeDamage = useGameStore(s => s.takeDamage)
+  const triggerDamageFlash = useGameStore(s => s.triggerDamageFlash)
+  const godMode = useGameStore(s => s.godMode)
 
   const [, getKeys] = useKeyboardControls()
   const playerInThis = inVehicle === id
@@ -548,7 +639,8 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
     const intract = interact || touch.interact
 
     const MAX_SPEED = 30 // m/s hard cap
-    const accel = playerInThis && (boost || touch.boost || touch.run)
+    const isBoosting = playerInThis && (boost || touch.boost || touch.run)
+    const accel = isBoosting
       ? spec.acceleration * 1.15
       : spec.acceleration
 
@@ -556,19 +648,34 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       // Ground vehicle physics — W/S inverted so W moves backward, S moves forward (car-style)
       // Scooters: W=forward, S=backward (normal direction)
       const accelMod = isScooter ? -1 : 1
+
+      // Capture velocity at frame start so we can detect impact (sudden drop)
+      // at the end of the collision pass.
+      const velAtFrameStart = vel.current.z
+
       if (playerInThis && fwd) vel.current.z += accel * dt * accelMod
       if (playerInThis && bwd) vel.current.z -= accel * dt * accelMod
       if (playerInThis && lft) angle.current -= spec.handling * dt * 2
       if (playerInThis && rgt) angle.current += spec.handling * dt * 2
 
-      // Drag
-      vel.current.z *= 0.97
+      // Drag — lighter when boosting so top speed feels meaningful
+      vel.current.z *= isBoosting ? 0.985 : 0.97
 
-      // Clamp speed
-      const maxSpd = Math.min(spec.maxSpeed * 0.005, MAX_SPEED)
+      // Clamp speed — boost raises the cap ~20%
+      const maxSpd = Math.min(spec.maxSpeed * 0.005 * (isBoosting ? 1.2 : 1), MAX_SPEED)
       vel.current.z = Math.max(-maxSpd, Math.min(maxSpd, vel.current.z))
 
-      if (playerInThis && brk) vel.current.z *= 0.9
+      // Brake — hard deceleration toward zero, with a rubber-band so the car
+      // actually stops instead of asymptoting. Much stronger than the old
+      // multiplicative damp.
+      if (playerInThis && brk) {
+        const brakeDecel = 0.5 * dt * 60 // ~0.5/frame at 60fps
+        if (Math.abs(vel.current.z) < brakeDecel) {
+          vel.current.z = 0
+        } else {
+          vel.current.z -= Math.sign(vel.current.z) * brakeDecel
+        }
+      }
 
       // Pre-movement collision: try each axis independently, slide along walls
       const vR = vehicleRadius(type)
@@ -679,7 +786,33 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
         }
       }
 
+      // Impact detection — if speed dropped sharply from start-of-frame to now,
+      // we just hit something. Fire camera shake + crash sound, and damage the
+      // driver for high-speed hits. Debounced so a sustained grind doesn't
+      // rattle the camera forever.
+      if (playerInThis) {
+        const startSpd = Math.abs(velAtFrameStart)
+        const endSpd = Math.abs(vel.current.z)
+        const impact = startSpd - endSpd
+        const now = performance.now()
+        if (impact > 0.15 && startSpd > 0.1 && now - lastImpactAt.current > 120) {
+          lastImpactAt.current = now
+          const severity = Math.min(1, impact / 0.5) // 0.5 drop = full shake
+          pulseCameraShake(0.3 + severity * 0.7)
+          soundManager.play('metal_impact', { volume: 0.4 + severity * 0.5 })
+          // Damage scales with severity; trivial hits (slow bumps) do nothing.
+          // Convert from frame-based velocity units into something plausible:
+          // 0.5 unit drop ≈ full crash, ~25 damage.
+          if (severity > 0.3 && !godMode) {
+            const dmg = Math.round(severity * 25)
+            takeDamage(dmg)
+            triggerDamageFlash()
+          }
+        }
+      }
+
       if (playerInThis) setVehicleSpeed(Math.abs(vel.current.z) * 216)
+      prevVelZ.current = vel.current.z
 
     } else if (isBoat) {
       // Boat physics — W moves forward toward camera
@@ -836,6 +969,9 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
         camera.position.lerp(new THREE.Vector3(tx, ty, tz), 0.1)
         camera.lookAt(pos.current.x, pos.current.y + 0.5, pos.current.z)
       }
+
+      // Impact shake must run after lookAt (which overwrites rotation).
+      applyCameraShake(camera, dt)
     }
 
     // Interaction detection
