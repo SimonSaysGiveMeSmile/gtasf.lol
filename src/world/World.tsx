@@ -181,9 +181,11 @@ export function collideCircleWithBuilding(
     }
     const cp = closestPointOnPoly(poly.xs, poly.zs, px, pz)
     if (cp.inside) {
-      // Inside the building — eject through the nearest wall. dx/dz points
-      // from the wall point toward the player, so pushing in the opposite
-      // direction by (cp.dist + r) lands us r units outside the wall.
+      // Only eject if the player is actually near a wall. Large concave
+      // footprints (U/L-shaped city blocks) report `inside = true` for the
+      // open street running through them — cp.dist is large there. Skip
+      // ejection when the nearest wall is farther than the player radius + 2m.
+      if (cp.dist > r + 2) return null
       const d = cp.dist > 1e-5 ? cp.dist : 1
       const amount = cp.dist + r
       return { pushX: -(cp.dx / d) * amount, pushZ: -(cp.dz / d) * amount }
