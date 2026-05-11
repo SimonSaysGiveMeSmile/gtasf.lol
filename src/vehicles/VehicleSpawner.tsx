@@ -482,33 +482,99 @@ for (const url of Object.values(VEHICLE_GLB)) if (url) useGLTF.preload(url)
 // so each instance has its own material (for per-vehicle tint), and renders with
 // the wheels spinning around the existing `Wheel` component positions since the
 // GLB wheels would need per-model remapping to animate.
+// Per-model orientation hints. If a model ships authored with a non-standard
+// forward axis the auto-detect gets the shape right but can't tell front from
+// back — flip via extra yaw here. Values are radians.
+const VEHICLE_GLB_YAW: Partial<Record<VehicleType, number>> = {
+  sports: Math.PI, // CarConcept is authored facing -Z by default
+}
+
 function GLBVehicle({ type, color }: { type: VehicleType; color: string }) {
   const url = VEHICLE_GLB[type]!
   const gltf = useGLTF(url)
   const spec = VEHICLES.find((v) => v.type === type)!
 
-  const scene = useMemo(() => {
-    const cloned = gltf.scene.clone(true)
-    const box = new THREE.Box3().setFromObject(cloned)
-    const size = new THREE.Vector3()
-    box.getSize(size)
-    const centre = new THREE.Vector3()
-    box.getCenter(centre)
+  const root = useMemo(() => {
+    const inner = gltf.scene.clone(true)
 
-    // Normalise: fit tightly to spec dimensions (x = width, y = height, z = length).
-    // Models arrive in arbitrary orientations and scales — GLB authors don't agree
-    // on "forward". We scale uniformly to the smallest ratio so nothing gets stretched,
-    // then recentre on x/z and ground on y.
-    const sx = spec.dimensions.x / Math.max(size.x, 0.001)
-    const sy = spec.dimensions.y / Math.max(size.y, 0.001)
-    const sz = spec.dimensions.z / Math.max(size.z, 0.001)
-    const s = Math.min(sx, sy, sz)
+    // Measure the raw bounds. setFromObject walks children and applies node
+    // transforms, so this is the real on-screen AABB.
+    const rawBox = new THREE.Box3().setFromObject(inner)
+    const rawSize = new THREE.Vector3()
+    rawBox.getSize(rawSize)
+    const rawCentre = new THREE.Vector3()
+    rawBox.getCenter(rawCentre)
 
-    cloned.scale.setScalar(s)
-    cloned.position.set(-centre.x * s, -box.min.y * s, -centre.z * s)
+    // Auto-orient: cars are longer than they are wide, and wider than they
+    // are tall. The smallest extent is "up", the largest horizontal extent
+    // is "length". We build a rotation that remaps the model's axes so
+    // length→+Z, width→+X, height→+Y.
+    const axes: ('x' | 'y' | 'z')[] = ['x', 'y', 'z']
+    const sorted = axes
+      .map((a) => ({ a, size: rawSize[a] }))
+      .sort((p, q) => q.size - p.size) // desc by size
+    const lengthAxis = sorted[0].a
+    const widthAxis = sorted[1].a
+    const heightAxis = sorted[2].a
 
+    // Recentre the inner group so the vehicle's AABB centre is at the origin
+    // BEFORE we rotate it. Otherwise the rotation spins the model around the
+    // wrong point and it ends up floating off to the side.
+    inner.position.sub(rawCentre)
+
+    // Build an orienting wrapper. We rotate the wrapper, then after rotation
+    // the wrapper's AABB has length on Z, width on X, height on Y.
+    const orient = new THREE.Group()
+    orient.add(inner)
+
+    // Rotation helpers — we need to send the current length axis to Z, etc.
+    // Easier path: use a quaternion that maps (lengthAxis→+Z, heightAxis→+Y).
+    const fromBasis = new THREE.Matrix4()
+    const axisVec: Record<'x' | 'y' | 'z', THREE.Vector3> = {
+      x: new THREE.Vector3(1, 0, 0),
+      y: new THREE.Vector3(0, 1, 0),
+      z: new THREE.Vector3(0, 0, 1),
+    }
+    const xCol = axisVec[widthAxis].clone()
+    const yCol = axisVec[heightAxis].clone()
+    const zCol = axisVec[lengthAxis].clone()
+    // Orthogonality fix: recompute zCol from cross product so we get a
+    // valid right-handed rotation even if the three axes were picked with
+    // opposite signs.
+    const recomputedZ = new THREE.Vector3().crossVectors(xCol, yCol)
+    if (recomputedZ.dot(zCol) < 0) zCol.multiplyScalar(-1)
+    fromBasis.makeBasis(xCol, yCol, zCol)
+    // We want the inverse: rotate the MODEL so its length axis ends up on Z.
+    const invBasis = fromBasis.clone().invert()
+    orient.quaternion.setFromRotationMatrix(invBasis)
+
+    // Optional per-model yaw correction for front/back ambiguity.
+    const extraYaw = VEHICLE_GLB_YAW[type] ?? 0
+    if (extraYaw) orient.rotation.y += extraYaw
+
+    // Now measure the rotated bounds so we can scale uniformly to spec and
+    // ground the wheels on y=0.
+    const outer = new THREE.Group()
+    outer.add(orient)
+    outer.updateMatrixWorld(true)
+    const rotatedBox = new THREE.Box3().setFromObject(orient)
+    const rotatedSize = new THREE.Vector3()
+    rotatedBox.getSize(rotatedSize)
+
+    // Scale uniformly by length to preserve proportions. If the model is
+    // also too wide or too tall after that, we accept it — the game's spec
+    // is not a hard cage, and the physics radius doesn't depend on visual mesh.
+    const scale = spec.dimensions.z / Math.max(rotatedSize.z, 0.001)
+    outer.scale.setScalar(scale)
+
+    // Ground the car: after scale, AABB min.y should sit at 0.
+    outer.updateMatrixWorld(true)
+    const finalBox = new THREE.Box3().setFromObject(outer)
+    outer.position.y = -finalBox.min.y
+
+    // Tint body paint — bright untextured MeshStandard materials only.
     const tint = new THREE.Color(color)
-    cloned.traverse((obj) => {
+    inner.traverse((obj) => {
       const m = obj as THREE.Mesh
       if (!m.isMesh) return
       m.castShadow = false
@@ -516,9 +582,6 @@ function GLBVehicle({ type, color }: { type: VehicleType; color: string }) {
       const mats = Array.isArray(m.material) ? m.material : [m.material]
       m.material = mats.map((orig) => {
         const mat = (orig as THREE.Material).clone() as THREE.MeshStandardMaterial
-        // Tint only materials that clearly represent body paint. Heuristic:
-        // bright-ish standard materials without a baseColor texture. Leaves wheels,
-        // tires, glass and details alone.
         if (
           (mat as THREE.MeshStandardMaterial).isMeshStandardMaterial &&
           !(mat as THREE.MeshStandardMaterial).map
@@ -530,10 +593,10 @@ function GLBVehicle({ type, color }: { type: VehicleType; color: string }) {
         return mat
       })
     })
-    return cloned
-  }, [gltf.scene, color, spec.dimensions.x, spec.dimensions.y, spec.dimensions.z])
+    return outer
+  }, [gltf.scene, color, spec.dimensions.z, type])
 
-  return <primitive object={scene} />
+  return <primitive object={root} />
 }
 
 // Fallback mesh — the original procedural versions, used when the GLB fails to

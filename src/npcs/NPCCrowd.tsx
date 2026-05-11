@@ -9,7 +9,7 @@ import { NPC_COLORS, MAP_SIZE } from '../game/constants'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
 import { vehiclePositions } from '../game/vehicleState'
 import { getNearbyBuildingsGrid, collideCircleWithBuilding, circleHitsBuilding, meshColliderPushOutCircle, meshColliderHitsCircle } from '../world/World'
-import { VehicleMesh } from '../vehicles/Vehicle'
+import { VehicleMesh } from '../vehicles/VehicleSpawner'
 import { useLandscapeData } from '../game/LandscapeContext'
 // @simonsaysgivemesmile
 
