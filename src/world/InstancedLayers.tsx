@@ -72,10 +72,16 @@ export function InstancedBuildings({ buildings }: { buildings: BuildingData[] })
     const footGeos: THREE.BufferGeometry[] = []
     for (const b of buildings) {
       if (b.footprint && b.footprint.length >= 3) {
+        // Shape is authored in its own XY plane; we then rotateX(-PI/2) to
+        // lay it flat on the ground. That rotation maps shape.Y → world -Z,
+        // so feeding raw footprint.z as shape.y flips buildings to the
+        // opposite side of the map vs their collision polygons (which are
+        // stored raw). Negate z here so world(x,z) == footprint(x,z) after
+        // the flip — keeps render and collider in the same space.
         const shape = new THREE.Shape()
-        shape.moveTo(b.footprint[0].x, b.footprint[0].z)
+        shape.moveTo(b.footprint[0].x, -b.footprint[0].z)
         for (let i = 1; i < b.footprint.length; i++) {
-          shape.lineTo(b.footprint[i].x, b.footprint[i].z)
+          shape.lineTo(b.footprint[i].x, -b.footprint[i].z)
         }
         shape.closePath()
         const g = new THREE.ExtrudeGeometry(shape, { depth: b.height, bevelEnabled: false })

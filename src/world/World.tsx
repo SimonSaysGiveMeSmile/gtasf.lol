@@ -345,9 +345,16 @@ function RoadLayer({ roadPaths, roads: roadDefs }: {
         rightEdge.push(new THREE.Vector2(pt.x - perpX * width / 2, pt.z - perpZ * width / 2))
       }
       const shape = new THREE.Shape()
-      shape.moveTo(leftEdge[0].x, leftEdge[0].y)
-      for (let i = 1; i < leftEdge.length; i++) shape.lineTo(leftEdge[i].x, leftEdge[i].y)
-      for (let i = rightEdge.length - 1; i >= 0; i--) shape.lineTo(rightEdge[i].x, rightEdge[i].y)
+      // Negate Y so shape authored in (x, -z) lands at world (x, +z) after
+      // the rotateX(-PI/2) flip below — matching the raw-space coordinates
+      // everything else (traffic paths, lane stripes, collision polygons,
+      // player) uses. Without this, road surface was mirrored vs everything.
+      // We also swap the left/right traversal order so the polygon stays
+      // CCW in the shape's XY plane; otherwise rotateX(-PI/2) points the
+      // face normal at the ground and the road becomes invisible from above.
+      shape.moveTo(rightEdge[0].x, -rightEdge[0].y)
+      for (let i = 1; i < rightEdge.length; i++) shape.lineTo(rightEdge[i].x, -rightEdge[i].y)
+      for (let i = leftEdge.length - 1; i >= 0; i--) shape.lineTo(leftEdge[i].x, -leftEdge[i].y)
       shape.closePath()
       const g = new THREE.ShapeGeometry(shape)
       g.rotateX(-Math.PI / 2)
