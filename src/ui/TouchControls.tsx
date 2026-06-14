@@ -110,10 +110,10 @@ export default function TouchControls() {
         data-touch-control="joystick"
         style={{
           position: 'fixed',
-          bottom: 60,
-          left: 30,
-          width: 120,
-          height: 120,
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 34px)',
+          left: 'calc(env(safe-area-inset-left, 0px) + 24px)',
+          width: 150,
+          height: 150,
           borderRadius: '50%',
           background: 'rgba(10, 10, 25, 0.5)',
           border: '2px solid rgba(0, 229, 255, 0.3)',
@@ -139,8 +139,8 @@ export default function TouchControls() {
         <div
           ref={knobRef}
           style={{
-            width: 50,
-            height: 50,
+            width: 62,
+            height: 62,
             borderRadius: '50%',
             background: 'radial-gradient(circle at 40% 40%, rgba(0,229,255,0.8), rgba(0,229,255,0.3))',
             border: '2px solid rgba(0, 229, 255, 0.8)',
@@ -151,58 +151,59 @@ export default function TouchControls() {
         />
       </div>
 
-      {/* Right-side action buttons */}
+      {/* Right-side action buttons — corner thumb cluster, JUMP is the hero */}
       <div data-touch-control="actions" style={{
         position: 'fixed',
-        bottom: 60,
-        right: 20,
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 34px)',
+        right: 'calc(env(safe-area-inset-right, 0px) + 22px)',
         display: 'flex',
         flexDirection: 'column',
-        gap: 16,
+        gap: 14,
+        alignItems: 'flex-end',
         zIndex: 200,
       }}>
-        {/* Top row: Brake + Boost */}
+        {/* Top row: Brake + Boost (vehicle) */}
         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
           <ActionButton
             label="BRK"
             color="#ff0040"
             onPress={() => pressButton('brake', true)}
             onRelease={() => pressButton('brake', false)}
-            size={50}
+            size={58}
           />
           <ActionButton
             label="BST"
             color="#ffb300"
             onPress={() => pressButton('boost', true)}
             onRelease={() => pressButton('boost', false)}
-            size={50}
+            size={58}
           />
         </div>
-        {/* Middle row: Interact */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <ActionButton
-            label="F"
-            color="#00ff88"
-            onPress={() => pressButton('interact', true)}
-            onRelease={() => pressButton('interact', false)}
-            size={56}
-          />
-        </div>
-        {/* Bottom row: Jump + Sprint */}
+        {/* Middle row: Interact + Run */}
         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
           <ActionButton
             label="RUN"
             color="#4d96ff"
             onPress={() => pressButton('run', true)}
             onRelease={() => pressButton('run', false)}
-            size={50}
+            size={58}
           />
           <ActionButton
-            label="JMP"
+            label="F"
+            color="#00ff88"
+            onPress={() => pressButton('interact', true)}
+            onRelease={() => pressButton('interact', false)}
+            size={62}
+          />
+        </div>
+        {/* Bottom: Jump — the primary action, biggest target */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <ActionButton
+            label="JUMP"
             color="#c9b1ff"
             onPress={() => pressButton('jump', true)}
             onRelease={() => pressButton('jump', false)}
-            size={50}
+            size={84}
           />
         </div>
       </div>
