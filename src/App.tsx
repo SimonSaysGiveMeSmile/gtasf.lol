@@ -127,7 +127,9 @@ export default function App() {
               textAlign: 'center',
               pointerEvents: 'none',
             }}>
-              WASD · SHIFT run · SPACE jump · F enter vehicle
+              {('ontouchstart' in window || navigator.maxTouchPoints > 0)
+                ? 'Joystick to move · RUN · JUMP · F to enter a vehicle'
+                : 'WASD · SHIFT run · SPACE jump · F enter vehicle'}
             </div>
           )}
         </div>
