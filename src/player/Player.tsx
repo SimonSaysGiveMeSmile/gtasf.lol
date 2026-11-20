@@ -272,6 +272,7 @@ export default function Player() {
 
     const dt = Math.min(delta, 0.05)
     const { forward, backward, left, right, jump, run } = getKeys()
+    if (import.meta.env.DEV || location.hostname === '127.0.0.1') (window as unknown as { __keys?: unknown }).__keys = { forward, backward, left, right, jump, run }
 
     const touch = (window as any).__touchInput || {}
     const fwd = forward || touch.forward
@@ -385,7 +386,10 @@ export default function Player() {
       // Ground check
       if (!isGrounded.current) {
         const fallDist = peakHeight.current - position.current.y
-        if (fallDist > 2.5) {
+        // > 4 m: a jump off a one-storey ledge is fine, two storeys hurts.
+        // (The spawn point sits 3 m up, so a lower threshold docked 12 HP
+        // before the player had touched a key.)
+        if (fallDist > 4) {
           takeDamage(Math.floor(fallDist * 4))
           soundManager.play('metal_impact', { volume: 0.8 })
         } else {

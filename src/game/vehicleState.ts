@@ -35,3 +35,8 @@ export const OBSTACLE_RADIUS = {
   hydrant: 0.3,
   crosswalk: 0,  // visual only, no collision
 }
+// Street lamps knocked over by vehicles: indices into the active landscape's
+// streetLamps. The vehicle code stops colliding with them and InstancedLamps
+// lays them down. `lampState.v` bumps so renderers know to re-read the set.
+export const knockedLamps = new Set<number>()
+export const lampState = { v: 0 }

@@ -1,7 +1,9 @@
 // Additional instanced layers: lamps, traffic lights, crosswalks, sidewalks.
 import { useMemo, useRef, useLayoutEffect } from 'react'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGameStore } from '../game/store'
+import { knockedLamps, lampState } from '../game/vehicleState'
 import type {
   LampData, TrafficLightData, CrosswalkData, SidewalkData,
 } from '../game/landscape.types'
@@ -56,6 +58,25 @@ export function InstancedLamps({ lamps }: { lamps: LampData[] }) {
       r.current!.frustumCulled = false
     }
   }, [lamps, n])
+
+  // Lay knocked-over poles on the ground (see vehicleState.knockedLamps).
+  const seenVersion = useRef(-1)
+  useFrame(() => {
+    if (seenVersion.current === lampState.v) return
+    if (!poleRef.current || !armRef.current || !headRef.current) return
+    seenVersion.current = lampState.v
+    for (const i of knockedLamps) {
+      if (i >= n) continue
+      const l = lamps[i]
+      compose(_m, l.x + 2.9, 0.22, l.z + 0.4, 0.12, 0, Math.PI / 2 - 0.06, 1, 1, 1)
+      poleRef.current.setMatrixAt(i, _m)
+      compose(_m, l.x + 6.0, 0.3, l.z + 0.4, 0, 0, 0, 1, 1, 1)
+      armRef.current.setMatrixAt(i, _m)
+      compose(_m, l.x + 6.6, 0.2, l.z + 0.4, 0, 0, 0.3, 1, 1, 1)
+      headRef.current.setMatrixAt(i, _m)
+    }
+    for (const r of [poleRef, armRef, headRef]) r.current!.instanceMatrix.needsUpdate = true
+  })
 
   const nearest = useMemo(() => {
     if (!isNight) return [] as LampData[]

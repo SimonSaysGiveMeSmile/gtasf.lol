@@ -69,8 +69,20 @@ vercel --prod
 |---|---|---|
 | Move / run / jump | WASD · Shift · Space | joystick · RUN · JUMP |
 | Talk / enter or exit vehicle | F (or E) | F button |
+| Drive: throttle / brake & reverse | W / S | joystick |
+| Drive: steer · handbrake · boost | A/D · Space · Shift | joystick · BRAKE · BOOST |
 | Advance dialogue / pick answer | Space · 1–3 | tap |
 | Look | drag mouse | drag |
+
+## Driving model
+
+Ground vehicles use an arcade-realistic model (`src/vehicles/VehicleSpawner.tsx`, `Vehicle`):
+engine force tapers toward the spec top speed, S brakes while rolling and reverses once stopped,
+Space is a handbrake that cuts tyre grip (drifts), steering is a bicycle model whose lock shrinks
+with speed, and sideways velocity bleeds off with grip so hard turns slide instead of pivoting.
+The chase camera widens its FOV and hangs back with speed. Front wheels steer, wheels spin, tail /
+brake / reverse lights react, the player sits in the driver's seat, and street lamps knock over
+when hit above ~15 km/h. Traffic obeys a global two-phase signal cycle at intersections.
 
 ## Verification checklist
 

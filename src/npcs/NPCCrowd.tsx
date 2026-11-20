@@ -13,6 +13,7 @@ import { VehicleMesh, TRAFFIC_MODELS } from '../vehicles/VehicleSpawner'
 import KenneyCharacter, { CHARACTER_MODELS, type CharacterAnim } from '../characters/KenneyCharacter'
 import { useLandscapeData } from '../game/LandscapeContext'
 import { soundManager } from '../systems/audio/SoundManager'
+import { interactLatched, consumeInteract } from '../game/interactLatch'
 // @simonsaysgivemesmile
 
 function seededRandom(seed: number) { // @t1an
@@ -317,9 +318,12 @@ function TrafficCar({ x, z, rotation, color, id, buildings, roadPaths }: { x: nu
   const timer = useRef(0)
   const speed = 8 + seededRandom(x * 19 + z * 43 + rotation * 7) * 6
   const pos = useRef(new THREE.Vector3(x, 0, z))
-  const driverRef = useRef<THREE.Group>(null!)
   const [hijacked, setHijacked] = useState(false)
   const prevInteract = useRef(false)
+  const landscape = useLandscapeData()
+  const curSpeed = useRef(0)
+  const trafficModel = TRAFFIC_MODELS[Math.abs(Math.floor(x * 7 + z * 13)) % TRAFFIC_MODELS.length]
+  const driverModel = CHARACTER_MODELS[Math.abs(Math.floor(x * 3 + z * 11)) % CHARACTER_MODELS.length]
 
   // Route state — populated from roadPaths at mount, refreshed if path data changes.
   const route = useRef(pickRoadPath(x, z, roadPaths))
@@ -395,7 +399,25 @@ function TrafficCar({ x, z, rotation, color, id, buildings, roadPaths }: { x: nu
       if (dot > 0 && dot < 4 && perp < 2) speedScale = 0
     }
 
-    const effSpeed = speed * speedScale
+    // Traffic lights: one global two-phase cycle (E–W green, then N–S, 10 s).
+    // A car heading toward a red within ~16 m rolls to a stop ~5 m short.
+    const tl = (performance.now() / 1000) % 10
+    const greenForUs = Math.abs(fwdX) > Math.abs(fwdZ) ? tl < 4.6 : (tl >= 5 && tl < 9.6)
+    if (!greenForUs) {
+      for (const light of landscape.trafficLights) {
+        const lx = light.x - pos.current.x
+        const lz = light.z - pos.current.z
+        if (lx * lx + lz * lz > 400) continue
+        const dot = lx * fwdX + lz * fwdZ
+        const perp = Math.abs(lx * -fwdZ + lz * fwdX)
+        if (dot > 1 && dot < 16 && perp < 7) speedScale = Math.min(speedScale, Math.max(0, (dot - 5) / 11))
+      }
+    }
+
+    // Smooth acceleration / braking instead of snapping to the target speed.
+    const targetSpeed = speed * speedScale
+    curSpeed.current += (targetSpeed - curSpeed.current) * Math.min(1, dt * (targetSpeed < curSpeed.current ? 4 : 1.2))
+    const effSpeed = curSpeed.current
     const dx = fwdX * effSpeed * dt
     const dz = fwdZ * effSpeed * dt
     const nx = pos.current.x + dx
@@ -461,9 +483,6 @@ function TrafficCar({ x, z, rotation, color, id, buildings, roadPaths }: { x: nu
       meshRef.current.rotation.y = carAngle.current
     }
 
-    if (driverRef.current) {
-      driverRef.current.rotation.y = carAngle.current
-    }
 
     // Hijack prompt + input. Only when player is on foot and not inside any vehicle.
     if (!inVehicle) {
@@ -476,12 +495,13 @@ function TrafficCar({ x, z, rotation, color, id, buildings, roadPaths }: { x: nu
 
         const touch = (window as Window & { __touchInput?: { interact?: boolean } }).__touchInput || {}
         const { interact } = getKeys()
-        const intract = !!(interact || touch.interact)
+        const intract = !!(interact || touch.interact || interactLatched())
 
         if (intract && !prevInteract.current) {
+          consumeInteract()
           const newId = `hijacked-${id}-${Date.now()}`
           window.dispatchEvent(new CustomEvent('cheat-spawn', {
-            detail: { id: newId, type: 'sports', x: pos.current.x, z: pos.current.z, rotation: carAngle.current },
+            detail: { id: newId, type: 'sports', x: pos.current.x, z: pos.current.z, rotation: carAngle.current, modelUrl: trafficModel },
           }))
           useGameStore.getState().enterVehicle(newId, 'sports')
           vehiclePositions.delete(id)
@@ -502,19 +522,12 @@ function TrafficCar({ x, z, rotation, color, id, buildings, roadPaths }: { x: nu
   return (
     <group ref={meshRef} position={[x, 0, z]}>
       {/* Vehicle body — model picked per car so traffic has variety */}
-      <VehicleMesh type="sports" color={color} modelUrl={TRAFFIC_MODELS[Math.abs(Math.floor(x * 7 + z * 13)) % TRAFFIC_MODELS.length]} />
-      {/* NPC driver in the car — visible through windows */}
-      <group position={[0, 0.6, -0.3]} ref={driverRef}>
-        {/* Head */}
-        <mesh>
-          <sphereGeometry args={[0.14, 8, 8]} />
-          <meshStandardMaterial color="#d4a574" roughness={0.8} />
-        </mesh>
-        {/* Simple torso */}
-        <mesh position={[0, -0.25, 0]}>
-          <boxGeometry args={[0.25, 0.35, 0.15]} />
-          <meshStandardMaterial color="#333333" roughness={0.8} />
-        </mesh>
+      <VehicleMesh type="sports" color={color} modelUrl={trafficModel} />
+      {/* NPC driver, seated behind the wheel */}
+      <group position={[0.34, 0.42, 0.05]}>
+        <Suspense fallback={null}>
+          <KenneyCharacter model={driverModel} anim="drive" height={1.35} />
+        </Suspense>
       </group>
     </group>
   )

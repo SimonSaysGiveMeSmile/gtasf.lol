@@ -1,4 +1,5 @@
 import { Canvas } from '@react-three/fiber' // @jiahe
+import type * as THREE from 'three'
 import { KeyboardControls } from '@react-three/drei'
 import { Physics } from '@react-three/cannon'
 import { Suspense } from 'react'
@@ -100,7 +101,10 @@ export default function App() {
               preserveDrawingBuffer: false,
             }}
             style={{ background: '#87CEEB' }}
-            onCreated={({ gl }) => gl.setClearColor('#87CEEB')}
+            onCreated={({ gl, scene }) => {
+              gl.setClearColor('#87CEEB')
+              if (import.meta.env.DEV || location.hostname === '127.0.0.1' || location.hostname === 'localhost') (window as unknown as { __scene?: THREE.Scene }).__scene = scene
+            }}
             frameloop="always"
             dpr={dpr}
           >

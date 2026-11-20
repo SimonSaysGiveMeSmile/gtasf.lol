@@ -1,22 +1,24 @@
 // @t1an
 import { useRef, useMemo, useEffect, useState, Suspense } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { useKeyboardControls, useGLTF } from '@react-three/drei'
+import { useKeyboardControls, useGLTF, useTexture } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGameStore } from '../game/store'
-import type { VehicleType } from '../game/types'
+import type { VehicleType, VehicleSpec } from '../game/types'
+import KenneyCharacter from '../characters/KenneyCharacter'
 import { VEHICLES, MAP_SIZE, VEHICLE_COUNT, SCOOTER_COUNT, PLANE_COUNT, BOAT_COUNT } from '../game/constants'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
 import { useLandscapeData } from '../game/LandscapeContext'
 import type { LandscapeData } from '../game/landscape.types'
-import { vehiclePositions, vehicleRadius, OBSTACLE_RADIUS } from '../game/vehicleState'
+import { vehiclePositions, vehicleRadius, OBSTACLE_RADIUS, knockedLamps, lampState } from '../game/vehicleState'
 import { getNearbyBuildingsGrid, circleHitsBuilding, meshColliderHitsCircle } from '../world/World'
-import { VehicleAdWrap } from '../systems/billboards/VehicleAdWraps'
 import CaltrainAdWrap from '../systems/billboards/CaltrainAdWrap'
 import { pulseCameraShake, applyCameraShake } from '../game/cameraShake'
 import { soundManager } from '../systems/audio/SoundManager'
+import { interactLatched, consumeInteract } from '../game/interactLatch'
 
 let _activeLandscape: LandscapeData = LANDSCAPE_CONFIG
+const _camTarget = new THREE.Vector3()
 
 // Cheat-spawned vehicle type
 interface CheatVehicle {
@@ -26,6 +28,7 @@ interface CheatVehicle {
   z: number
   rotation: number
   color: string
+  modelUrl?: string
 }
 
 // Seeded random for deterministic spawns // @jiahe
@@ -510,13 +513,31 @@ interface GLBVehicleProps {
   modelUrl?: string
   /** Re-paint bright untextured parts with `color`. Default true. */
   tint?: boolean
+  /** Smoothed steering input (-1..1) — yaws the front wheels. */
+  steerRef?: React.MutableRefObject<number>
 }
 
-function GLBVehicle({ type, color, speedRef, modelUrl, tint = true }: GLBVehicleProps) {
+// Every Kenney car references the same palette PNG. Loading it once here and
+// assigning it explicitly is more reliable than the per-GLB external-texture
+// fetch, which intermittently left materials with an empty image (invisible
+// bodies) when a dozen models resolved the same URL at once.
+function useKenneyCarPalette() {
+  const tex = useTexture(`${KENNEY}/Textures/colormap.png`)
+  useMemo(() => {
+    tex.flipY = false            // glTF UV convention
+    tex.colorSpace = THREE.SRGBColorSpace
+    tex.needsUpdate = true
+  }, [tex])
+  return tex
+}
+
+function GLBVehicle({ type, color, speedRef, modelUrl, tint = true, steerRef }: GLBVehicleProps) {
   const url = modelUrl ?? VEHICLE_GLB[type]!
   const gltf = useGLTF(url)
+  const palette = useKenneyCarPalette()
   const spec = VEHICLES.find((v) => v.type === type)!
   const wheelMeshes = useRef<THREE.Object3D[]>([])
+  const frontWheels = useRef<THREE.Object3D[]>([])
 
   const root = useMemo(() => {
     const inner = gltf.scene.clone(true)
@@ -598,10 +619,18 @@ function GLBVehicle({ type, color, speedRef, modelUrl, tint = true }: GLBVehicle
 
     // Collect wheel meshes by name for per-frame spin.
     const wheels: THREE.Object3D[] = []
+    const fronts: THREE.Object3D[] = []
     inner.traverse((obj) => {
-      if (/wheel|tire|tyre|rim/i.test(obj.name)) wheels.push(obj)
+      if (/wheel|tire|tyre|rim/i.test(obj.name)) {
+        wheels.push(obj)
+        // Kenney wheels are named wheel-front-left etc. Yaw-then-spin so
+        // steering and rolling compose correctly.
+        obj.rotation.order = 'YXZ'
+        if (/front/i.test(obj.name)) fronts.push(obj)
+      }
     })
     wheelMeshes.current = wheels
+    frontWheels.current = fronts
 
     // Tint body paint — bright untextured MeshStandard materials only.
     // Kenney models are palette-textured (one shared "colormap"), so they
@@ -613,10 +642,27 @@ function GLBVehicle({ type, color, speedRef, modelUrl, tint = true }: GLBVehicle
       m.castShadow = false
       m.receiveShadow = false
       m.frustumCulled = false
-      if (!tint) return
+      if (!tint) {
+        if (url.startsWith(KENNEY)) {
+          const mats0 = Array.isArray(m.material) ? m.material : [m.material]
+          const mapped0 = mats0.map((orig) => {
+            const mat = (orig as THREE.Material).clone() as THREE.MeshStandardMaterial
+            if (mat.isMeshStandardMaterial) { mat.map = palette; mat.needsUpdate = true }
+            return mat
+          })
+          // Keep single materials single: an array material on a geometry
+          // without groups draws nothing.
+          m.material = Array.isArray(m.material) ? mapped0 : mapped0[0]
+        }
+        return
+      }
       const mats = Array.isArray(m.material) ? m.material : [m.material]
-      m.material = mats.map((orig) => {
+      const mapped = mats.map((orig) => {
         const mat = (orig as THREE.Material).clone() as THREE.MeshStandardMaterial
+        if (mat.isMeshStandardMaterial && url.startsWith(KENNEY)) {
+          mat.map = palette
+          mat.needsUpdate = true
+        }
         if (
           (mat as THREE.MeshStandardMaterial).isMeshStandardMaterial &&
           !(mat as THREE.MeshStandardMaterial).map
@@ -627,14 +673,19 @@ function GLBVehicle({ type, color, speedRef, modelUrl, tint = true }: GLBVehicle
         }
         return mat
       })
+      m.material = Array.isArray(m.material) ? mapped : mapped[0]
     })
     return outer
-  }, [gltf.scene, color, spec.dimensions.z, type, url, tint])
+  }, [gltf.scene, color, spec.dimensions.z, type, url, tint, palette])
 
   useFrame((_, delta) => {
+    if (steerRef && frontWheels.current.length) {
+      const yaw = steerRef.current * 0.5
+      for (const w of frontWheels.current) w.rotation.y = yaw
+    }
     if (!speedRef?.current || wheelMeshes.current.length === 0) return
-    // vel.z is in frame-units; convert to rad/frame for a ~0.35m wheel radius
-    const rot = speedRef.current * delta * 60 * 0.5
+    // vel.z is in frame-units (1 unit = 60 m/s); ~0.35 m wheel radius.
+    const rot = (speedRef.current * 60 * delta) / 0.35
     for (const w of wheelMeshes.current) w.rotation.x += rot
   })
 
@@ -659,15 +710,71 @@ function FallbackVehicleMesh({ type, color }: { type: VehicleType; color: string
   }
 }
 
-export function VehicleMesh({ type, color, speedRef, modelUrl, tint }: GLBVehicleProps) {
+export function VehicleMesh({ type, color, speedRef, modelUrl, tint, steerRef }: GLBVehicleProps) {
   if (modelUrl || VEHICLE_GLB[type]) {
+    // Invisible until the GLB arrives — a placeholder box reads as a bug.
     return (
-      <Suspense fallback={<FallbackVehicleMesh type={type} color={color} />}>
-        <GLBVehicle type={type} color={color} speedRef={speedRef} modelUrl={modelUrl} tint={tint} />
+      <Suspense fallback={null}>
+        <GLBVehicle type={type} color={color} speedRef={speedRef} modelUrl={modelUrl} tint={tint} steerRef={steerRef} />
       </Suspense>
     )
   }
   return <FallbackVehicleMesh type={type} color={color} />
+}
+
+// Tail / brake / reverse / head lights. Emissive meshes on every ground
+// vehicle (cheap), plus a real light in front of the player's car at night.
+function VehicleLights({ spec, brakeRef, reverseRef, player }: {
+  spec: VehicleSpec
+  brakeRef: React.MutableRefObject<number>
+  reverseRef: React.MutableRefObject<number>
+  player: boolean
+}) {
+  const isNight = useGameStore((s) => s.timeOfDay === 'night')
+  const mats = useMemo(() => ({
+    tail: new THREE.MeshStandardMaterial({ color: '#4a0808', emissive: '#ff2a1a', emissiveIntensity: 0.15, roughness: 0.3 }),
+    rev: new THREE.MeshStandardMaterial({ color: '#dddddd', emissive: '#ffffff', emissiveIntensity: 0, roughness: 0.3 }),
+    head: new THREE.MeshStandardMaterial({ color: '#e8e8e0', emissive: '#fff4d6', emissiveIntensity: 0.2, roughness: 0.2 }),
+  }), [])
+  useEffect(() => () => { mats.tail.dispose(); mats.rev.dispose(); mats.head.dispose() }, [mats])
+  useFrame(() => {
+    mats.tail.emissiveIntensity = (isNight ? 0.9 : 0.15) + brakeRef.current * 2.5
+    mats.rev.emissiveIntensity = reverseRef.current * 2
+    mats.head.emissiveIntensity = isNight ? 2.5 : 0.2
+  })
+  const { x: w, y: h, z: l } = spec.dimensions
+  const ty = h * 0.46
+  return (
+    <group>
+      {[-1, 1].map((sgn) => (
+        <group key={sgn}>
+          <mesh position={[sgn * w * 0.36, ty, -l / 2 + 0.03]} material={mats.tail}>
+            <boxGeometry args={[0.3, 0.11, 0.05]} />
+          </mesh>
+          <mesh position={[sgn * w * 0.22, ty - 0.02, -l / 2 + 0.03]} material={mats.rev}>
+            <boxGeometry args={[0.12, 0.08, 0.05]} />
+          </mesh>
+          <mesh position={[sgn * w * 0.34, ty, l / 2 - 0.03]} material={mats.head}>
+            <boxGeometry args={[0.3, 0.12, 0.05]} />
+          </mesh>
+        </group>
+      ))}
+      {player && isNight && (
+        <pointLight position={[0, 1.1, l / 2 + 3.5]} intensity={40} distance={32} decay={2} color="#fff0cc" />
+      )}
+    </group>
+  )
+}
+
+// The player's avatar, seated in the driver's seat (left side, facing forward).
+function SeatedDriver({ model, spec }: { model: string; spec: VehicleSpec }) {
+  return (
+    <group position={[spec.dimensions.x * 0.17, spec.dimensions.y * 0.3, 0.05]}>
+      <Suspense fallback={null}>
+        <KenneyCharacter model={model} anim="drive" height={1.35} />
+      </Suspense>
+    </group>
+  )
 }
 
 // Individual vehicle component with position-based physics
@@ -678,11 +785,12 @@ interface VehicleProps {
   z: number
   rotation: number
   color: string
+  modelUrl?: string
 }
 
 const MAX_ALTITUDE = 500
 
-function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
+function Vehicle({ id, type, x, z, rotation, color, modelUrl }: VehicleProps) {
   const meshRef = useRef<THREE.Group>(null)
   const { camera } = useThree()
 
@@ -697,6 +805,17 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
   const prevVelZ = useRef(0)
   const lastImpactAt = useRef(0)
   const engineUid = useRef<string>('')
+  // Realistic-driving state (ground vehicles)
+  const wv = useRef(new THREE.Vector3())      // world velocity, m/s
+  const steer = useRef(0)                     // smoothed steering, -1..1
+  const prevVf = useRef(0)
+  const rollTarget = useRef(0)
+  const pitchTarget = useRef(0)
+  const brakeLight = useRef(0)
+  const reverseLight = useRef(0)
+  const bodyRef = useRef<THREE.Group>(null)
+  const lastPropHit = useRef(0)
+  const playerModel = useGameStore(s => s.playerModel)
 
   const isPlane = type === 'plane'
   const isBoat = type === 'boat'
@@ -732,6 +851,13 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
     return () => window.removeEventListener('mousemove', handleMouseMove)
   }, [isPlane])
 
+  // Restore the default FOV when the player gets out (the chase cam widens it).
+  useEffect(() => {
+    if (!playerInThis) return
+    const pc = camera as THREE.PerspectiveCamera
+    return () => { pc.fov = 60; pc.updateProjectionMatrix() }
+  }, [playerInThis, camera])
+
   // Engine sound — start looping when player enters, stop on exit.
   useEffect(() => {
     if (!playerInThis || isPlane || isBoat || isCaltrain) return
@@ -753,7 +879,7 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
     const lft = left || touch.left
     const rgt = right || touch.right
     const brk = brake || touch.brake
-    const intract = interact || touch.interact
+    const intract = interact || touch.interact || interactLatched()
 
     const MAX_SPEED = 30 // m/s hard cap
     const isBoosting = playerInThis && (boost || touch.boost || touch.run)
@@ -762,42 +888,90 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       : spec.acceleration
 
     if (isGround) {
-      // Ground vehicle physics — W/S inverted so W moves backward, S moves forward (car-style)
-      // Scooters: W=forward, S=backward (normal direction)
-      const accelMod = isScooter ? -1 : 1
-
-      // Capture velocity at frame start so we can detect impact (sudden drop)
-      // at the end of the collision pass.
+      // ── Ground vehicle model ──────────────────────────────────────────
+      // Arcade-realistic (GTA-style): engine force tapers toward top speed;
+      // S brakes while rolling forward and reverses once stopped; Space is a
+      // handbrake (hard decel + grip loss → slides); steering is a bicycle
+      // model whose lock shrinks with speed; lateral grip bleeds sideways
+      // velocity so hard turns drift instead of pivoting on rails.
+      // `vel.current.z` stays in the legacy per-frame units (1 unit = 60 m/s)
+      // because the HUD, wheel spin and impact detection read it.
+      const U = 60
+      const accelMod = isScooter ? -1 : 1 // scooter mesh faces -Z
+      const faceSign = accelMod
       const velAtFrameStart = vel.current.z
 
-      if (playerInThis && fwd) vel.current.z += accel * dt * accelMod
-      if (playerInThis && bwd) vel.current.z -= accel * dt * accelMod
-      if (playerInThis && lft) angle.current -= spec.handling * dt * 2
-      if (playerInThis && rgt) angle.current += spec.handling * dt * 2
+      const fwdX = Math.sin(angle.current) * faceSign
+      const fwdZ = Math.cos(angle.current) * faceSign
+      const latX = Math.cos(angle.current) * faceSign   // +lat = driver's left
+      const latZ = -Math.sin(angle.current) * faceSign
+      let vf = wv.current.x * fwdX + wv.current.z * fwdZ
+      let vl = wv.current.x * latX + wv.current.z * latZ
 
-      // Drag — lighter when boosting so top speed feels meaningful
-      vel.current.z *= isBoosting ? 0.985 : 0.97
+      const topMs = (spec.maxSpeed / 3.6) * (isBoosting ? 1.12 : 1)
+      const a0 = spec.acceleration * 0.11 // m/s² off the line
+      const throttle = playerInThis && !!fwd
+      const reverse = playerInThis && !!bwd
+      const handbrake = playerInThis && !!brk
+      if (throttle) {
+        if (vf < -0.3) vf += 14 * dt // braking out of reverse
+        else vf += a0 * (1 - Math.pow(Math.min(1, Math.max(0, vf) / topMs), 1.5)) * dt
+      }
+      if (reverse) {
+        if (vf > 0.3) vf -= 16 * dt // service brake
+        else vf = Math.max(-topMs * 0.3, vf - a0 * 0.5 * dt)
+      }
+      if (handbrake) vf -= Math.sign(vf) * Math.min(Math.abs(vf), 18 * dt)
+      // Rolling resistance + aero drag; stronger engine braking off throttle.
+      const coast = !throttle && !reverse
+      const dragDecel = (coast ? 1.4 : 0.15) + 0.004 * vf * vf
+      vf -= Math.sign(vf) * Math.min(Math.abs(vf), dragDecel * dt)
+      vf = Math.max(-topMs * 0.3, Math.min(topMs, vf))
 
-      // Clamp speed — boost raises the cap ~20%
-      const maxSpd = Math.min(spec.maxSpeed * 0.005 * (isBoosting ? 1.2 : 1), MAX_SPEED)
-      vel.current.z = Math.max(-maxSpd, Math.min(maxSpd, vel.current.z))
+      // Steering: smoothed input → bicycle-model yaw rate.
+      const steerIn = playerInThis ? ((rgt ? 1 : 0) - (lft ? 1 : 0)) : 0
+      steer.current += (steerIn - steer.current) * Math.min(1, dt * (steerIn ? 6 : 9))
+      const sp = Math.abs(vf)
+      const wheelbase = spec.dimensions.z * 0.62
+      const lock = 0.55 / (1 + sp / 20)
+      const yawRate = (vf / wheelbase) * Math.tan(steer.current * lock) * spec.handling * (handbrake ? 1.35 : 1)
+      angle.current += yawRate * dt
 
-      // Brake — hard deceleration toward zero, with a rubber-band so the car
-      // actually stops instead of asymptoting. Much stronger than the old
-      // multiplicative damp.
-      if (playerInThis && brk) {
-        const brakeDecel = 0.5 * dt * 60 // ~0.5/frame at 60fps
-        if (Math.abs(vel.current.z) < brakeDecel) {
-          vel.current.z = 0
-        } else {
-          vel.current.z -= Math.sign(vel.current.z) * brakeDecel
-        }
+      // Re-express the velocity in the new heading frame; the sideways part
+      // decays with tyre grip (much less on the handbrake → drift).
+      const nfX = Math.sin(angle.current) * faceSign, nfZ = Math.cos(angle.current) * faceSign
+      const nlX = Math.cos(angle.current) * faceSign, nlZ = -Math.sin(angle.current) * faceSign
+      const wx = fwdX * vf + latX * vl
+      const wz = fwdZ * vf + latZ * vl
+      vf = wx * nfX + wz * nfZ
+      vl = wx * nlX + wz * nlZ
+      const grip = handbrake ? 1.6 : 7 - Math.min(3, sp / 15)
+      vl *= Math.exp(-grip * dt)
+      wv.current.set(nfX * vf + nlX * vl, 0, nfZ * vf + nlZ * vl)
+      vel.current.z = (vf / U) * accelMod
+      const vfUnitsPre = vel.current.z
+
+      // Body lean targets + light states
+      const accelF = (vf - prevVf.current) / Math.max(dt, 1e-3)
+      prevVf.current = vf
+      rollTarget.current = THREE.MathUtils.clamp(yawRate * sp * 0.012, -0.09, 0.09)
+      pitchTarget.current = THREE.MathUtils.clamp(-accelF * 0.006, -0.06, 0.06)
+      brakeLight.current = handbrake || (reverse && vf > 0.3) || (coast && sp > 2 && accelF < -3) ? 1 : 0
+      reverseLight.current = vf < -0.3 ? 1 : 0
+
+      // One momentum hit per obstacle contact (not per overlapping frame), so
+      // the car can roll away from a pole instead of being wedged against it.
+      const propImpact = () => {
+        const now = performance.now()
+        if (now - lastPropHit.current < 400) return false
+        lastPropHit.current = now
+        return true
       }
 
       // Pre-movement collision: try each axis independently, slide along walls
       const vR = vehicleRadius(type)
-      const dx = Math.sin(angle.current) * vel.current.z * dt * 60
-      const dz = Math.cos(angle.current) * vel.current.z * dt * 60
+      const dx = wv.current.x * dt
+      const dz = wv.current.z * dt
       const px = pos.current.x + dx
       const pz = pos.current.z + dz
 
@@ -815,18 +989,18 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
         // Free path — move freely
         finalDx = dx
         finalDz = dz
-      } else {
-        // Collision in at least one axis — try sliding
-        if (!xCol.hit) {
-          finalDx = dx
-        } else if (!zCol.hit) {
-          // Sliding along Z axis
-          finalDz = dz
-          vel.current.z *= 0.5
-        } else {
-          // Corner — block movement
-          vel.current.z *= 0.2
-        }
+      } else if (!xCol.hit) {
+        finalDx = dx // slide along the wall (x)
+      } else if (!zCol.hit) {
+        finalDz = dz // slide along the wall (z)
+      }
+      // Lose only the blocked component of the motion: a shallow scrape along
+      // a wall keeps most of the speed (and does little damage), a head-on hit
+      // stops the car. Impact damage below keys off the resulting speed drop.
+      const wanted = Math.hypot(dx, dz)
+      if (fCol.hit && wanted > 1e-6) {
+        const kept = Math.hypot(finalDx, finalDz) / wanted
+        vel.current.z *= Math.max(kept, 0.05)
       }
 
       pos.current.x += finalDx
@@ -853,21 +1027,35 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
           const nd = minV - dvDist
           pos.current.x += (dvx / dvDist) * nd
           pos.current.z += (dvz / dvDist) * nd
-          vel.current.z *= 0.3
+          if (propImpact()) vel.current.z *= 0.3
         }
       }
 
-      // Light pole collision
-      for (const lamp of _activeLandscape.streetLamps) {
+      // Light poles: a hit above ~15 km/h knocks the pole over (it stops
+      // colliding and InstancedLamps lays it down); slower contact just pushes.
+      const lamps = _activeLandscape.streetLamps
+      for (let li = 0; li < lamps.length; li++) {
+        if (knockedLamps.has(li)) continue
+        const lamp = lamps[li]
         const lx = lamp.x - pos.current.x
         const lz = lamp.z - pos.current.z
         const lDist = Math.sqrt(lx * lx + lz * lz)
         const minL = vR + OBSTACLE_RADIUS.lightPole + 0.1
         if (lDist < minL && lDist > 0.001) {
-          const nd = minL - lDist
-          pos.current.x += (lx / lDist) * nd
-          pos.current.z += (lz / lDist) * nd
-          vel.current.z *= 0.4
+          if (Math.abs(vel.current.z) * 60 > 4) {
+            knockedLamps.add(li)
+            lampState.v++
+            vel.current.z *= 0.75
+            if (playerInThis) {
+              pulseCameraShake(0.45)
+              soundManager.play('metal_impact', { volume: 0.5 })
+            }
+          } else {
+            const nd = minL - lDist
+            pos.current.x -= (lx / lDist) * nd
+            pos.current.z -= (lz / lDist) * nd
+            if (propImpact()) vel.current.z *= 0.4
+          }
         }
       }
 
@@ -878,8 +1066,8 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
         const minT = vR + OBSTACLE_RADIUS.trafficLight + 0.1
         if (tDist < minT && tDist > 0.001) {
           const nd = minT - tDist
-          pos.current.x += (tx / tDist) * nd; pos.current.z += (tz / tDist) * nd
-          vel.current.z *= 0.4
+          pos.current.x -= (tx / tDist) * nd; pos.current.z -= (tz / tDist) * nd
+          if (propImpact()) vel.current.z *= 0.4
         }
       }
       for (const bs of _activeLandscape.busStops) {
@@ -888,8 +1076,8 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
         const minB = vR + OBSTACLE_RADIUS.busStop + 0.1
         if (bDist < minB && bDist > 0.001) {
           const nd = minB - bDist
-          pos.current.x += (bx / bDist) * nd; pos.current.z += (bz / bDist) * nd
-          vel.current.z *= 0.4
+          pos.current.x -= (bx / bDist) * nd; pos.current.z -= (bz / bDist) * nd
+          if (propImpact()) vel.current.z *= 0.4
         }
       }
       for (const h of _activeLandscape.hydrants) {
@@ -898,9 +1086,15 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
         const minH = vR + OBSTACLE_RADIUS.hydrant + 0.1
         if (hDist < minH && hDist > 0.001) {
           const nd = minH - hDist
-          pos.current.x += (hx / hDist) * nd; pos.current.z += (hz / hDist) * nd
-          vel.current.z *= 0.4
+          pos.current.x -= (hx / hDist) * nd; pos.current.z -= (hz / hDist) * nd
+          if (propImpact()) vel.current.z *= 0.4
         }
+      }
+
+      // Collision responses above scaled vel.current.z — mirror that loss of
+      // momentum onto the world-velocity vector.
+      if (vfUnitsPre !== 0 && vel.current.z !== vfUnitsPre) {
+        wv.current.multiplyScalar(Math.abs(vel.current.z / vfUnitsPre))
       }
 
       // Impact detection — if speed dropped sharply from start-of-frame to now,
@@ -1078,6 +1272,11 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
         meshRef.current.rotation.z = pitchRef.current * 0.3
       }
     }
+    if (bodyRef.current && isGround) {
+      const kLean = Math.min(1, dt * 6)
+      bodyRef.current.rotation.z += (rollTarget.current - bodyRef.current.rotation.z) * kLean
+      bodyRef.current.rotation.x += (pitchTarget.current - bodyRef.current.rotation.x) * kLean
+    }
 
     // Sync player position when in vehicle
     if (playerInThis) {
@@ -1093,12 +1292,21 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
         camera.position.lerp(new THREE.Vector3(tx, ty, tz), 0.08)
         camera.lookAt(pos.current.x, pos.current.y, pos.current.z)
       } else {
-        const camDist = 8
-        const tx = pos.current.x - Math.sin(angle.current) * camDist
-        const ty = pos.current.y + 3
-        const tz = pos.current.z - Math.cos(angle.current) * camDist
-        camera.position.lerp(new THREE.Vector3(tx, ty, tz), 0.1)
-        camera.lookAt(pos.current.x, pos.current.y + 0.5, pos.current.z)
+        // Chase cam: hangs further back and widens FOV with speed, lags the
+        // heading so turns swing the view, and looks down the road ahead.
+        const sp = Math.abs(vel.current.z) * 60
+        const face = isScooter ? -1 : 1
+        const hx = Math.sin(angle.current) * face
+        const hz = Math.cos(angle.current) * face
+        const camDist = (isScooter ? 5 : 7) + sp * 0.07
+        const k = 1 - Math.exp(-5 * dt)
+        _camTarget.set(pos.current.x - hx * camDist, pos.current.y + 2.4 + sp * 0.02, pos.current.z - hz * camDist)
+        camera.position.lerp(_camTarget, k)
+        const ahead = 2 + sp * 0.12
+        camera.lookAt(pos.current.x + hx * ahead, pos.current.y + 0.9, pos.current.z + hz * ahead)
+        const pc = camera as THREE.PerspectiveCamera
+        const fov = 60 + Math.min(14, sp * 0.3)
+        if (Math.abs(pc.fov - fov) > 0.05) { pc.fov += (fov - pc.fov) * k; pc.updateProjectionMatrix() }
       }
 
       // Impact shake must run after lookAt (which overwrites rotation).
@@ -1128,10 +1336,16 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
       const dist = Math.sqrt(dx * dx + dz * dz)
 
       if (playerInThis) {
-        exitVehicle([pos.current.x, isBoat ? 1.2 : 1.0, pos.current.z])
+        consumeInteract()
+        // Step out on the driver's side instead of materialising in the seat.
+        const side = isGround ? spec.dimensions.x / 2 + 0.7 : 0
+        const ex = pos.current.x + Math.cos(angle.current) * side
+        const ez = pos.current.z - Math.sin(angle.current) * side
+        exitVehicle([ex, isBoat ? 1.2 : 1.0, ez])
         interactCooldown.current = true
         setTimeout(() => { interactCooldown.current = false }, 500)
       } else if (dist < 4) {
+        consumeInteract()
         enterVehicle(id, type)
         interactCooldown.current = true
         setTimeout(() => { interactCooldown.current = false }, 500)
@@ -1157,8 +1371,13 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
 
   return (
     <group ref={meshRef} position={[x, isPlane ? 50 : 0, z]}>
-      <VehicleMesh type={type} color={color} speedRef={velZRef} />
-      <VehicleAdWrap vehicleId={id} vehicleType={type} />
+      <group ref={bodyRef}>
+        <VehicleMesh type={type} color={color} speedRef={velZRef} steerRef={steer} modelUrl={modelUrl} />
+        {isGround && !isScooter && (
+          <VehicleLights spec={spec} brakeRef={brakeLight} reverseRef={reverseLight} player={playerInThis} />
+        )}
+        {isGround && !isScooter && playerInThis && <SeatedDriver model={playerModel} spec={spec} />}
+      </group>
       {isCaltrain && <CaltrainAdWrap index={Math.floor(Math.abs(x * 7 + z * 13)) % 10} seedX={x} seedZ={z} />}
     </group>
   )
@@ -1171,9 +1390,9 @@ export default function VehicleSpawner() {
   // Listen for cheat spawn events
   useEffect(() => {
     const handler = (e: Event) => {
-      const { id, type, x, z, rotation } = (e as CustomEvent).detail
+      const { id, type, x, z, rotation, modelUrl } = (e as CustomEvent).detail
       const spec = VEHICLES.find(v => v.type === type) || VEHICLES[0]
-      setCheatVehicles(prev => [...prev, { id, type, x, z, rotation, color: spec.color }])
+      setCheatVehicles(prev => [...prev, { id, type, x, z, rotation, color: spec.color, modelUrl }])
     }
     window.addEventListener('cheat-spawn', handler)
     return () => window.removeEventListener('cheat-spawn', handler)
@@ -1186,6 +1405,12 @@ export default function VehicleSpawner() {
     const scoot: { id: string; type: VehicleType; x: number; z: number; rotation: number; color: string }[] = []
     const trains: { id: string; type: VehicleType; x: number; z: number; rotation: number; color: string }[] = []
 
+    // Boats need real water and planes need somewhere to fly from; the dense
+    // downtown maps have neither, so they'd just litter the streets as props.
+    const mapName = useGameStore.getState().currentMapName
+    knockedLamps.clear(); lampState.v++ // fresh map → poles stand again
+    const bigWater = !!_activeLandscape.water && _activeLandscape.water.width > 150
+    const allowAir = mapName !== 'downtown_sf' && mapName !== 'union_square'
     const scooterSpec = VEHICLES.find(v => v.type === 'scooter')!
     const caltrainSpec = VEHICLES.find(v => v.type === 'caltrain')!
 
@@ -1245,7 +1470,7 @@ export default function VehicleSpawner() {
     }
 
     // Boats in water region
-    for (let i = 0; i < BOAT_COUNT; i++) {
+    for (let i = 0; i < (bigWater ? BOAT_COUNT : 0); i++) {
       const spec = VEHICLES.find(v => v.type === 'boat')!
       const angle = seededRandom(200 + i) * Math.PI * 2
       const dist = MAP_SIZE * 0.55 + seededRandom(300 + i) * 60
@@ -1259,7 +1484,7 @@ export default function VehicleSpawner() {
       })
     }
 
-    for (let i = 0; i < PLANE_COUNT; i++) {
+    for (let i = 0; i < (allowAir ? PLANE_COUNT : 0); i++) {
       const spec = VEHICLES.find(v => v.type === 'plane')!
       const angle = seededRandom(500 + i) * Math.PI * 2
       const dist = MAP_SIZE * 0.3 + seededRandom(600 + i) * MAP_SIZE * 0.4

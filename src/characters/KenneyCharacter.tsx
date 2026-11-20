@@ -6,7 +6,7 @@
 // its feet on y=0.
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { useGLTF, useAnimations } from '@react-three/drei'
+import { useGLTF, useAnimations, useTexture } from '@react-three/drei'
 import { SkeletonUtils } from 'three-stdlib'
 
 export const CHARACTER_MODELS = [
@@ -38,9 +38,18 @@ interface Props {
   tint?: string
 }
 
+const PALETTE_URL = '/models/kenney/chars/Textures/colormap.png'
+
 export default function KenneyCharacter({ model, anim, height = 1.83, timeScale = 1, tint }: Props) {
   const gltf = useGLTF(characterUrl(model))
   const group = useRef<THREE.Group>(null)
+  // Shared palette, assigned explicitly (see GLBVehicle for why).
+  const palette = useTexture(PALETTE_URL)
+  useMemo(() => {
+    palette.flipY = false
+    palette.colorSpace = THREE.SRGBColorSpace
+    palette.needsUpdate = true
+  }, [palette])
 
   const { scene, scale, yOffset } = useMemo(() => {
     const scene = SkeletonUtils.clone(gltf.scene) as THREE.Group
@@ -50,8 +59,13 @@ export default function KenneyCharacter({ model, anim, height = 1.83, timeScale 
         m.castShadow = false
         m.receiveShadow = false
         m.frustumCulled = false // skinned bounds are unreliable; cheap to skip
+        const base = m.material as THREE.MeshStandardMaterial
+        if (base.isMeshStandardMaterial && base.map !== palette) {
+          base.map = palette
+          base.needsUpdate = true
+        }
         if (tint) {
-          const mat = (m.material as THREE.MeshStandardMaterial).clone()
+          const mat = base.clone()
           mat.color = new THREE.Color(tint)
           m.material = mat
         }
@@ -63,7 +77,7 @@ export default function KenneyCharacter({ model, anim, height = 1.83, timeScale 
     const h = Math.max(0.01, box.max.y - box.min.y)
     const scale = height / h
     return { scene, scale, yOffset: -box.min.y }
-  }, [gltf.scene, height, tint])
+  }, [gltf.scene, height, tint, palette])
 
   const { actions, mixer } = useAnimations(gltf.animations, group)
 
