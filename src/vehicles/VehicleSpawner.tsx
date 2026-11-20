@@ -1001,6 +1001,12 @@ function Vehicle({ id, type, x, z, rotation, color, modelUrl }: VehicleProps) {
       if (fCol.hit && wanted > 1e-6) {
         const kept = Math.hypot(finalDx, finalDz) / wanted
         vel.current.z *= Math.max(kept, 0.05)
+        // Nosed into a wall: the steered front wheels can still pivot the car
+        // a little under power, so the driver can wiggle free rather than
+        // being forced to reverse out.
+        if (playerInThis && (throttle || reverse) && Math.abs(steer.current) > 0.1) {
+          angle.current += steer.current * 0.7 * dt * (throttle ? 1 : -1)
+        }
       }
 
       pos.current.x += finalDx
