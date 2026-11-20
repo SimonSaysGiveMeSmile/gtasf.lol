@@ -19,6 +19,9 @@ import { soundManager } from './systems/audio/SoundManager'
 import { useGameStore } from './game/store'
 import { useEffect } from 'react'
 import { LandscapeProvider } from './game/LandscapeContext'
+import StoryRunner from './story/StoryRunner'
+import StoryUI from './story/StoryUI'
+import { useStoryStore } from './story/storyStore'
 
 // @simonsaysgivemesmile
 const keyMap = [
@@ -28,13 +31,14 @@ const keyMap = [
   { name: 'right', keys: ['KeyA', 'ArrowLeft'] },
   { name: 'jump', keys: ['Space'] },
   { name: 'run', keys: ['ShiftLeft', 'ShiftRight'] },
-  { name: 'interact', keys: ['KeyF'] },
+  { name: 'interact', keys: ['KeyF', 'KeyE'] },
   { name: 'brake', keys: ['Space'] },
   { name: 'boost', keys: ['ShiftLeft', 'ShiftRight'] },
 ]
 
 export default function App() {
   const isDead = useGameStore((s) => s.isDead)
+  const storyScreen = useStoryStore((s) => s.screen)
   const qualityPreset = useGameStore((s) => s.qualityPreset)
   const setQualityCounts = useGameStore((s) => s.setQualityCounts)
 
@@ -106,16 +110,18 @@ export default function App() {
                   <VehicleSpawner />
                   <NPCCrowd />
                   <MissionRunner />
+                  <StoryRunner />
                   <PoliceSystem />
                   <FPSTracker />
               </Physics>
             </Suspense>
           </Canvas>
           <HUD />
+          <StoryUI />
           <CheatConsole />
           <TouchControls />
           <LoadingScreen />
-          {!isDead && (
+          {!isDead && storyScreen === 'none' && (
             <div style={{
               position: 'absolute',
               bottom: 16,

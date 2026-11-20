@@ -465,18 +465,30 @@ function Boat({ color }: { color: string }) {
   )
 }
 
-// Vehicle GLB registry — maps a VehicleType to a CC-licensed model in public/models/.
-// Types missing from this map fall through to the procedural meshes below.
+// Vehicle GLB registry — maps a VehicleType to a Kenney Car Kit model (CC0)
+// in public/models/kenney/cars/. Types missing from this map fall through to
+// the procedural meshes below.
+const KENNEY = '/models/kenney/cars'
 const VEHICLE_GLB: Partial<Record<VehicleType, string>> = {
-  modelS: '/models/ToyCar.glb',
-  sedan: '/models/ToyCar.glb',
-  sports: '/models/CarConcept.glb',
-  cybertruck: '/models/CesiumMilkTruck.glb',
+  modelS: `${KENNEY}/sedan.glb`,
+  sedan: `${KENNEY}/hatchback-sports.glb`,
+  sports: `${KENNEY}/sedan-sports.glb`,
+  suv: `${KENNEY}/suv.glb`,
+  cybertruck: `${KENNEY}/truck.glb`,
+  semi: `${KENNEY}/delivery.glb`,
 }
+
+// Pool used for ambient traffic so the streets aren't 40 copies of one car.
+export const TRAFFIC_MODELS = [
+  `${KENNEY}/sedan.glb`, `${KENNEY}/suv.glb`, `${KENNEY}/taxi.glb`, `${KENNEY}/van.glb`,
+  `${KENNEY}/hatchback-sports.glb`, `${KENNEY}/suv-luxury.glb`, `${KENNEY}/delivery.glb`,
+  `${KENNEY}/sedan-sports.glb`, `${KENNEY}/sedan.glb`, `${KENNEY}/taxi.glb`,
+]
 
 // Preload so first spawn doesn't hitch. Safe to call with paths that don't exist —
 // useGLTF will reject and the Suspense fallback (the procedural mesh) handles it.
 for (const url of Object.values(VEHICLE_GLB)) if (url) useGLTF.preload(url)
+for (const url of TRAFFIC_MODELS) useGLTF.preload(url)
 
 // GLB vehicle wrapper — loads the glb, normalises to the spec dimensions, clones
 // so each instance has its own material (for per-vehicle tint), and renders with
@@ -485,12 +497,23 @@ for (const url of Object.values(VEHICLE_GLB)) if (url) useGLTF.preload(url)
 // Per-model orientation hints. If a model ships authored with a non-standard
 // forward axis the auto-detect gets the shape right but can't tell front from
 // back — flip via extra yaw here. Values are radians.
-const VEHICLE_GLB_YAW: Partial<Record<VehicleType, number>> = {
-  sports: Math.PI, // CarConcept is authored facing -Z by default
+const VEHICLE_GLB_YAW: Partial<Record<VehicleType, number>> = {}
+// Kenney Car Kit models are authored nose toward +Z (front wheels at +z in
+// every GLB), which is this game's forward axis — no correction needed.
+const KENNEY_YAW = 0
+
+interface GLBVehicleProps {
+  type: VehicleType
+  color: string
+  speedRef?: React.MutableRefObject<number>
+  /** Override the model for this type (traffic variety, police cruiser). */
+  modelUrl?: string
+  /** Re-paint bright untextured parts with `color`. Default true. */
+  tint?: boolean
 }
 
-function GLBVehicle({ type, color, speedRef }: { type: VehicleType; color: string; speedRef?: React.MutableRefObject<number> }) {
-  const url = VEHICLE_GLB[type]!
+function GLBVehicle({ type, color, speedRef, modelUrl, tint = true }: GLBVehicleProps) {
+  const url = modelUrl ?? VEHICLE_GLB[type]!
   const gltf = useGLTF(url)
   const spec = VEHICLES.find((v) => v.type === type)!
   const wheelMeshes = useRef<THREE.Object3D[]>([])
@@ -550,7 +573,7 @@ function GLBVehicle({ type, color, speedRef }: { type: VehicleType; color: strin
     orient.quaternion.setFromRotationMatrix(invBasis)
 
     // Optional per-model yaw correction for front/back ambiguity.
-    const extraYaw = VEHICLE_GLB_YAW[type] ?? 0
+    const extraYaw = (VEHICLE_GLB_YAW[type] ?? 0) + (url.startsWith(KENNEY) ? KENNEY_YAW : 0)
     if (extraYaw) orient.rotation.y += extraYaw
 
     // Now measure the rotated bounds so we can scale uniformly to spec and
@@ -581,12 +604,16 @@ function GLBVehicle({ type, color, speedRef }: { type: VehicleType; color: strin
     wheelMeshes.current = wheels
 
     // Tint body paint — bright untextured MeshStandard materials only.
-    const tint = new THREE.Color(color)
+    // Kenney models are palette-textured (one shared "colormap"), so they
+    // keep their authored paint; variety comes from the model pool instead.
+    const tintColor = new THREE.Color(color)
     inner.traverse((obj) => {
       const m = obj as THREE.Mesh
       if (!m.isMesh) return
       m.castShadow = false
       m.receiveShadow = false
+      m.frustumCulled = false
+      if (!tint) return
       const mats = Array.isArray(m.material) ? m.material : [m.material]
       m.material = mats.map((orig) => {
         const mat = (orig as THREE.Material).clone() as THREE.MeshStandardMaterial
@@ -596,13 +623,13 @@ function GLBVehicle({ type, color, speedRef }: { type: VehicleType; color: strin
         ) {
           const base = (mat as THREE.MeshStandardMaterial).color
           const luminance = 0.299 * base.r + 0.587 * base.g + 0.114 * base.b
-          if (luminance > 0.25) (mat as THREE.MeshStandardMaterial).color = tint
+          if (luminance > 0.25) (mat as THREE.MeshStandardMaterial).color = tintColor
         }
         return mat
       })
     })
     return outer
-  }, [gltf.scene, color, spec.dimensions.z, type])
+  }, [gltf.scene, color, spec.dimensions.z, type, url, tint])
 
   useFrame((_, delta) => {
     if (!speedRef?.current || wheelMeshes.current.length === 0) return
@@ -632,11 +659,11 @@ function FallbackVehicleMesh({ type, color }: { type: VehicleType; color: string
   }
 }
 
-export function VehicleMesh({ type, color, speedRef }: { type: VehicleType; color: string; speedRef?: React.MutableRefObject<number> }) {
-  if (VEHICLE_GLB[type]) {
+export function VehicleMesh({ type, color, speedRef, modelUrl, tint }: GLBVehicleProps) {
+  if (modelUrl || VEHICLE_GLB[type]) {
     return (
       <Suspense fallback={<FallbackVehicleMesh type={type} color={color} />}>
-        <GLBVehicle type={type} color={color} speedRef={speedRef} />
+        <GLBVehicle type={type} color={color} speedRef={speedRef} modelUrl={modelUrl} tint={tint} />
       </Suspense>
     )
   }
@@ -1114,7 +1141,13 @@ function Vehicle({ id, type, x, z, rotation, color }: VehicleProps) {
 
 
       // Register vehicle position for NPC/pedestrian collision
-      vehiclePositions.set(id, { x: pos.current.x, z: pos.current.z, radius: vehicleRadius(type) })
+      vehiclePositions.set(id, {
+        x: pos.current.x,
+        z: pos.current.z,
+        radius: vehicleRadius(type),
+        moving: playerInThis && Math.abs(useGameStore.getState().vehicleSpeed) > 4,
+        player: playerInThis,
+      })
 
     // Show interaction prompt when in vehicle
     if (playerInThis) {

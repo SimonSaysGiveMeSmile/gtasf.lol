@@ -284,6 +284,191 @@ export function makeConcreteTexture(seed = 0): THREE.CanvasTexture {
   return t
 }
 
+// ─── Building facade ───────────────────────────────────────────────────────────
+// One tile = 4 window bays × 4 floors. UVs on extruded footprints are in
+// metres, so callers set repeat = 1 / FACADE_TILE_M to get 3.5 m bays/floors.
+export const FACADE_TILE_M = 14
+const FACADE_PX = 512
+const BAY = FACADE_PX / 4
+
+function facadeCells(seed: number, fn: (x: number, y: number, w: number, h: number, i: number) => void) {
+  let i = 0
+  for (let fy = 0; fy < 4; fy++) {
+    for (let bx = 0; bx < 4; bx++) {
+      const x = bx * BAY + 24
+      const y = fy * BAY + 34
+      fn(x, y, BAY - 48, BAY - 60, i + seed)
+      i++
+    }
+  }
+}
+
+export function makeFacadeTexture(seed = 0): THREE.CanvasTexture {
+  const key = `facade_${seed}`
+  if (cache.has(key)) return cache.get(key)!
+  const [c, ctx] = canvas(FACADE_PX)
+  // Wall — warm light stone with fine noise.
+  ctx.fillStyle = '#d6d0c4'
+  ctx.fillRect(0, 0, FACADE_PX, FACADE_PX)
+  for (let i = 0; i < 9000; i++) {
+    const x = sr(i * 3 + seed) * FACADE_PX
+    const y = sr(i * 7 + seed) * FACADE_PX
+    const v = sr(i * 13 + seed) * 36 - 18
+    ctx.fillStyle = `rgba(${200 + v},${194 + v},${182 + v},0.5)`
+    ctx.fillRect(x, y, 2, 2)
+  }
+  // Floor slabs / spandrels.
+  for (let fy = 0; fy < 4; fy++) {
+    ctx.fillStyle = 'rgba(0,0,0,0.10)'
+    ctx.fillRect(0, fy * BAY, FACADE_PX, 10)
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'
+    ctx.fillRect(0, fy * BAY + 10, FACADE_PX, 3)
+  }
+  // Windows.
+  facadeCells(seed, (x, y, w, h, i) => {
+    // frame
+    ctx.fillStyle = '#5c5a56'
+    ctx.fillRect(x - 4, y - 4, w + 8, h + 8)
+    // glass — vertical gradient, slight per-window variance
+    const g = ctx.createLinearGradient(0, y, 0, y + h)
+    const l = 0.85 + sr(i * 17) * 0.3
+    g.addColorStop(0, `rgb(${Math.round(88 * l)},${Math.round(108 * l)},${Math.round(128 * l)})`)
+    g.addColorStop(1, `rgb(${Math.round(42 * l)},${Math.round(54 * l)},${Math.round(68 * l)})`)
+    ctx.fillStyle = g
+    ctx.fillRect(x, y, w, h)
+    // mullions
+    ctx.fillStyle = 'rgba(40,40,44,0.9)'
+    ctx.fillRect(x + w / 2 - 1.5, y, 3, h)
+    ctx.fillRect(x, y + h * 0.42, w, 3)
+    // sky reflection highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.10)'
+    ctx.fillRect(x + 4, y + 3, w * 0.38, h * 0.3)
+  })
+  const t = tex(c, 1)
+  t.repeat.set(1 / FACADE_TILE_M, 1 / FACADE_TILE_M)
+  t.anisotropy = 8
+  cache.set(key, t)
+  return t
+}
+
+// Lit windows for night — black except a random ~40% of windows glowing warm.
+export function makeFacadeEmissiveTexture(seed = 0): THREE.CanvasTexture {
+  const key = `facade_emissive_${seed}`
+  if (cache.has(key)) return cache.get(key)!
+  const [c, ctx] = canvas(FACADE_PX)
+  ctx.fillStyle = '#000'
+  ctx.fillRect(0, 0, FACADE_PX, FACADE_PX)
+  facadeCells(seed, (x, y, w, h, i) => {
+    const r = sr(i * 29 + 3)
+    if (r > 0.42) return
+    const warm = sr(i * 31) > 0.3
+    const a = 0.55 + sr(i * 37) * 0.45
+    ctx.fillStyle = warm ? `rgba(255,214,150,${a})` : `rgba(190,215,255,${a})`
+    ctx.fillRect(x, y, w, h)
+    // some windows half-lit (blinds)
+    if (sr(i * 41) > 0.6) {
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'
+      ctx.fillRect(x, y, w, h * 0.5)
+    }
+  })
+  const t = tex(c, 1)
+  t.repeat.set(1 / FACADE_TILE_M, 1 / FACADE_TILE_M)
+  cache.set(key, t)
+  return t
+}
+
+// ─── Roof ──────────────────────────────────────────────────────────────────────
+export const ROOF_TILE_M = 12
+export function makeRoofTexture(seed = 0): THREE.CanvasTexture {
+  const key = `roof_${seed}`
+  if (cache.has(key)) return cache.get(key)!
+  const [c, ctx] = canvas(256)
+  ctx.fillStyle = '#6f6e69'
+  ctx.fillRect(0, 0, 256, 256)
+  for (let i = 0; i < 5000; i++) {
+    const x = sr(i * 3 + seed) * 256
+    const y = sr(i * 7 + seed) * 256
+    const v = sr(i * 13 + seed) * 40 - 20
+    ctx.fillStyle = `rgba(${110 + v},${110 + v},${104 + v},0.6)`
+    ctx.fillRect(x, y, 2, 2)
+  }
+  // rooftop units + skylights
+  for (let k = 0; k < 4; k++) {
+    const x = 30 + sr(k * 11 + seed) * 170
+    const y = 30 + sr(k * 17 + seed) * 170
+    const w = 18 + sr(k * 19 + seed) * 30
+    const h = 14 + sr(k * 23 + seed) * 24
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'
+    ctx.fillRect(x + 3, y + 3, w, h)
+    ctx.fillStyle = k % 2 ? '#8b8b86' : '#4f5d66'
+    ctx.fillRect(x, y, w, h)
+  }
+  const t = tex(c, 1)
+  t.repeat.set(1 / ROOF_TILE_M, 1 / ROOF_TILE_M)
+  cache.set(key, t)
+  return t
+}
+
+// ─── Road surface (metre-space UVs) ────────────────────────────────────────────
+export function makeRoadTexture(seed = 0): THREE.CanvasTexture {
+  const key = `road_${seed}`
+  if (cache.has(key)) return cache.get(key)!
+  const [c, ctx] = canvas(512)
+  ctx.fillStyle = '#3a3b40'
+  ctx.fillRect(0, 0, 512, 512)
+  for (let i = 0; i < 16000; i++) {
+    const x = sr(i * 3 + seed) * 512
+    const y = sr(i * 7 + seed) * 512
+    const v = 40 + sr(i * 13 + seed) * 50
+    ctx.fillStyle = `rgba(${v},${v},${v + 4},0.55)`
+    ctx.fillRect(x, y, sr(i * 17 + seed) < 0.75 ? 1 : 2, 1)
+  }
+  // oil / wear patches
+  for (let p = 0; p < 6; p++) {
+    const px = sr(p * 13 + seed) * 512
+    const py = sr(p * 17 + seed) * 512
+    const pr = 30 + sr(p * 23 + seed) * 90
+    const g = ctx.createRadialGradient(px, py, 0, px, py, pr)
+    g.addColorStop(0, 'rgba(0,0,0,0.28)')
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    ctx.fillStyle = g
+    ctx.fillRect(px - pr, py - pr, pr * 2, pr * 2)
+  }
+  const t = tex(c, 1)
+  t.repeat.set(1 / 10, 1 / 10)
+  t.anisotropy = 8
+  cache.set(key, t)
+  return t
+}
+
+// ─── City ground (between blocks) ──────────────────────────────────────────────
+export function makeGroundTexture(seed = 0): THREE.CanvasTexture {
+  const key = `ground_${seed}`
+  if (cache.has(key)) return cache.get(key)!
+  const [c, ctx] = canvas(512)
+  ctx.fillStyle = '#8d8c85'
+  ctx.fillRect(0, 0, 512, 512)
+  for (let i = 0; i < 14000; i++) {
+    const x = sr(i * 3 + seed) * 512
+    const y = sr(i * 7 + seed) * 512
+    const v = sr(i * 13 + seed) * 50 - 25
+    ctx.fillStyle = `rgba(${140 + v},${139 + v},${132 + v},0.6)`
+    ctx.fillRect(x, y, 2, 2)
+  }
+  // paving joints
+  ctx.strokeStyle = 'rgba(0,0,0,0.12)'
+  ctx.lineWidth = 2
+  for (let k = 0; k <= 512; k += 128) {
+    ctx.beginPath(); ctx.moveTo(k, 0); ctx.lineTo(k, 512); ctx.stroke()
+    ctx.beginPath(); ctx.moveTo(0, k); ctx.lineTo(512, k); ctx.stroke()
+  }
+  const t = tex(c, 1)
+  t.repeat.set(1 / 8, 1 / 8)
+  t.anisotropy = 8
+  cache.set(key, t)
+  return t
+}
+
 // ─── Clear cache ───────────────────────────────────────────────────────────────
 export function disposeTextureGen(): void {
   cache.forEach((t) => t.dispose())

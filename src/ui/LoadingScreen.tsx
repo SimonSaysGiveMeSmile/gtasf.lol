@@ -17,7 +17,9 @@ const TIPS = [
   { text: 'WASD to move. No horses, no villagers, no diamond swords.', category: 'CONTROLS' },
   { text: 'The NPCs are not just wandering. They\'re fleeing in terror.', category: 'BUG REPORT' },
   { text: 'TIP: Night mode. Now with 100% more visibility issues.', category: 'TIP' },
-  { text: 'GTA-SF is not affiliated with Rockstar Games or Mojang. Allegedly.', category: 'LEGAL' },
+  { text: 'Founder Simulator is an original game. Any resemblance to your actual startup is coincidental.', category: 'LEGAL' },
+  { text: 'STORY MODE: every objective is a real downtown building, pulled from OpenStreetMap.', category: 'DID YOU KNOW' },
+  { text: 'TIP: Press F near a highlighted person to talk. Number keys pick your answer.', category: 'TIP' },
 ]
 
 const PROGRESS_MESSAGES = [
@@ -40,69 +42,6 @@ const PROGRESS_MESSAGES = [
 function PixelBlock({ w, h }: { w: number; h: number }) {
   return <div className="ls-block ls-block-accent" style={{ width: w, height: h }} />
 }
-
-// 5x7 pixel letter definitions (1 = filled, 0 = empty)
-const LETTERS: Record<string, number[][]> = {
-  G: [
-    [1,1,1],
-    [1,0,0],
-    [1,0,1],
-    [1,1,1],
-    [1,0,1],
-    [1,0,1],
-    [1,1,1],
-  ],
-  T: [
-    [1,1,1],
-    [0,1,0],
-    [0,1,0],
-    [0,1,0],
-    [0,1,0],
-    [0,1,0],
-    [0,1,0],
-  ],
-  A: [
-    [0,1,0],
-    [1,0,1],
-    [1,0,1],
-    [1,1,1],
-    [1,0,1],
-    [1,0,1],
-    [1,0,1],
-  ],
-  '-': [
-    [0,0,0],
-    [0,0,0],
-    [0,0,0],
-    [0,0,0],
-    [0,0,0],
-    [0,0,0],
-    [0,0,0],
-  ],
-  S: [
-    [1,1,1],
-    [1,0,0],
-    [1,0,0],
-    [1,1,1],
-    [0,0,1],
-    [0,0,1],
-    [1,1,1],
-  ],
-  F: [
-    [1,1,1],
-    [1,0,0],
-    [1,0,0],
-    [1,1,1],
-    [1,0,0],
-    [1,0,0],
-    [1,0,0],
-  ],
-}
-
-const LOGO_TEXT = 'GTA-SF'
-const LOGO_SPLIT = LOGO_TEXT.indexOf('-')
-const FIRST_PART = LOGO_TEXT.slice(0, LOGO_SPLIT)
-const SECOND_PART = LOGO_TEXT.slice(LOGO_SPLIT + 1)
 
 export default function LoadingScreen() {
   const [baseline, setBaseline] = useState(0)
@@ -175,7 +114,6 @@ export default function LoadingScreen() {
   const totalMb = total > 0 ? (total / 1024 / 1024).toFixed(1) : null
 
   const tip = TIPS[tipIndex]
-  const px = 5
 
   return (
     <div className="ls-backdrop">
@@ -184,51 +122,14 @@ export default function LoadingScreen() {
       <div className="ls-scanline" />
 
       <div className="ls-container">
-        {/* Pixel logo */}
+        {/* Wordmark */}
         <div className="ls-logo-wrap">
-          <div className="ls-logo-grid">
-            {/* Render each character as a column of pixel rows */}
-            {FIRST_PART.split('').map((char, ci) => {
-              const rows = LETTERS[char]
-              return (
-                <div key={ci} className="ls-char">
-                  {rows.map((row, ri) =>
-                    row.map((filled, bi) =>
-                      filled ? (
-                        <PixelBlock key={`${ci}-${ri}-${bi}`} w={px} h={px} />
-                      ) : (
-                        <div key={`${ci}-${ri}-${bi}`} style={{ width: px, height: px }} />
-                      )
-                    )
-                  )}
-                </div>
-              )
-            })}
-            {/* The dash as a magenta block column */}
-            <div className="ls-dash-block">
-              {[0, 1, 2, 3, 4, 5, 6].map((r) => (
-                <PixelBlock key={r} w={px * 2} h={px} />
-              ))}
-            </div>
-            {SECOND_PART.split('').map((char, ci) => {
-              const rows = LETTERS[char]
-              return (
-                <div key={ci} className="ls-char">
-                  {rows.map((row, ri) =>
-                    row.map((filled, bi) =>
-                      filled ? (
-                        <PixelBlock key={`s-${ci}-${ri}-${bi}`} w={px} h={px} />
-                      ) : (
-                        <div key={`s-${ci}-${ri}-${bi}`} style={{ width: px, height: px }} />
-                      )
-                    )
-                  )}
-                </div>
-              )
-            })}
+          <div className="ls-wordmark">
+            <span>Founder</span>
+            <span className="ls-wordmark-accent">Simulator</span>
           </div>
 
-          <div className="ls-subtitle">SAN FRANCISCO EDITION</div>
+          <div className="ls-subtitle">SAN FRANCISCO · STORY MODE</div>
 
           {/* Minecraft grass/dirt divider */}
           <div className="ls-divider">
@@ -250,7 +151,7 @@ export default function LoadingScreen() {
             Inspired by "vibe coding" and way too much ambition, this is a mini open-world game where you try to build a startup from scratch.
           </p>
           <p className="ls-welcome-tagline">Network. Pitch. Coffee chat. Climb. Party. Repeat.</p>
-          <p className="ls-welcome-footer">It's not GTA—but it might be the closest thing to founder life.</p>
+          <p className="ls-welcome-footer">Not a crime sim — but it might be the closest thing to founder life.</p>
         </div>
 
         {/* Progress */}
@@ -300,9 +201,9 @@ export default function LoadingScreen() {
 
         {/* Footer */}
         <div className="ls-footer">
-          <span className="ls-footer-left">GTA-SF</span>
-          <span className="ls-footer-center">MOCKERY LOADING SCREEN — NOT AFFILIATED WITH ROCKSTAR OR MOJANG</span>
-          <span className="ls-footer-right">v0.1.0-SF</span>
+          <span className="ls-footer-left">FOUNDER SIMULATOR</span>
+          <span className="ls-footer-center">MAP © OPENSTREETMAP CONTRIBUTORS · CHARACTERS &amp; CARS BY KENNEY (CC0)</span>
+          <span className="ls-footer-right">v1.0-SF</span>
         </div>
 
         <div className="ls-corner ls-corner-tl" />

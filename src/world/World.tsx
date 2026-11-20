@@ -30,6 +30,7 @@ import {
   InstancedHydrants,
   InstancedBenches,
 } from './InstancedProps'
+import { makeRoadTexture, makeGroundTexture } from '../utils/textureGen'
 
 // ─── Spatial Grid for Collision Detection ─────────────────────────────────────
 // Divide the map into a grid; each cell stores building indices
@@ -406,12 +407,13 @@ function RoadLayer({ roadPaths, roads: roadDefs }: {
   const lineColor = isNight ? '#ffdd00' : '#ffcc00'
   const lineEmissive = isNight ? '#ffaa00' : '#000000'
   const lineEmissiveInt = isNight ? 0.6 : 0
+  const roadMap = useMemo(() => makeRoadTexture(), [])
 
   return (
     <>
       {mergedRoadGeo && (
         <mesh geometry={mergedRoadGeo} frustumCulled={false}>
-          <meshStandardMaterial color="#404050" roughness={0.95} />
+          <meshStandardMaterial map={roadMap} color="#d8d8de" roughness={0.92} metalness={0.02} />
         </mesh>
       )}
       {lineData.length > 0 && (
@@ -511,13 +513,17 @@ function RailLayer({ caltransPaths }: { caltransPaths: { x: number; z: number; a
 // ─── Ground ───────────────────────────────────────────────────────────────────
 // ─── Ground ───────────────────────────────────────────────────────────────────
 function Ground({ water }: { water: { x: number; z: number; width: number; height: number } }) {
-  const groundColor = '#2a3a20'
+  // Downtown is paving, not lawn: a textured urban slab under the map plus
+  // a plain horizon plane far beyond it.
+  const groundColor = '#7a7b76'
   const waterColor = '#1a3a5a'
-  // The ground follows the camera in X/Z so its far edge never enters view
-  // — otherwise players past the map center would see drei's Sky horizon
+  // The horizon plane follows the camera in X/Z so its far edge never enters
+  // view — otherwise players past the map center would see drei's Sky horizon
   // through the gap and the world appears to "go dark" at distance.
   const GROUND_SIZE = 24000
+  const CITY_SLAB = 4200
   const groundRef = useRef<THREE.Mesh>(null)
+  const groundMap = useMemo(() => makeGroundTexture(), [])
   useFrame(({ camera }) => {
     if (groundRef.current) {
       groundRef.current.position.x = camera.position.x
@@ -527,10 +533,15 @@ function Ground({ water }: { water: { x: number; z: number; width: number; heigh
 
   return (
     <>
-      {/* Main ground — tracks the camera */}
-      <mesh ref={groundRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
+      {/* Horizon plane — tracks the camera, sits just under the city slab */}
+      <mesh ref={groundRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.12, 0]}>
         <planeGeometry args={[GROUND_SIZE, GROUND_SIZE]} />
         <meshStandardMaterial color={groundColor} roughness={0.95} />
+      </mesh>
+      {/* City slab — world-anchored so the paving texture doesn't slide */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
+        <planeGeometry args={[CITY_SLAB, CITY_SLAB, 1, 1]} />
+        <meshStandardMaterial map={groundMap} color="#a3a29b" roughness={0.95} />
       </mesh>
       {/* Water — stays world-anchored; skipped for scan maps that bake in their own water */}
       {water.width > 0 && water.height > 0 && (
@@ -780,10 +791,16 @@ export default function World() {
 
   return (
     <>
-      <ambientLight intensity={isNight ? 0.4 : 3.0} />
+      {/* Lighting is tuned for the textured city: softer ambient, a warm key
+          from the south-west, and a sky/ground hemisphere fill so facades in
+          shadow still read. Fog gives the long Market St sightlines depth. */}
+      <fog attach="fog" args={isNight ? ['#070a12', 180, 1400] : ['#c9d5e2', 420, 2400]} />
+      <ambientLight intensity={isNight ? 0.35 : 1.5} />
+      <hemisphereLight args={isNight ? ['#1a2340', '#0a0a10', 0.7] : ['#dfe9ff', '#7a776c', 1.2]} />
       <directionalLight
         position={[100, 200, 80]}
-        intensity={isNight ? 0.5 : 7.5}
+        color={isNight ? '#9fb4ff' : '#fff2dc'}
+        intensity={isNight ? 0.5 : 3.4}
         shadow-mapSize={[2048, 2048]}
         shadow-camera-far={5000}
         shadow-camera-left={-MAP_SIZE}
@@ -791,7 +808,11 @@ export default function World() {
         shadow-camera-top={MAP_SIZE}
         shadow-camera-bottom={-MAP_SIZE}
       />
-      <Sky {...skyProps} />
+      {/* drei's Sky is a unit box scaled by `distance` (half-size = distance/2).
+          The default 1000 left the camera *outside* the sky box anywhere more
+          than 500 m from the origin — e.g. the Tenderloin — which rendered as
+          black. 12000 covers the whole map and stays inside the 8000 m far plane. */}
+      <Sky {...skyProps} distance={12000} />
 
       {data.objModel && <ObjCityModel model={data.objModel} />}
       {/* Render ground for every map — OBJ scans have finite extents and

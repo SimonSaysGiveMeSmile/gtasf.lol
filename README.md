@@ -1,106 +1,80 @@
-# Founder Simulator — GTA 6
+# Founder Simulator — San Francisco
 
-A browser-based open-world prototype built with React, TypeScript, Vite, and React Three Fiber. The project renders a stylized neon city with player movement, vehicles, NPCs, and an overlay HUD.
+An original open-world startup sim set on the real street grid of downtown San Francisco.
+Browser-based: React, TypeScript, Vite, Three.js / React Three Fiber, Zustand.
+
+**Story mode** — nine chapters from a Tenderloin SRO to ringing the bell on Pine Street. Every
+objective is a real building pulled from OpenStreetMap (Cable Car Coffee, Digital Garage, Moscone
+West, the Montgomery Street towers, Hallidie Plaza, 140 New Montgomery, the Pacific Exchange
+Building…). Dialogue with choices, stats (cash / MRR / hype / team / equity), timed drives,
+deliveries, a guerrilla-marketing collect-a-thon, a rival chase, and an IPO ending ranked by valuation.
+Progress saves to `localStorage` at chapter boundaries.
+
+**Free roam** — drive, explore, take side-gig deliveries.
 
 ## Tech stack
 
-- React 18
-- TypeScript
-- Vite
-- Three.js / React Three Fiber
-- Zustand
-- React Three Cannon
+- React 18 · TypeScript · Vite
+- Three.js / React Three Fiber / drei
+- Zustand (game + story state)
+- Rigged characters & vehicles: Kenney (CC0) — see `public/models/CREDITS.md`
+- Map data: © OpenStreetMap contributors (ODbL), baked into `src/game/maps/`
+
+## Project layout
+
+```
+src/
+├── story/            campaign: chapters.ts (content), storyStore.ts (state machine + save),
+│                     StoryRunner.tsx (in-canvas triggers/beacons), StoryUI.tsx (title, dialogue, HUD)
+├── characters/       KenneyCharacter.tsx — rigged GLB + animation clips, shared by player/NPCs/contacts
+├── world/            OSM city renderer: textured facades/roofs, roads, props, lighting, colliders
+├── player/ vehicles/ npcs/  on-foot controller, drivable cars, pedestrians + traffic AI
+├── game/             core store, map data, side gigs, police
+└── ui/               HUD, radar, settings, loading screen, touch controls
+```
+
+### Coordinates
+
+The downtown map is metres relative to 37.7875 N, −122.405 W (+x east, +z north).
+`src/story/geo.ts` converts lat/lon ↔ world and snaps points to the road network.
 
 ## Local development
 
-### Requirements
-
-- Node.js 20+
-- npm 10+
-
-### Install
+Requirements: Node.js 20+, npm 10+.
 
 ```bash
 npm install
+npm run dev      # http://127.0.0.1:4001
 ```
-
-### Start the dev server
-
-```bash
-npm run dev
-```
-
-The app runs on the Vite dev server. In this project, the configured dev port is `4001`.
 
 ## Production build
 
-### Build
-
 ```bash
-npm run build
-```
-
-### Preview the production build
-
-```bash
+npm run build    # tsc -b && vite build → dist/
 npm run preview
 ```
 
 ## Vercel deployment
 
-This app deploys to Vercel as a static Vite site.
-
-### Expected Vercel settings
-
-- Framework preset: `Vite`
-- Install command: `npm install`
-- Build command: `npm run build`
-- Output directory: `dist`
-
-### Environment variables
-
-No environment variables are currently required.
-
-### Deploy with the Vercel CLI
-
-```bash
-vercel
-```
-
-If login is required in this Claude Code session, run:
-
-```bash
-! vercel login
-```
-
-For a production deploy:
+Static Vite site (framework preset `Vite`, output `dist`). The project is linked to the `hireal`
+team; always deploy to production so the URL isn't SSO-gated:
 
 ```bash
 vercel --prod
 ```
 
-## GitHub publishing
+## Controls
 
-After local verification, you can create a new public GitHub repository and push this project with the GitHub CLI.
-
-If login is required in this Claude Code session, run:
-
-```bash
-! gh auth login
-```
-
-Typical flow:
-
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-gh repo create <repo-name> --public --source=. --remote=origin --push
-```
+| Action | Desktop | Touch |
+|---|---|---|
+| Move / run / jump | WASD · Shift · Space | joystick · RUN · JUMP |
+| Talk / enter or exit vehicle | F (or E) | F button |
+| Advance dialogue / pick answer | Space · 1–3 | tap |
+| Look | drag mouse | drag |
 
 ## Verification checklist
 
-- `npm run lint`
+- `npx tsc -b`
 - `npm run build`
-- `npm run preview`
-- Verify the app loads, the canvas renders, the HUD appears, and movement/interactions still work in the browser
+- Load the game: title screen → **New story** → prologue card → dialogue advances with Space →
+  beacon + objective panel visible → walk to Priya, F opens the choice dialogue → Chapter 1 begins.

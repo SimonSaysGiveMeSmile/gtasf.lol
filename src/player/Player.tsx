@@ -1,5 +1,5 @@
 // @t1an
-import { useRef, useEffect, useMemo } from 'react'
+import { useRef, useEffect, useMemo, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -8,6 +8,7 @@ import { PLAYER_CONFIG, MAP_SIZE } from '../game/constants'
 import { getNearbyBuildingsGrid, collideCircleWithBuilding, meshColliderPushOutCircle } from '../world/World'
 import { useLandscapeData } from '../game/LandscapeContext'
 import { soundManager } from '../systems/audio/SoundManager'
+import KenneyCharacter, { type CharacterAnim } from '../characters/KenneyCharacter'
 // @simonsaysgivemesmile
 
 // Module-level refs for gyro (not component state, so they persist)
@@ -43,7 +44,14 @@ export default function Player() {
   const setIsFalling = useGameStore((s) => s.setIsFalling)
   const setPlayerRotation = useGameStore((s) => s.setPlayerRotation)
   const playerFaceTexture = useGameStore((s) => s.playerFaceTexture)
+  const playerModel = useGameStore((s) => s.playerModel)
   const godMode = useGameStore((s) => s.godMode)
+
+  // Rigged character clip. The legacy primitive avatar is kept only for the
+  // selfie-face feature (it maps the photo onto a sphere head).
+  const [anim, setAnim] = useState<CharacterAnim>('idle')
+  const animRef = useRef<CharacterAnim>('idle')
+  const animSpeed = useRef(1)
 
   // Load face texture as equirectangular map for sphere
   const headTexture = useMemo(() => {
@@ -72,8 +80,12 @@ export default function Player() {
 
   const [, getKeys] = useKeyboardControls()
 
-  // Position = feet on ground (y = 0)
-  const position = useRef(new THREE.Vector3(0, FOOT_Y, 0))
+  // Position = feet on ground (y = 0). Start from the map's spawn point (the
+  // store already holds it) instead of the world origin.
+  const position = useRef((() => {
+    const p = useGameStore.getState().playerPosition
+    return new THREE.Vector3(p[0], Math.max(FOOT_Y, p[1]), p[2])
+  })())
   const velocity = useRef(new THREE.Vector3(0, 0, 0))
   const cameraAngle = useRef({ theta: 0, phi: 0.3 })
   const isGrounded = useRef(true)
@@ -452,6 +464,21 @@ export default function Player() {
       if (rightArmRef.current) rightArmRef.current.rotation.x = -0.4
     }
 
+    // Rigged-character clip selection
+    {
+      let next: CharacterAnim
+      if (godMode) next = 'fall'
+      else if (!isGrounded.current) next = velocity.current.y > 1 ? 'jump' : 'fall'
+      else if (isMoving) next = rn ? 'sprint' : 'walk'
+      else next = 'idle'
+      if (next !== animRef.current) {
+        animRef.current = next
+        setAnim(next)
+      }
+      // Walk/sprint clips are authored for a casual pace; our walk is 8 m/s.
+      animSpeed.current = next === 'walk' ? 1.7 : next === 'sprint' ? 1.35 : 1
+    }
+
     // Footstep sounds
     if (isMoving && isGrounded.current) {
       const stepInterval = rn ? 280 : 420
@@ -468,6 +495,16 @@ export default function Player() {
   })
 
   if (inVehicle || isDead) return null
+
+  if (!headTexture) {
+    return (
+      <group ref={meshRef}>
+        <group ref={bodyGroupRef}>
+          <KenneyCharacter model={playerModel} anim={anim} height={PLAYER_CONFIG.height} timeScale={animSpeed.current} />
+        </group>
+      </group>
+    )
+  }
 
   return (
     <group ref={meshRef}>

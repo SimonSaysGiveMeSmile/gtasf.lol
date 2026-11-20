@@ -7,7 +7,16 @@ import { LANDSCAPE_CONFIG } from '../game/landscape'
 import type { PathPoint } from '../game/landscape.types'
 import { useLandscapeData } from '../game/LandscapeContext'
 import { AVAILABLE_MAPS } from '../game/loadMapData'
+import { useStoryStore } from '../story/storyStore'
+import { CHARACTER_MODELS } from '../characters/KenneyCharacter'
 import './HUD.css' // @jt886
+
+const CHARACTER_LABELS: Record<string, string> = {
+  'character-male-a': 'Sam', 'character-male-b': 'Marcus', 'character-male-c': 'Rafa', 'character-male-d': 'Dev',
+  'character-male-e': 'Kenji', 'character-male-f': 'Dave', 'character-male-g': 'Theo',
+  'character-female-a': 'Jo', 'character-female-b': 'Priya', 'character-female-c': 'Ana', 'character-female-d': 'Lena',
+  'character-female-e': 'Mei', 'character-female-f': 'Zara', 'character-worker': 'Hi-vis',
+}
 
 const RANGE = 100
 const SIZE = 180
@@ -83,6 +92,9 @@ function getClippedRail(path: PathPoint[], playerPos: [number, number, number]):
 function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
   const landscapeData = useLandscapeData()
   const activeMission = useGameStore((s) => s.activeMission)
+  const storyWaypoint = useStoryStore((s) => s.waypoint)
+  const storyTalk = useStoryStore((s) => s.talkTarget)
+  const storyCollect = useStoryStore((s) => s.collect)
   // Pre-compute relative positions from active map data
   const relativeBuildings = useMemo(() =>
     landscapeData.buildings.map((b) => ({
@@ -281,10 +293,28 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
           opacity="0.9"
         />
 
-        {/* Active mission waypoint — drawn after everything else so it's on top */}
-        {activeMission && (() => {
-          const target = activeMission.phase === 'pickup' ? activeMission.pickup : activeMission.dropoff
-          const color = activeMission.phase === 'pickup' ? '#ffd166' : '#06d6a0'
+        {/* Story collectibles — small green dots */}
+        {storyCollect?.map((it, i) => {
+          if (it.taken) return null
+          const sx = it.x * MAP_SCALE - playerRelX
+          const sy = it.z * MAP_SCALE - playerRelZ
+          if (Math.abs(sx) > HALF_SIZE || Math.abs(sy) > HALF_SIZE) return null
+          return <circle key={`sc-${i}`} cx={CENTER + sx} cy={CENTER + sy} r={2.2} fill="#06d6a0" stroke="rgba(0,0,0,0.8)" strokeWidth={0.5} />
+        })}
+
+        {/* Active waypoint (story objective or side gig) — drawn after everything else so it's on top */}
+        {(() => {
+          let target: { x: number; z: number } | null = null
+          let color = '#ffd166'
+          let label = ''
+          if (storyTalk) { target = storyTalk; color = '#7cc4ff'; label = storyTalk.name.split(' · ')[0].toUpperCase() }
+          else if (storyWaypoint) { target = storyWaypoint; color = storyWaypoint.color; label = 'OBJECTIVE' }
+          else if (activeMission) {
+            target = activeMission.phase === 'pickup' ? activeMission.pickup : activeMission.dropoff
+            color = activeMission.phase === 'pickup' ? '#ffd166' : '#06d6a0'
+            label = activeMission.phase === 'pickup' ? 'PICKUP' : activeMission.dropoff.label.toUpperCase()
+          }
+          if (!target) return null
           const dx = target.x * MAP_SCALE - playerRelX
           const dy = target.z * MAP_SCALE - playerRelZ
           const absX = CENTER + dx
@@ -312,7 +342,7 @@ function Minimap({ playerPosition, npcs, playerRotation }: MinimapProps) {
                     strokeWidth={0.6}
                     paintOrder="stroke"
                   >
-                    {activeMission.phase === 'pickup' ? 'PICKUP' : activeMission.dropoff.label.toUpperCase()}
+                    {label}
                   </text>
                 </g>
               </g>
@@ -380,7 +410,11 @@ export default function HUD() {
   const playerRotation = useGameStore((s) => s.playerRotation)
   const fps = useGameStore((s) => s.fps)
   const [showMenu, setShowMenu] = useState(false)
-  const [activeTab, setActiveTab] = useState<'gameplay' | 'visual' | 'audio' | 'debugging' | 'face'>('gameplay')
+  const [activeTab, setActiveTab] = useState<'gameplay' | 'visual' | 'audio' | 'debugging' | 'character'>('gameplay')
+  const storyActive = useStoryStore((s) => s.mode === 'story')
+  const openTitle = useStoryStore((s) => s.openTitle)
+  const playerModel = useGameStore((s) => s.playerModel)
+  const setPlayerModel = useGameStore((s) => s.setPlayerModel)
   const [showCoords, setShowCoords] = useState(true)
   const godMode = useGameStore((s) => s.godMode)
   const setGodMode = useGameStore((s) => s.setGodMode)
@@ -456,7 +490,7 @@ const setPlayerFaceTexture = useGameStore((s) => s.setPlayerFaceTexture)
 
             {/* Tab bar */}
             <div className="settings-tabs">
-              {(['gameplay', 'visual', 'audio', 'debugging', 'face'] as const).map((tab) => (
+              {(['gameplay', 'visual', 'audio', 'debugging', 'character'] as const).map((tab) => (
                 <button
                   key={tab}
                   className={`settings-tab ${activeTab === tab ? 'active' : ''}`}
@@ -470,6 +504,15 @@ const setPlayerFaceTexture = useGameStore((s) => s.setPlayerFaceTexture)
             <div className="settings-body">
               {activeTab === 'gameplay' && (
                 <>
+                  <div className="settings-section">
+                    <label className="settings-label">STORY</label>
+                    <button
+                      className="settings-toggle-btn active"
+                      onClick={() => { setShowMenu(false); openTitle() }}
+                    >
+                      {storyActive ? 'MAIN MENU' : 'PLAY STORY'}
+                    </button>
+                  </div>
                   <div className="settings-section">
                     <label className="settings-label">CITY</label>
                     <select
@@ -667,11 +710,23 @@ const setPlayerFaceTexture = useGameStore((s) => s.setPlayerFaceTexture)
                 </>
               )}
 
-              {activeTab === 'face' && (
+              {activeTab === 'character' && (
                 <>
                   <div className="settings-section">
-                    <label className="settings-label">PLAYER FACE</label>
-                    <p className="settings-desc">Upload a selfie to replace your character's face.</p>
+                    <label className="settings-label">CHARACTER</label>
+                    <select
+                      value={playerModel}
+                      onChange={(e) => setPlayerModel(e.target.value)}
+                      className="settings-select"
+                    >
+                      {CHARACTER_MODELS.map((m) => (
+                        <option key={m} value={m}>{CHARACTER_LABELS[m] ?? m}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="settings-section">
+                    <label className="settings-label">SELFIE MODE</label>
+                    <p className="settings-desc">Upload a selfie to play as the classic block avatar with your face on it.</p>
                     <label className="face-upload-btn">
                       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ marginRight: 6 }}>
                         <path d="M7 1L7 9M7 9L4 6M7 9L10 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -769,8 +824,8 @@ const setPlayerFaceTexture = useGameStore((s) => s.setPlayerFaceTexture)
         </div>
       )}
 
-      {/* Mission tracker */}
-      {activeMission && (() => {
+      {/* Side-gig tracker (free roam only — story mode has its own panel) */}
+      {!storyActive && activeMission && (() => {
         const tgt = activeMission.phase === 'pickup' ? activeMission.pickup : activeMission.dropoff
         const dx = tgt.x - playerPos[0]
         const dz = tgt.z - playerPos[2]
@@ -789,7 +844,7 @@ const setPlayerFaceTexture = useGameStore((s) => s.setPlayerFaceTexture)
       })()}
 
       {/* Mission stats (cash + completion count) */}
-      {(missionCash > 0 || missionsCompleted > 0) && (
+      {!storyActive && (missionCash > 0 || missionsCompleted > 0) && (
         <div className="mission-stats">
           <span className="mission-cash">${missionCash.toLocaleString()}</span>
           <span className="mission-count">{missionsCompleted} done</span>
@@ -814,8 +869,8 @@ const setPlayerFaceTexture = useGameStore((s) => s.setPlayerFaceTexture)
           <div className="death-overlay" />
           {!isRespawning ? (
             <div className="death-text">
-              <div className="death-killed">WASTED</div>
-              <div className="death-sub">You took too much damage</div>
+              <div className="death-killed">BURNED OUT</div>
+              <div className="death-sub">You took too much damage. Hydrate. Respawning…</div>
             </div>
           ) : (
             <div className="respawn-text">

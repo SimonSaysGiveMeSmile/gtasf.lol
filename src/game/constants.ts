@@ -47,8 +47,8 @@ export const CITIES: CityConfig[] = [
 export const VEHICLES: VehicleSpec[] = [
   {
     type: 'cybertruck',
-    name: 'Tesla Cybertruck',
-    brand: 'Tesla',
+    name: 'Rig Pickup',
+    brand: 'Rig',
     color: '#b8b8b8',
     maxSpeed: 120,
     acceleration: 60,
@@ -58,8 +58,8 @@ export const VEHICLES: VehicleSpec[] = [
   },
   {
     type: 'modelS',
-    name: 'Tesla Model S',
-    brand: 'Tesla',
+    name: 'Halo Sedan',
+    brand: 'Halo',
     color: '#e8e8e8',
     maxSpeed: 100,
     acceleration: 70,
@@ -69,8 +69,8 @@ export const VEHICLES: VehicleSpec[] = [
   },
   {
     type: 'sports',
-    name: 'Porsche 911',
-    brand: 'Porsche',
+    name: 'Apex GT',
+    brand: 'Apex',
     color: '#cc0000',
     maxSpeed: 140,
     acceleration: 90,
@@ -80,8 +80,8 @@ export const VEHICLES: VehicleSpec[] = [
   },
   {
     type: 'suv',
-    name: 'Tesla Model X',
-    brand: 'Tesla',
+    name: 'Summit SUV',
+    brand: 'Summit',
     color: '#2a2a2a',
     maxSpeed: 95,
     acceleration: 65,
@@ -91,8 +91,8 @@ export const VEHICLES: VehicleSpec[] = [
   },
   {
     type: 'sedan',
-    name: 'Tesla Model 3',
-    brand: 'Tesla',
+    name: 'Bolt Hatch',
+    brand: 'Bolt',
     color: '#e8e8e8',
     maxSpeed: 105,
     acceleration: 80,
@@ -102,8 +102,8 @@ export const VEHICLES: VehicleSpec[] = [
   },
   {
     type: 'semi',
-    name: 'Tesla Semi',
-    brand: 'Tesla',
+    name: 'Box Truck',
+    brand: 'Hauler',
     color: '#b8b8b8',
     maxSpeed: 80,
     acceleration: 35,

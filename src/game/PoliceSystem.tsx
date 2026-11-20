@@ -70,7 +70,7 @@ function PoliceCar({ spawnX, spawnZ, idx }: { spawnX: number; spawnZ: number; id
       angle.current += Math.PI * 0.5
     }
 
-    vehiclePositions.set(`cop-${idx}`, { x: pos.current.x, z: pos.current.z, radius: r })
+    vehiclePositions.set(`cop-${idx}`, { x: pos.current.x, z: pos.current.z, radius: r, moving: true })
 
     if (meshRef.current) {
       meshRef.current.position.set(pos.current.x, 0, pos.current.z)
@@ -84,13 +84,26 @@ function PoliceCar({ spawnX, spawnZ, idx }: { spawnX: number; spawnZ: number; id
 
   return (
     <group ref={meshRef} position={[spawnX, 0, spawnZ]}>
-      <VehicleMesh type="sports" color="#1a1aff" />
-      <pointLight color="#0044ff" intensity={4} distance={12} position={[0, 2, 0]} />
-      <mesh position={[0, 2, 0]}>
-        <sphereGeometry args={[0.15, 6, 6]} />
-        <meshBasicMaterial color="#0044ff" toneMapped={false} />
-      </mesh>
+      <VehicleMesh type="sports" color="#ffffff" modelUrl="/models/kenney/cars/police.glb" tint={false} />
+      <PoliceLights />
     </group>
+  )
+}
+
+// Alternating red/blue strobe on the roof bar.
+function PoliceLights() {
+  const red = useRef<THREE.PointLight>(null!)
+  const blue = useRef<THREE.PointLight>(null!)
+  useFrame(({ clock }) => {
+    const on = Math.floor(clock.elapsedTime * 6) % 2 === 0
+    if (red.current) red.current.intensity = on ? 6 : 0.2
+    if (blue.current) blue.current.intensity = on ? 0.2 : 6
+  })
+  return (
+    <>
+      <pointLight ref={red} color="#ff2a2a" distance={14} position={[-0.4, 2.1, -0.2]} />
+      <pointLight ref={blue} color="#2a5cff" distance={14} position={[0.4, 2.1, -0.2]} />
+    </>
   )
 }
 

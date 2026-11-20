@@ -1,7 +1,12 @@
 // Shared mutable state between VehicleSpawner and NPCCrowd
 // Written by VehicleSpawner each frame, read by NPCCrowd and VehicleSpawner for collision
 
-export const vehiclePositions = new Map<string, { x: number; z: number; radius: number }>()
+// `moving` is false for a parked car so pedestrians who spawn (or wander)
+// next to it aren't counted as "hit" — that used to light up the wanted
+// stars seconds after loading in.
+// `player` marks the vehicle the player is currently driving — only those
+// hits raise the wanted level (traffic AI running someone over isn't on you).
+export const vehiclePositions = new Map<string, { x: number; z: number; radius: number; moving?: boolean; player?: boolean }>()
 
 // Collision radius per vehicle type (in world units)
 export function vehicleRadius(type: string): number {

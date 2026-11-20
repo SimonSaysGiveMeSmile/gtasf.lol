@@ -1,21 +1,22 @@
-# Third-Party Model Credits
+# Third-Party Asset Credits
 
-Vehicle GLB assets used by `src/vehicles/VehicleSpawner.tsx` via `useGLTF`.
-
-## `ToyCar.glb`
+## Kenney — Car Kit (`kenney/cars/*.glb`)
 - **License**: CC0 1.0 Universal (public domain dedication)
-- **Source**: [Khronos glTF-Sample-Assets — ToyCar](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/ToyCar)
-- **Authors**: Guido Odendahl (initial car model), Eric Chadwick (extensions and scene composition)
-- **Used for**: `modelS`, `sedan`
+- **Source**: https://kenney.nl/assets/car-kit (v3.1)
+- **Used for**: player vehicles (`sedan`, `sedan-sports`, `hatchback-sports`, `suv`, `truck`, `delivery`),
+  ambient traffic pool (`taxi`, `van`, `suv-luxury`, `race`), police (`police`).
+- Shared palette texture: `kenney/cars/Textures/colormap.png`.
 
-## `CarConcept.glb`
-- **License**: [CC BY 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode)
-- **Source**: [Khronos glTF-Sample-Assets — CarConcept](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CarConcept)
-- **Author**: Eric Chadwick, Darmstadt Graphics Group GmbH (© 2024)
-- **Used for**: `sports`
+## Kenney — Mini Characters (`kenney/chars/*.glb`)
+- **License**: CC0 1.0 Universal
+- **Source**: https://kenney.nl/assets/mini-characters-1 (v2.0)
+- **Used for**: the player avatar, pedestrians, and story contacts. Each GLB is rigged and ships the
+  shared clip set (`idle`, `walk`, `sprint`, `jump`, `fall`, `drive`, `sit`, `die`, `emote-*`, …).
+- Shared palette texture: `kenney/chars/Textures/colormap.png`.
 
-## `CesiumMilkTruck.glb`
-- **License**: [CC BY 4.0 International](https://creativecommons.org/licenses/by/4.0/legalcode), with Cesium trademark limitations on the Cesium logo
-- **Source**: [Khronos glTF-Sample-Assets — CesiumMilkTruck](https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CesiumMilkTruck)
-- **Author**: Cesium (© 2017)
-- **Used for**: `cybertruck`
+## San Francisco 3D scan (`sf_obj/SanFrancisco_City.glb`)
+- Optional "3D Scan" map. Not used by story mode.
+
+## Map data
+- Downtown / Union Square / Golden Gate street grids and building footprints are derived from
+  OpenStreetMap — © OpenStreetMap contributors, ODbL 1.0. The baked data lives in `src/game/maps/`.

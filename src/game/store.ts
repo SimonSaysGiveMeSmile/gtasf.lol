@@ -50,6 +50,7 @@ interface GameState {
   ambientVolume: number
   currentMapName: string
   playerFaceTexture: string | null
+  playerModel: string
   godMode: boolean
 
   // Missions — simple pickup → dropoff loop with cash reward.
@@ -99,8 +100,11 @@ interface GameState {
   setAmbientVolume: (v: number) => void
   setCurrentMapName: (name: string) => void
   setPlayerFaceTexture: (texture: string | null) => void
+  setPlayerModel: (model: string) => void
   setGodMode: (v: boolean) => void
   switchMap: (mapId: string, spawnPos: [number, number, number]) => void
+  // Hard-move the on-foot player (story chapter starts, respawns at a place).
+  teleport: (pos: [number, number, number]) => void
   // Missions
   startMission: (mission: NonNullable<GameState['activeMission']>) => void
   reachMissionWaypoint: () => void
@@ -151,9 +155,24 @@ export const useGameStore = create<GameState>((set, get) => ({
   ambientVolume: 0.3,
   currentMapName: 'downtown_sf',
   playerFaceTexture: null,
+  playerModel: 'character-male-a',
   godMode: false,
 
   setPlayerFaceTexture: (texture) => set({ playerFaceTexture: texture }),
+  setPlayerModel: (model) => set({ playerModel: model }),
+
+  // Player.tsx only re-syncs its position ref from exitVehiclePosition, so a
+  // teleport is "exit a vehicle at this spot" while already on foot.
+  teleport: (pos) => set({
+    inVehicle: null,
+    playerMode: 'onfoot',
+    currentVehicleType: null,
+    vehicleSpeed: 0,
+    isFlying: false,
+    isFalling: false,
+    exitVehiclePosition: [pos[0], pos[1], pos[2]],
+    playerPosition: [pos[0], pos[1], pos[2]],
+  }),
 
   takeDamage: (amount) => {
     const state = get()
@@ -311,3 +330,8 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   exitVehiclePosition: null,
 }))
+
+// Dev/test hook (pairs with window.__story) — lets automated play-throughs
+// teleport and inspect state. Harmless in production.
+declare global { interface Window { __game?: typeof useGameStore } }
+if (typeof window !== 'undefined') window.__game = useGameStore

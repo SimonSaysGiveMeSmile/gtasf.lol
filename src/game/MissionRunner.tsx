@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGameStore } from '../game/store'
 import { useLandscapeData } from '../game/LandscapeContext'
+import { useStoryStore } from '../story/storyStore'
 
 type RoadPt = { x: number; z: number }
 
@@ -49,12 +50,23 @@ export default function MissionRunner() {
   const missionsCompleted = useGameStore((s) => s.missionsCompleted)
   const startMission = useGameStore((s) => s.startMission)
   const reachMissionWaypoint = useGameStore((s) => s.reachMissionWaypoint)
+  const cancelMission = useGameStore((s) => s.cancelMission)
   const seedCounter = useRef(0)
+  // Side gigs are a free-roam thing — the campaign owns the waypoint while
+  // story mode is active (or the title screen is up).
+  const storyMode = useStoryStore((s) => s.mode)
+  const storyScreen = useStoryStore((s) => s.screen)
+  const sideGigsOn = storyMode === 'free' && storyScreen === 'none'
+
+  useEffect(() => {
+    if (!sideGigsOn && activeMission) cancelMission()
+  }, [sideGigsOn, activeMission, cancelMission])
 
   // Seed the first mission — and subsequent ones — whenever activeMission
   // is null. We guard against immediate re-seeding by waiting one frame via
   // useEffect so missionsCompleted has flushed.
   useEffect(() => {
+    if (!sideGigsOn) return
     if (activeMission) return
     if (!data.roadPaths?.length) return
     seedCounter.current += 1
@@ -81,7 +93,7 @@ export default function MissionRunner() {
       phase: 'pickup',
       reward,
     })
-  }, [activeMission, data.roadPaths, missionsCompleted, startMission])
+  }, [activeMission, data.roadPaths, missionsCompleted, startMission, sideGigsOn])
 
   useFrame(() => {
     const m = useGameStore.getState().activeMission

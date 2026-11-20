@@ -7,6 +7,7 @@ import * as THREE from 'three'
 import { mergeBufferGeometries } from 'three-stdlib'
 import { useGameStore } from '../game/store'
 import type { BuildingData, TreeData } from '../game/landscape.types'
+import { makeFacadeTexture, makeFacadeEmissiveTexture, makeRoofTexture } from '../utils/textureGen'
 
 // Scratch objects — reused across instance loops to avoid GC churn.
 const _m = new THREE.Matrix4()
@@ -55,19 +56,36 @@ function categoryColor(b: BuildingData): string {
   const base = b.color || '#1a1a3a'
   const tint = CATEGORY_TINT[b.category || 'other']
   if (!tint) return base
-  // 50/50 blend: keeps per-building variety but shifts the hue toward
-  // the category. Cheap to compute and deterministic.
+  // Mostly the category tint (the facade texture carries the detail now);
+  // the per-building base colour only nudges it so blocks aren't uniform.
   const a = new THREE.Color(base)
   const t = new THREE.Color(tint)
-  a.lerp(t, 0.55)
+  a.lerp(t, 0.82)
+  // Vertex colour multiplies the facade map, so lift it to keep facades
+  // from reading as dusk at noon.
+  a.multiplyScalar(1.12)
   return '#' + a.getHexString()
 }
 
-// Footprints → one merged BufferGeometry with per-vertex color.
+// Copy a vertex range of a non-indexed geometry into a new geometry.
+function sliceGeometry(g: THREE.BufferGeometry, start: number, count: number): THREE.BufferGeometry {
+  const out = new THREE.BufferGeometry()
+  for (const name of Object.keys(g.attributes)) {
+    const a = g.attributes[name] as THREE.BufferAttribute
+    const arr = (a.array as Float32Array).slice(start * a.itemSize, (start + count) * a.itemSize)
+    out.setAttribute(name, new THREE.BufferAttribute(arr, a.itemSize))
+  }
+  return out
+}
+
+// Footprints → two merged BufferGeometries (roofs, facades) with per-vertex
+// color. ExtrudeGeometry tags caps as group/material 0 and side walls as 1;
+// we split on that so each surface gets its own texture while the whole
+// city still draws in two calls.
 export function InstancedBuildings({ buildings }: { buildings: BuildingData[] }) {
   const isNight = useGameStore((s) => s.timeOfDay === 'night')
 
-  const { boxes, mergedGeo } = useMemo(() => {
+  const { boxes, roofGeo, facadeGeo } = useMemo(() => {
     const boxList: BuildingData[] = []
     const footGeos: THREE.BufferGeometry[] = []
     for (const b of buildings) {
@@ -95,17 +113,58 @@ export function InstancedBuildings({ buildings }: { buildings: BuildingData[] })
           carr[i * 3 + 2] = col.b
         }
         g.setAttribute('color', new THREE.BufferAttribute(carr, 3))
-        // ExtrudeGeometry has a `uv` attribute with non-matching vertex count
-        // after some ops; strip it so merge succeeds.
+        // ExtrudeGeometry emits two groups per shape: material 0 = caps
+        // (roof/floor), material 1 = side walls. Its default UVs are in
+        // shape units (metres here), which is exactly what the tiling
+        // facade/roof textures expect.
         footGeos.push(g)
       } else {
         boxList.push(b)
       }
     }
-    const merged = footGeos.length > 0 ? mergeBufferGeometries(footGeos, false) : null
-    for (const g of footGeos) g.dispose()
-    return { boxes: boxList, mergedGeo: merged }
+    const caps: THREE.BufferGeometry[] = []
+    const sides: THREE.BufferGeometry[] = []
+    for (const g of footGeos) {
+      for (const grp of g.groups) {
+        ;(grp.materialIndex === 1 ? sides : caps).push(sliceGeometry(g, grp.start, grp.count))
+      }
+      g.dispose()
+    }
+    const roof = caps.length > 0 ? mergeBufferGeometries(caps, false) : null
+    const facade = sides.length > 0 ? mergeBufferGeometries(sides, false) : null
+    for (const g of caps) g.dispose()
+    for (const g of sides) g.dispose()
+    return { boxes: boxList, roofGeo: roof, facadeGeo: facade }
   }, [buildings])
+
+  const facadeMap = useMemo(() => makeFacadeTexture(), [])
+  const facadeEmissive = useMemo(() => makeFacadeEmissiveTexture(), [])
+  const roofMap = useMemo(() => makeRoofTexture(), [])
+  const materials = useMemo(() => {
+    const roof = new THREE.MeshStandardMaterial({
+      map: roofMap,
+      vertexColors: true,
+      roughness: 0.95,
+      metalness: 0.0,
+    })
+    const facade = new THREE.MeshStandardMaterial({
+      map: facadeMap,
+      emissiveMap: facadeEmissive,
+      emissive: new THREE.Color('#000000'),
+      emissiveIntensity: 0,
+      vertexColors: true,
+      roughness: 0.78,
+      metalness: 0.08,
+    })
+    return [roof, facade]
+  }, [facadeMap, facadeEmissive, roofMap])
+
+  useLayoutEffect(() => {
+    const facade = materials[1]
+    facade.emissive.set(isNight ? '#ffffff' : '#000000')
+    facade.emissiveIntensity = isNight ? 1.1 : 0
+    facade.needsUpdate = true
+  }, [isNight, materials])
 
   const instRef = useRef<THREE.InstancedMesh>(null)
   useLayoutEffect(() => {
@@ -146,18 +205,8 @@ export function InstancedBuildings({ buildings }: { buildings: BuildingData[] })
           />
         </instancedMesh>
       )}
-      {mergedGeo && (
-        <mesh geometry={mergedGeo} frustumCulled={false}>
-          <meshStandardMaterial
-            vertexColors
-            metalness={0.1}
-            roughness={0.8}
-            emissive={emissive}
-            emissiveIntensity={emissiveIntensity}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-      )}
+      {roofGeo && <mesh geometry={roofGeo} material={materials[0]} frustumCulled={false} />}
+      {facadeGeo && <mesh geometry={facadeGeo} material={materials[1]} frustumCulled={false} />}
     </>
   )
 }

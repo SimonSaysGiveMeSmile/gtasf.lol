@@ -9,7 +9,8 @@ import { NPC_COLORS, MAP_SIZE } from '../game/constants'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
 import { vehiclePositions } from '../game/vehicleState'
 import { getNearbyBuildingsGrid, collideCircleWithBuilding, circleHitsBuilding, meshColliderPushOutCircle, meshColliderHitsCircle } from '../world/World'
-import { VehicleMesh } from '../vehicles/VehicleSpawner'
+import { VehicleMesh, TRAFFIC_MODELS } from '../vehicles/VehicleSpawner'
+import KenneyCharacter, { CHARACTER_MODELS, type CharacterAnim } from '../characters/KenneyCharacter'
 import { useLandscapeData } from '../game/LandscapeContext'
 import { soundManager } from '../systems/audio/SoundManager'
 // @simonsaysgivemesmile
@@ -103,89 +104,8 @@ function findCarSpawn(seed: number, roadPaths: typeof LANDSCAPE_CONFIG.roadPaths
   return null
 }
 
-// ── Body dimensions ────────────────────────────────────────────────────────
-// Scale: 1 unit = 1 meter. Top of head = 1.83m (6 ft).
-// Breakdown: legs 0.87 + torso 0.58 + neck-to-head 0.20 + head radius 0.18 = 1.83
-const LEG_LEN = 0.87
-const TORSO_H = 0.58
-const TORSO_Y = LEG_LEN
-const NECK_Y = TORSO_Y + TORSO_H
-const HEAD_Y = NECK_Y + 0.20
-const HEAD_R = 0.18
-const SHOULDER_Y = TORSO_Y + TORSO_H * 0.85
-const ARM_LEN = 0.55
-const LOWER_LEG_Y = LEG_LEN / 4
-const LOWER_LEG_LEN = LEG_LEN * 0.4
-
-// ── Shared body mesh ────────────────────────────────────────────────────────
-function BodyMesh({ shirt, pants, skin }: { shirt: string; pants: string; skin: string }) {
-  return (
-    <group>
-      {/* Torso */}
-      <mesh position={[0, TORSO_Y + TORSO_H / 2, 0]}>
-        <boxGeometry args={[0.48, TORSO_H, 0.26]} />
-        <meshStandardMaterial color={shirt} roughness={0.8} />
-      </mesh>
-      {/* Neck */}
-      <mesh position={[0, NECK_Y, 0]}>
-        <cylinderGeometry args={[0.06, 0.07, 0.12, 8]} />
-        <meshStandardMaterial color={skin} roughness={0.8} />
-      </mesh>
-      {/* Head — simple smooth sphere */}
-      <mesh position={[0, HEAD_Y, 0]}>
-        <sphereGeometry args={[HEAD_R, 10, 10]} />
-        <meshStandardMaterial color={skin} roughness={0.8} />
-      </mesh>
-      {/* Arms */}
-      <mesh position={[-0.3, SHOULDER_Y, 0]}>
-        <capsuleGeometry args={[0.055, ARM_LEN * 0.6, 4, 8]} />
-        <meshStandardMaterial color={shirt} roughness={0.8} />
-      </mesh>
-      <mesh position={[0.3, SHOULDER_Y, 0]}>
-        <capsuleGeometry args={[0.055, ARM_LEN * 0.6, 4, 8]} />
-        <meshStandardMaterial color={shirt} roughness={0.8} />
-      </mesh>
-      {/* Hands */}
-      <mesh position={[-0.3, SHOULDER_Y - ARM_LEN - 0.12, 0]}>
-        <sphereGeometry args={[0.05, 8, 8]} />
-        <meshStandardMaterial color={skin} roughness={0.8} />
-      </mesh>
-      <mesh position={[0.3, SHOULDER_Y - ARM_LEN - 0.12, 0]}>
-        <sphereGeometry args={[0.05, 8, 8]} />
-        <meshStandardMaterial color={skin} roughness={0.8} />
-      </mesh>
-      {/* Legs */}
-      <mesh position={[-0.13, LEG_LEN * 0.6, 0]}>
-        <capsuleGeometry args={[0.08, LEG_LEN * 0.55, 4, 8]} />
-        <meshStandardMaterial color={pants} roughness={0.8} />
-      </mesh>
-      <mesh position={[0.13, LEG_LEN * 0.6, 0]}>
-        <capsuleGeometry args={[0.08, LEG_LEN * 0.55, 4, 8]} />
-        <meshStandardMaterial color={pants} roughness={0.8} />
-      </mesh>
-      {/* Lower legs */}
-      <mesh position={[-0.13, LOWER_LEG_Y, 0]}>
-        <capsuleGeometry args={[0.055, LOWER_LEG_LEN, 4, 8]} />
-        <meshStandardMaterial color={pants} roughness={0.8} />
-      </mesh>
-      <mesh position={[0.13, LOWER_LEG_Y, 0]}>
-        <capsuleGeometry args={[0.055, LOWER_LEG_LEN, 4, 8]} />
-        <meshStandardMaterial color={pants} roughness={0.8} />
-      </mesh>
-      {/* Shoes */}
-      <mesh position={[-0.13, 0.04, 0.06]}>
-        <boxGeometry args={[0.12, 0.07, 0.22]} />
-        <meshStandardMaterial color="#111111" roughness={0.9} />
-      </mesh>
-      <mesh position={[0.13, 0.04, 0.06]}>
-        <boxGeometry args={[0.12, 0.07, 0.22]} />
-        <meshStandardMaterial color="#111111" roughness={0.9} />
-      </mesh>
-    </group>
-  )
-}
-
 // ── Pedestrian NPC ───────────────────────────────────────────────────────────
+// (Body is a rigged Kenney character now — see characters/KenneyCharacter.tsx)
 const SHIRTS = ['#cc3333', '#3366cc', '#33aa55', '#ccaa33', '#8833cc', '#cc8844', '#338888']
 const PANTS = ['#1a1a3a', '#2a2a2a', '#3a3020', '#1a2a1a', '#2a1a2a', '#1a1a1a', '#2a3a2a']
 const HAIR_COLORS = ['#0a0505', '#1a0f08', '#2a1a10', '#3a2515', '#8a6030', '#c0a060', '#404040', '#c0c0c0']
@@ -196,18 +116,20 @@ interface PedProps {
   trees: { x: number; z: number }[]
 }
 
-function PedestrianNPC({ id, x, z, color, shirt, pants, hair: _hair, seed, buildings, trees }: PedProps) {
+function PedestrianNPC({ id, x, z, seed, buildings, trees }: PedProps) {
   const groupRef = useRef<THREE.Group>(null!)
-  const bodyGroupRef = useRef<THREE.Group>(null!)
-  const leftLegRef = useRef<THREE.Group>(null!)
-  const rightLegRef = useRef<THREE.Group>(null!)
-  const leftArmRef = useRef<THREE.Group>(null!)
-  const rightArmRef = useRef<THREE.Group>(null!)
+
+  // Rigged Kenney character — model picked per ped, clip driven by state.
+  const model = CHARACTER_MODELS[Math.floor(seededRandom(seed * 3.7) * CHARACTER_MODELS.length)]
+  const [anim, setAnim] = useState<CharacterAnim>('idle')
+  const animRef = useRef<CharacterAnim>('idle')
+  const setClip = (next: CharacterAnim) => {
+    if (animRef.current !== next) { animRef.current = next; setAnim(next) }
+  }
 
   const pos = useRef(new THREE.Vector3(x, 0, z))
   const angle = useRef(seededRandom(seed) * Math.PI * 2)
   const walkSpeed = 2.5 + seededRandom(seed * 13) * 1.5
-  const animTime = useRef(seededRandom(seed * 7) * 100)
   const timer = useRef(0)
   const tgtX = useRef(x)
   const tgtZ = useRef(z)
@@ -216,10 +138,6 @@ function PedestrianNPC({ id, x, z, color, shirt, pants, hair: _hair, seed, build
   const hitTimer = useRef(0)
   const hitVelX = useRef(0)
   const hitVelZ = useRef(0)
-  const pLL = useRef(0)
-  const pRL = useRef(0)
-  const pLA = useRef(0)
-  const pRA = useRef(0)
 
   useEffect(() => {
     return () => { pedPositions.delete(id) }
@@ -232,6 +150,7 @@ function PedestrianNPC({ id, x, z, color, shirt, pants, hair: _hair, seed, build
     // ── Hit ragdoll ───────────────────────────────────────────────────────
     if (isHit.current) {
       hitTimer.current -= dt
+      setClip('fall')
       pos.current.x += hitVelX.current * dt
       pos.current.z += hitVelZ.current * dt
       hitVelX.current *= 0.85
@@ -256,7 +175,7 @@ function PedestrianNPC({ id, x, z, color, shirt, pants, hair: _hair, seed, build
       const vDist = Math.sqrt(vdx * vdx + vdz * vdz)
       const minDist = 0.3 + v.radius
 
-      if (vDist < minDist && vDist > 0.001) {
+      if (vDist < minDist && vDist > 0.001 && v.moving !== false) {
         // Direct hit — launch the ped
         isHit.current = true
         hitTimer.current = 0.8
@@ -265,7 +184,7 @@ function PedestrianNPC({ id, x, z, color, shirt, pants, hair: _hair, seed, build
         hitVelZ.current = (vdz / vDist) * spd
         pos.current.y = 0.5
         soundManager.play('metal_impact', { volume: 0.5 })
-        useGameStore.getState().addWanted(1)
+        if (v.player) useGameStore.getState().addWanted(1)
         isFleeing.current = false
       } else if (vDist < 15) {
         // Nearby fast vehicle — flee away from it
@@ -341,93 +260,24 @@ function PedestrianNPC({ id, x, z, color, shirt, pants, hair: _hair, seed, build
 
     pedPositions.set(id, { x: pos.current.x, z: pos.current.z })
 
-    // Animation
-    if (isMoving) animTime.current += dt * 9
-    const t = animTime.current
-    const ls = 0.38
-    const ar = 0.28
-    const tLL = Math.sin(t) * ls
-    const tRL = Math.sin(t + Math.PI) * ls
-    const tLA = Math.sin(t + Math.PI) * ar
-    const tRA = Math.sin(t) * ar
-    const lp = 0.22
-    pLL.current += (tLL - pLL.current) * lp
-    pRL.current += (tRL - pRL.current) * lp
-    pLA.current += (tLA - pLA.current) * lp
-    pRA.current += (tRA - pRA.current) * lp
-
-    if (leftLegRef.current) leftLegRef.current.rotation.x = pLL.current
-    if (rightLegRef.current) rightLegRef.current.rotation.x = pRL.current
-    if (leftArmRef.current) leftArmRef.current.rotation.x = pLA.current
-    if (rightArmRef.current) rightArmRef.current.rotation.x = pRA.current
-
-    if (bodyGroupRef.current) {
-      const lean = isMoving ? 0.08 : 0
-      bodyGroupRef.current.rotation.x += (lean - bodyGroupRef.current.rotation.x) * 0.1
-    }
+    // Animation clip from state
+    setClip(isMoving ? (isFleeing.current ? 'sprint' : 'walk') : 'idle')
 
     if (groupRef.current) {
       groupRef.current.position.set(pos.current.x, 0, pos.current.z)
       groupRef.current.rotation.y = angle.current
+      groupRef.current.rotation.z = 0 // clear any leftover ragdoll spin
     }
   })
 
   return (
     <group ref={groupRef}>
-      {/* Body — rotates for lean */}
-      <group ref={bodyGroupRef}>
-        {/* Core body parts */}
-        <BodyMesh shirt={shirt} pants={pants} skin={color} />
-        {/* Animated limbs — pivot at shoulder/hip joints */}
-        <group ref={leftArmRef} position={[-0.3, SHOULDER_Y, 0]}>
-          <mesh position={[0, -ARM_LEN * 0.3, 0]}>
-            <capsuleGeometry args={[0.055, ARM_LEN * 0.6, 4, 8]} />
-            <meshStandardMaterial color={shirt} roughness={0.8} />
-          </mesh>
-          <mesh position={[0, -ARM_LEN - 0.12, 0]}>
-            <sphereGeometry args={[0.05, 8, 8]} />
-            <meshStandardMaterial color={color} roughness={0.8} />
-          </mesh>
-        </group>
-        <group ref={rightArmRef} position={[0.3, SHOULDER_Y, 0]}>
-          <mesh position={[0, -ARM_LEN * 0.3, 0]}>
-            <capsuleGeometry args={[0.055, ARM_LEN * 0.6, 4, 8]} />
-            <meshStandardMaterial color={shirt} roughness={0.8} />
-          </mesh>
-          <mesh position={[0, -ARM_LEN - 0.12, 0]}>
-            <sphereGeometry args={[0.05, 8, 8]} />
-            <meshStandardMaterial color={color} roughness={0.8} />
-          </mesh>
-        </group>
-        <group ref={leftLegRef} position={[-0.13, 0, 0]}>
-          <mesh position={[0, LEG_LEN * 0.35, 0]}>
-            <capsuleGeometry args={[0.08, LEG_LEN * 0.55, 4, 8]} />
-            <meshStandardMaterial color={pants} roughness={0.8} />
-          </mesh>
-          <mesh position={[0, LEG_LEN + 0.12, 0]}>
-            <capsuleGeometry args={[0.055, LEG_LEN * 0.4, 4, 8]} />
-            <meshStandardMaterial color={pants} roughness={0.8} />
-          </mesh>
-          <mesh position={[0, LEG_LEN * 2 + 0.04, 0.06]}>
-            <boxGeometry args={[0.12, 0.07, 0.22]} />
-            <meshStandardMaterial color="#111111" roughness={0.9} />
-          </mesh>
-        </group>
-        <group ref={rightLegRef} position={[0.13, 0, 0]}>
-          <mesh position={[0, LEG_LEN * 0.35, 0]}>
-            <capsuleGeometry args={[0.08, LEG_LEN * 0.55, 4, 8]} />
-            <meshStandardMaterial color={pants} roughness={0.8} />
-          </mesh>
-          <mesh position={[0, LEG_LEN + 0.12, 0]}>
-            <capsuleGeometry args={[0.055, LEG_LEN * 0.4, 4, 8]} />
-            <meshStandardMaterial color={pants} roughness={0.8} />
-          </mesh>
-          <mesh position={[0, LEG_LEN * 2 + 0.04, 0.06]}>
-            <boxGeometry args={[0.12, 0.07, 0.22]} />
-            <meshStandardMaterial color="#111111" roughness={0.9} />
-          </mesh>
-        </group>
-      </group>
+      <KenneyCharacter
+        model={model}
+        anim={anim}
+        height={1.65 + seededRandom(seed * 5.1) * 0.25}
+        timeScale={anim === 'walk' ? 0.9 + seededRandom(seed * 2.3) * 0.3 : 1}
+      />
     </group>
   )
 }
@@ -649,8 +499,8 @@ function TrafficCar({ x, z, rotation, color, id, buildings, roadPaths }: { x: nu
 
   return (
     <group ref={meshRef} position={[x, 0, z]}>
-      {/* Vehicle body */}
-      <VehicleMesh type="sports" color={color} />
+      {/* Vehicle body — model picked per car so traffic has variety */}
+      <VehicleMesh type="sports" color={color} modelUrl={TRAFFIC_MODELS[Math.abs(Math.floor(x * 7 + z * 13)) % TRAFFIC_MODELS.length]} />
       {/* NPC driver in the car — visible through windows */}
       <group position={[0, 0.6, -0.3]} ref={driverRef}>
         {/* Head */}
