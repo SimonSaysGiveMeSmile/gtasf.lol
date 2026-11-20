@@ -17,7 +17,7 @@
   align-items: stretch;
   background:
     linear-gradient(90deg, rgba(6, 8, 14, 0.94) 0%, rgba(6, 8, 14, 0.72) 48%, rgba(6, 8, 14, 0.25) 100%),
-    url('/loading.png') center / cover no-repeat;
+    url('/loading.webp') center / cover no-repeat;
   color: #fff;
   font-family: var(--font-display);
 }

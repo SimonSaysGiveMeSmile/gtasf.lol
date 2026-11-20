@@ -1,5 +1,5 @@
 // @jiahe
-import { useRef, useMemo, useState, useEffect } from 'react'
+import { Suspense, useRef, useMemo, useState, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -272,12 +272,14 @@ function PedestrianNPC({ id, x, z, seed, buildings, trees }: PedProps) {
 
   return (
     <group ref={groupRef}>
-      <KenneyCharacter
-        model={model}
-        anim={anim}
-        height={1.65 + seededRandom(seed * 5.1) * 0.25}
-        timeScale={anim === 'walk' ? 0.9 + seededRandom(seed * 2.3) * 0.3 : 1}
-      />
+      <Suspense fallback={null}>
+        <KenneyCharacter
+          model={model}
+          anim={anim}
+          height={1.65 + seededRandom(seed * 5.1) * 0.25}
+          timeScale={anim === 'walk' ? 0.9 + seededRandom(seed * 2.3) * 0.3 : 1}
+        />
+      </Suspense>
     </group>
   )
 }

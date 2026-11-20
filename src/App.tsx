@@ -100,21 +100,24 @@ export default function App() {
               preserveDrawingBuffer: false,
             }}
             style={{ background: '#87CEEB' }}
+            onCreated={({ gl }) => gl.setClearColor('#87CEEB')}
             frameloop="always"
             dpr={dpr}
           >
-            <Suspense fallback={null}>
-              <Physics gravity={[0, -25, 0]} defaultContactMaterial={{ friction: 0.5, restitution: 0.1 }}>
-                  <World />
-                  <Player />
-                  <VehicleSpawner />
-                  <NPCCrowd />
-                  <MissionRunner />
-                  <StoryRunner />
-                  <PoliceSystem />
-                  <FPSTracker />
-              </Physics>
-            </Suspense>
+            {/* Each GLB consumer gets its own Suspense boundary so the city
+                (which needs no downloads) renders immediately and characters /
+                cars pop in as their models arrive, instead of a black canvas
+                until all 25 models have loaded. */}
+            <Physics gravity={[0, -25, 0]} defaultContactMaterial={{ friction: 0.5, restitution: 0.1 }}>
+              <Suspense fallback={null}><World /></Suspense>
+              <Suspense fallback={null}><Player /></Suspense>
+              <Suspense fallback={null}><VehicleSpawner /></Suspense>
+              <Suspense fallback={null}><NPCCrowd /></Suspense>
+              <MissionRunner />
+              <Suspense fallback={null}><StoryRunner /></Suspense>
+              <Suspense fallback={null}><PoliceSystem /></Suspense>
+              <FPSTracker />
+            </Physics>
           </Canvas>
           <HUD />
           <StoryUI />

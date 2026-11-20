@@ -1,6 +1,6 @@
 // Story mode — the in-canvas half. Drives timers, proximity triggers and the
 // F-to-talk interaction, and renders beacons / collectibles / contact NPCs.
-import { useEffect, useRef } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useKeyboardControls, Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three'
@@ -184,7 +184,9 @@ function ContactNPC({ x, z, name, model }: { x: number; z: number; name: string;
   return (
     <group position={[x, 0, z]}>
       <group ref={group}>
-        <KenneyCharacter model={model} anim={nearTalk ? 'emote-yes' : 'idle'} />
+        <Suspense fallback={null}>
+          <KenneyCharacter model={model} anim={nearTalk ? 'emote-yes' : 'idle'} />
+        </Suspense>
       </group>
       <Billboard position={[0, 2.35, 0]} follow lockX lockZ>
         <Text

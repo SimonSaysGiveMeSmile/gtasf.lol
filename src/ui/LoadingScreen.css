@@ -3,7 +3,7 @@
   position: fixed;
   inset: 0;
   background-color: #000;
-  background-image: url('/loading.png');
+  background-image: url('/loading.webp');
   background-size: cover;
   background-position: center;
   z-index: 1000;

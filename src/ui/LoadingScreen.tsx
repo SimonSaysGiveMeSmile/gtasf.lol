@@ -91,16 +91,31 @@ export default function LoadingScreen() {
     }
   }, [isLoading])
 
-  // Dismiss when baseline + (real loader, if any) are done.
+  // Hard cap: never hold the player on the loading screen longer than this.
+  // The city itself needs no downloads, so after the cap we drop into the
+  // world and let characters / cars pop in as their models arrive.
+  const MAX_WAIT_MS = 20000
+  const [capHit, setCapHit] = useState(false)
+  useEffect(() => {
+    if (!isLoading) return
+    setCapHit(false)
+    const t = setTimeout(() => setCapHit(true), MAX_WAIT_MS)
+    return () => clearTimeout(t)
+  }, [isLoading])
+
+  // Dismiss when the baseline animation is done AND the real loader is idle.
+  // The Kenney character/vehicle GLBs are preloaded on every map, so we always
+  // wait for the loading manager (not just for the scan map) — otherwise a
+  // slow connection shows the title screen over an empty scene.
   useEffect(() => {
     if (!isLoading) return
     const baselineDone = baseline >= 100
-    const glbDone = expectsGlb ? (assetSeen.current && !active) : true
-    if (baselineDone && glbDone) {
+    const assetsDone = expectsGlb ? (assetSeen.current && !active) : !active
+    if ((baselineDone && assetsDone) || capHit) {
       const t = setTimeout(() => useGameStore.getState().setIsLoading(false), 400)
       return () => clearTimeout(t)
     }
-  }, [isLoading, baseline, active, expectsGlb])
+  }, [isLoading, baseline, active, expectsGlb, capHit])
 
   if (!isLoading) return null
 
@@ -110,8 +125,8 @@ export default function LoadingScreen() {
     ? Math.min(Math.max(realProgress, baseline), 99)
     : Math.max(baseline, assetSeen.current ? 100 : baseline)
 
-  const sizeMb = total > 0 ? (loaded / 1024 / 1024).toFixed(1) : null
-  const totalMb = total > 0 ? (total / 1024 / 1024).toFixed(1) : null
+  // useProgress counts items (models / textures), not bytes.
+  const itemCount = total > 0 ? `${loaded} / ${total}` : null
 
   const tip = TIPS[tipIndex]
 
@@ -179,8 +194,8 @@ export default function LoadingScreen() {
           <div className="ls-progress-text">
             <span className="ls-progress-pct">{Math.floor(displayProgress)}%</span>
             <span className="ls-progress-msg">
-              {active && sizeMb && totalMb
-                ? `Downloading ${item.split('/').pop() || 'assets'} — ${sizeMb} / ${totalMb} MB`
+              {active && itemCount
+                ? `Downloading ${item.split('/').pop() || 'assets'} — ${itemCount}`
                 : PROGRESS_MESSAGES[Math.min(msgIndex, PROGRESS_MESSAGES.length - 1)]}
             </span>
           </div>

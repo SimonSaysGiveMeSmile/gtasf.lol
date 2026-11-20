@@ -1,5 +1,5 @@
 // @t1an
-import { useRef, useEffect, useMemo, useState } from 'react'
+import { Suspense, useRef, useEffect, useMemo, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -500,7 +500,9 @@ export default function Player() {
     return (
       <group ref={meshRef}>
         <group ref={bodyGroupRef}>
-          <KenneyCharacter model={playerModel} anim={anim} height={PLAYER_CONFIG.height} timeScale={animSpeed.current} />
+          <Suspense fallback={null}>
+            <KenneyCharacter model={playerModel} anim={anim} height={PLAYER_CONFIG.height} timeScale={animSpeed.current} />
+          </Suspense>
         </group>
       </group>
     )
