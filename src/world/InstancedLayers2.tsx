@@ -4,8 +4,9 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGameStore } from '../game/store'
 import { knockedLamps, lampState } from '../game/vehicleState'
+import { flatMatrix } from './RoadMarkings'
 import type {
-  LampData, TrafficLightData, CrosswalkData, SidewalkData,
+  LampData, TrafficLightData, SidewalkData,
 } from '../game/landscape.types'
 
 const _m = new THREE.Matrix4()
@@ -205,7 +206,7 @@ export function InstancedSidewalks({ sidewalks }: { sidewalks: SidewalkData[] })
     if (!mesh) return
     for (let i = 0; i < n; i++) {
       const s = sidewalks[i]
-      compose(_m, s.x, 0.03, s.z, -Math.PI / 2, 0, -s.angle, 3, s.len, 1)
+      flatMatrix(_m, s.x, 0.03, s.z, s.angle, 3, s.len)
       mesh.setMatrixAt(i, _m)
     }
     mesh.count = n
@@ -222,51 +223,3 @@ export function InstancedSidewalks({ sidewalks }: { sidewalks: SidewalkData[] })
   )
 }
 
-// ── Crosswalks ──────────────────────────────────────────────────────────
-// Each crosswalk = 6 stripes. Flatten to one InstancedMesh of N×6 instances.
-// Stripes are sized to span the widest roads (~18m) without being obviously
-// too short on narrower streets — overpainting a few extra meters onto the
-// sidewalk reads as normal curb-extension at a glance.
-export function InstancedCrosswalks({ crosswalks }: { crosswalks: CrosswalkData[] }) {
-  const STRIPES = 6
-  const STRIPE_W = 0.45
-  const STRIPE_L = 16
-  const STRIDE = STRIPE_W + 0.35
-  const n = crosswalks.length
-  const total = n * STRIPES
-  const ref = useRef<THREE.InstancedMesh>(null)
-
-  useLayoutEffect(() => {
-    const mesh = ref.current
-    if (!mesh) return
-    let k = 0
-    for (let i = 0; i < n; i++) {
-      const c = crosswalks[i]
-      const cos = Math.cos(-c.angle)
-      const sin = Math.sin(-c.angle)
-      for (let s = 0; s < STRIPES; s++) {
-        // Original group: rotation [-PI/2, 0, -angle] about (c.x, 0.025, c.z),
-        // with child offset along local X ((s - 2) * STRIDE, 0, 0).
-        // The group-local X axis, in world XZ, maps to (cos(-angle), 0, -sin(-angle))
-        // because rotation[-PI/2, 0, -angle] rotates X-Y plane down first.
-        // We build the per-stripe world matrix directly.
-        const off = (s - (STRIPES - 1) / 2) * STRIDE
-        const wx = c.x + off * cos
-        const wz = c.z - off * sin
-        compose(_m, wx, 0.025, wz, -Math.PI / 2, 0, -c.angle, STRIPE_W, STRIPE_L, 1)
-        mesh.setMatrixAt(k++, _m)
-      }
-    }
-    mesh.count = total
-    mesh.instanceMatrix.needsUpdate = true
-    mesh.frustumCulled = false
-  }, [crosswalks, n, total])
-
-  if (total === 0) return null
-  return (
-    <instancedMesh ref={ref} args={[undefined as unknown as THREE.BufferGeometry, undefined as unknown as THREE.Material, total]} frustumCulled={false}>
-      <planeGeometry args={[1, 1]} />
-      <meshStandardMaterial color="#ffffff" roughness={0.9} />
-    </instancedMesh>
-  )
-}

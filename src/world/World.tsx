@@ -1,5 +1,5 @@
 // @simonsaysgivemesmile
-import { useMemo, useRef, useLayoutEffect, useEffect, Component } from 'react'
+import { useMemo, useRef, useEffect, Component } from 'react'
 import type { ReactNode } from 'react'
 import { Sky, useGLTF } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
@@ -22,8 +22,8 @@ import {
   InstancedLamps,
   InstancedTrafficLights,
   InstancedSidewalks,
-  InstancedCrosswalks,
 } from './InstancedLayers2'
+import RoadMarkings from './RoadMarkings'
 import {
   InstancedBusStops,
   InstancedParkingLots,
@@ -325,9 +325,6 @@ function RoadLayer({ roadPaths, roads: roadDefs }: {
   roadPaths: { x: number; z: number; angle: number }[][],
   roads: { width: number }[]
 }) {
-  const timeOfDay = useGameStore((s) => s.timeOfDay)
-  const isNight = timeOfDay === "night"
-
   // Merge all road polygons into ONE BufferGeometry — 1 draw call for
   // every street, instead of N shape-meshes.
   const mergedRoadGeo = useMemo(() => {
@@ -368,63 +365,15 @@ function RoadLayer({ roadPaths, roads: roadDefs }: {
     return merged
   }, [roadPaths, roadDefs])
 
-  // Instanced lane stripes — one draw for all of them.
-  const lineData = useMemo(() => {
-    const out: { x: number; z: number; angle: number }[] = []
-    for (const road of roadPaths) {
-      for (let i = 0; i < road.length; i += 4) {
-        const pt = road[i]
-        const nextPt = road[Math.min(i + 1, road.length - 1)]
-        const angle = Math.atan2(nextPt.x - pt.x, nextPt.z - pt.z)
-        out.push({ x: pt.x, z: pt.z, angle })
-      }
-    }
-    return out
-  }, [roadPaths])
-
-  const lineRef = useRef<THREE.InstancedMesh>(null)
-  useLayoutEffect(() => {
-    const mesh = lineRef.current
-    if (!mesh) return
-    const tm = new THREE.Matrix4()
-    const q = new THREE.Quaternion()
-    const e = new THREE.Euler()
-    const p = new THREE.Vector3()
-    const s = new THREE.Vector3(1, 1, 1)
-    for (let i = 0; i < lineData.length; i++) {
-      const l = lineData[i]
-      e.set(-Math.PI / 2, 0, -l.angle, 'XYZ')
-      q.setFromEuler(e)
-      p.set(l.x, 0.03, l.z)
-      tm.compose(p, q, s)
-      mesh.setMatrixAt(i, tm)
-    }
-    mesh.count = lineData.length
-    mesh.instanceMatrix.needsUpdate = true
-    mesh.frustumCulled = false
-  }, [lineData])
-
-  const lineColor = isNight ? '#ffdd00' : '#ffcc00'
-  const lineEmissive = isNight ? '#ffaa00' : '#000000'
-  const lineEmissiveInt = isNight ? 0.6 : 0
+  // Lane lines, stop bars and crosswalks live in <RoadMarkings />.
   const roadMap = useMemo(() => makeRoadTexture(), [])
 
   return (
     <>
       {mergedRoadGeo && (
         <mesh geometry={mergedRoadGeo} frustumCulled={false}>
-          <meshStandardMaterial map={roadMap} color="#d8d8de" roughness={0.92} metalness={0.02} />
+          <meshStandardMaterial map={roadMap} color="#bdbdc2" roughness={0.94} metalness={0.02} />
         </mesh>
-      )}
-      {lineData.length > 0 && (
-        <instancedMesh
-          ref={lineRef}
-          args={[undefined as unknown as THREE.BufferGeometry, undefined as unknown as THREE.Material, lineData.length]}
-          frustumCulled={false}
-        >
-          <planeGeometry args={[0.3, 4]} />
-          <meshStandardMaterial color={lineColor} emissive={lineEmissive} emissiveIntensity={lineEmissiveInt} />
-        </instancedMesh>
       )}
     </>
   )
@@ -462,15 +411,17 @@ function RailLayer({ caltransPaths }: { caltransPaths: { x: number; z: number; a
         const leftZ = seg.z + perpZ * RAIL_HALF_GAUGE
         const rightX = seg.x - perpX * RAIL_HALF_GAUGE
         const rightZ = seg.z - perpZ * RAIL_HALF_GAUGE
+        // Flat plane along the track: lay flat, then yaw (order YXZ).
+        const rot = new THREE.Euler(-Math.PI / 2, seg.angle + Math.PI, 0, 'YXZ')
         return (
         <group key={i}>
           {/* Train bed / gravel */}
-          <mesh position={[seg.x, 0.025, seg.z]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
+          <mesh position={[seg.x, 0.025, seg.z]} rotation={rot}>
             <planeGeometry args={[2.5, 14]} />
             <meshStandardMaterial color="#555555" roughness={0.95} />
           </mesh>
           {/* Left rail */}
-          <mesh position={[leftX, 0.065, leftZ]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
+          <mesh position={[leftX, 0.065, leftZ]} rotation={rot}>
             <planeGeometry args={[0.08, 14]} />
             <meshStandardMaterial
               color={railColor}
@@ -481,7 +432,7 @@ function RailLayer({ caltransPaths }: { caltransPaths: { x: number; z: number; a
             />
           </mesh>
           {/* Right rail */}
-          <mesh position={[rightX, 0.065, rightZ]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
+          <mesh position={[rightX, 0.065, rightZ]} rotation={rot}>
             <planeGeometry args={[0.08, 14]} />
             <meshStandardMaterial
               color={railColor}
@@ -493,7 +444,7 @@ function RailLayer({ caltransPaths }: { caltransPaths: { x: number; z: number; a
           </mesh>
           {/* Cross ties every other segment */}
           {i % 2 === 0 && (
-            <mesh position={[seg.x, 0.04, seg.z]} rotation={[-Math.PI / 2, 0, -seg.angle]}>
+            <mesh position={[seg.x, 0.04, seg.z]} rotation={rot}>
               <planeGeometry args={[2.0, 0.2]} />
               <meshStandardMaterial color="#3a2a1a" roughness={0.95} />
             </mesh>
@@ -827,7 +778,7 @@ export default function World() {
       {!useObjWorld && <InstancedTrees trees={data.trees} />}
       {!useObjWorld && <InstancedLamps lamps={data.streetLamps} />}
       {!useObjWorld && <InstancedSidewalks sidewalks={data.sidewalks} />}
-      {!useObjWorld && <InstancedCrosswalks crosswalks={data.crosswalks} />}
+      {!useObjWorld && <RoadMarkings roadPaths={data.roadPaths} roads={data.roads} crosswalks={data.crosswalks} />}
       {!useObjWorld && <InstancedBusStops busStops={data.busStops} />}
       {!useObjWorld && <InstancedParkingLots lots={data.parkingLots} />}
       {!useObjWorld && <InstancedHydrants hydrants={data.hydrants} />}
