@@ -12,8 +12,9 @@ import { getNearbyBuildingsGrid, collideCircleWithBuilding, circleHitsBuilding, 
 import { VehicleMesh, TRAFFIC_MODELS } from '../vehicles/VehicleSpawner'
 import KenneyCharacter, { CHARACTER_MODELS, type CharacterAnim } from '../characters/KenneyCharacter'
 import { useLandscapeData } from '../game/LandscapeContext'
-import { soundManager } from '../systems/audio/SoundManager'
+import { sfx } from '../systems/audio/synth'
 import { interactLatched, consumeInteract } from '../game/interactLatch'
+import { pedPositions, hitHandlers, downedPeds, combatState, type HitInfo } from '../combat/targets'
 // @simonsaysgivemesmile
 
 function seededRandom(seed: number) { // @t1an
@@ -37,7 +38,6 @@ function isClearOfBuildings(x: number, z: number, r: number, buildings: typeof L
 const _spawnedNPCs: { x: number; z: number }[] = []
 
 // Live pedestrian positions, keyed by id — used for ped-ped separation each frame.
-const pedPositions = new Map<string, { x: number; z: number }>()
 
 function findNPCSpawn(seed: number, roadPaths: typeof LANDSCAPE_CONFIG.roadPaths, buildings: typeof LANDSCAPE_CONFIG.buildings): { x: number; z: number } | null {
   const allPoints: { x: number; z: number }[] = []
@@ -139,14 +139,84 @@ function PedestrianNPC({ id, x, z, seed, buildings, trees }: PedProps) {
   const hitTimer = useRef(0)
   const hitVelX = useRef(0)
   const hitVelZ = useRef(0)
+  const health = useRef(100)
+  const deadUntil = useRef(0)       // ms timestamp when the body despawns
+  const lastShotSeen = useRef(0)
+  const [dead, setDead] = useState(false)
 
   useEffect(() => {
-    return () => { pedPositions.delete(id) }
+    return () => { pedPositions.delete(id); hitHandlers.delete(id); downedPeds.delete(id) }
+  }, [id])
+
+  // Shot / punched by someone.
+  useEffect(() => {
+    hitHandlers.set(id, (hit: HitInfo) => {
+      if (downedPeds.has(id)) return
+      health.current -= hit.damage
+      const g = useGameStore.getState()
+      // Stagger away from the shot and panic.
+      hitVelX.current = hit.dirX * 3
+      hitVelZ.current = hit.dirZ * 3
+      isFleeing.current = true
+      tgtX.current = pos.current.x + hit.dirX * 25
+      tgtZ.current = pos.current.z + hit.dirZ * 25
+      timer.current = 0
+      if (hit.byPlayer) g.setWantedAtLeast(hit.weapon === 'fist' ? 1 : 2)
+      if (health.current <= 0) {
+        downedPeds.add(id)
+        deadUntil.current = Date.now() + 14000
+        setDead(true)
+        setClip('die')
+        if (hit.byPlayer) {
+          combatState.kills++
+          g.setWantedAtLeast(2)
+          if (combatState.kills % 3 === 0) g.addWanted(1)
+        }
+      }
+    })
+    return () => { hitHandlers.delete(id) }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05)
     timer.current += dt
+
+    // ── Dead: lie there, then respawn somewhere out of sight ─────────────
+    if (downedPeds.has(id)) {
+      if (Date.now() < deadUntil.current) {
+        // slide a little with the impact momentum, then rest
+        pos.current.x += hitVelX.current * dt
+        pos.current.z += hitVelZ.current * dt
+        hitVelX.current *= 0.8; hitVelZ.current *= 0.8
+        if (groupRef.current) groupRef.current.position.set(pos.current.x, 0, pos.current.z)
+        pedPositions.set(id, { x: pos.current.x, z: pos.current.z })
+        return
+      }
+      const pp = useGameStore.getState().playerPosition
+      const a = seededRandom(seed + Date.now() * 0.001) * Math.PI * 2
+      pos.current.set(pp[0] + Math.cos(a) * 140, 0, pp[2] + Math.sin(a) * 140)
+      tgtX.current = pos.current.x; tgtZ.current = pos.current.z
+      health.current = 100
+      downedPeds.delete(id)
+      isFleeing.current = false
+      setDead(false)
+      setClip('idle')
+    }
+
+    // ── Gunfire nearby → run from it ───────────────────────────────────────
+    if (combatState.lastShotAt > lastShotSeen.current && performance.now() - combatState.lastShotAt < 300) {
+      lastShotSeen.current = combatState.lastShotAt
+      const sx = combatState.lastShotX - pos.current.x
+      const sz = combatState.lastShotZ - pos.current.z
+      const sd = Math.hypot(sx, sz)
+      if (sd < 45 && sd > 0.01) {
+        isFleeing.current = true
+        tgtX.current = pos.current.x - (sx / sd) * 35
+        tgtZ.current = pos.current.z - (sz / sd) * 35
+        timer.current = -4 // keep fleeing a while
+      }
+    }
 
     // ── Hit ragdoll ───────────────────────────────────────────────────────
     if (isHit.current) {
@@ -184,7 +254,8 @@ function PedestrianNPC({ id, x, z, seed, buildings, trees }: PedProps) {
         hitVelX.current = (vdx / vDist) * spd
         hitVelZ.current = (vdz / vDist) * spd
         pos.current.y = 0.5
-        soundManager.play('metal_impact', { volume: 0.5 })
+        sfx.impact(0.35, [pos.current.x, pos.current.z])
+        sfx.bodyHit([pos.current.x, pos.current.z])
         if (v.player) useGameStore.getState().addWanted(1)
         isFleeing.current = false
       } else if (vDist < 15) {
@@ -201,7 +272,7 @@ function PedestrianNPC({ id, x, z, seed, buildings, trees }: PedProps) {
     const dist = Math.sqrt(dx * dx + dz * dz)
     const isMoving = dist > 0.3
 
-    if (dist < 1.5 || timer.current > 4) {
+    if ((dist < 1.5 && timer.current >= 0) || timer.current > 4) {
       timer.current = 0
       isFleeing.current = false
       tgtX.current = x + (seededRandom(timer.current + seed) - 0.5) * 40
@@ -262,7 +333,7 @@ function PedestrianNPC({ id, x, z, seed, buildings, trees }: PedProps) {
     pedPositions.set(id, { x: pos.current.x, z: pos.current.z })
 
     // Animation clip from state
-    setClip(isMoving ? (isFleeing.current ? 'sprint' : 'walk') : 'idle')
+    if (!dead) setClip(isMoving ? (isFleeing.current ? 'sprint' : 'walk') : 'idle')
 
     if (groupRef.current) {
       groupRef.current.position.set(pos.current.x, 0, pos.current.z)
@@ -328,6 +399,11 @@ function TrafficCar({ x, z, rotation, color, id, buildings, roadPaths }: { x: nu
   // Route state — populated from roadPaths at mount, refreshed if path data changes.
   const route = useRef(pickRoadPath(x, z, roadPaths))
   const stuckTimer = useRef(0)
+  const panicUntil = useRef(0) // shot at → floor it
+  useEffect(() => {
+    hitHandlers.set(id, () => { panicUntil.current = performance.now() + 7000 })
+    return () => { hitHandlers.delete(id) }
+  }, [id])
 
   const [, getKeys] = useKeyboardControls()
   const inVehicle = useGameStore((s) => s.inVehicle)
@@ -415,7 +491,8 @@ function TrafficCar({ x, z, rotation, color, id, buildings, roadPaths }: { x: nu
     }
 
     // Smooth acceleration / braking instead of snapping to the target speed.
-    const targetSpeed = speed * speedScale
+    const panic = performance.now() < panicUntil.current
+    const targetSpeed = panic ? speed * 1.8 : speed * speedScale
     curSpeed.current += (targetSpeed - curSpeed.current) * Math.min(1, dt * (targetSpeed < curSpeed.current ? 4 : 1.2))
     const effSpeed = curSpeed.current
     const dx = fwdX * effSpeed * dt

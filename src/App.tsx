@@ -9,6 +9,9 @@ import VehicleSpawner from './vehicles/VehicleSpawner'
 import NPCCrowd from './npcs/NPCCrowd'
 import MissionRunner from './game/MissionRunner'
 import PoliceSystem from './game/PoliceSystem'
+import CombatSystem from './combat/CombatSystem'
+import { pedPositions, copPositions, combatState, downedPeds } from './combat/targets'
+import { vehiclePositions } from './game/vehicleState'
 import HUD from './ui/HUD'
 import LoadingScreen from './ui/LoadingScreen'
 import InputManager from './systems/InputManager'
@@ -17,6 +20,7 @@ import FPSTracker from './systems/FPSTracker'
 import CheatConsole from './systems/CheatConsole'
 import AudioManager from './systems/audio/AudioManager'
 import { soundManager } from './systems/audio/SoundManager'
+import { sfx } from './systems/audio/synth'
 import { useGameStore } from './game/store'
 import { useEffect } from 'react'
 import { LandscapeProvider } from './game/LandscapeContext'
@@ -74,6 +78,7 @@ export default function App() {
     soundManager.init()
     const unlock = () => {
       soundManager.unlock()
+      sfx.unlock()
       window.removeEventListener('click', unlock)
       window.removeEventListener('keydown', unlock)
       window.removeEventListener('touchstart', unlock)
@@ -103,7 +108,12 @@ export default function App() {
             style={{ background: '#87CEEB' }}
             onCreated={({ gl, scene }) => {
               gl.setClearColor('#87CEEB')
-              if (import.meta.env.DEV || location.hostname === '127.0.0.1' || location.hostname === 'localhost') (window as unknown as { __scene?: THREE.Scene }).__scene = scene
+              if (import.meta.env.DEV || location.hostname === '127.0.0.1' || location.hostname === 'localhost') {
+                const w = window as unknown as { __scene?: THREE.Scene; __sfx?: typeof sfx; __combat?: unknown }
+                w.__scene = scene
+                w.__sfx = sfx
+                w.__combat = { pedPositions, copPositions, combatState, downedPeds, vehiclePositions }
+              }
             }}
             frameloop="always"
             dpr={dpr}
@@ -120,6 +130,7 @@ export default function App() {
               <MissionRunner />
               <Suspense fallback={null}><StoryRunner /></Suspense>
               <Suspense fallback={null}><PoliceSystem /></Suspense>
+              <Suspense fallback={null}><CombatSystem /></Suspense>
               <FPSTracker />
             </Physics>
           </Canvas>
@@ -141,8 +152,8 @@ export default function App() {
               pointerEvents: 'none',
             }}>
               {('ontouchstart' in window || navigator.maxTouchPoints > 0)
-                ? 'Joystick to move · RUN · JUMP · F to enter a vehicle'
-                : 'WASD · SHIFT run · SPACE jump · F enter vehicle'}
+                ? 'Joystick to move · RUN · JUMP · F to enter a vehicle · FIRE / AIM'
+                : 'WASD · SHIFT run · SPACE jump · F enter vehicle · LMB fire · RMB aim · Q / scroll switch weapon · R reload · H horn'}
             </div>
           )}
         </div>

@@ -7,11 +7,9 @@ import { useLandscapeData } from '../game/LandscapeContext'
 import { vehiclePositions } from '../game/vehicleState'
 import { getNearbyBuildingsGrid, circleHitsBuilding, meshColliderHitsCircle } from '../world/World'
 import { VehicleMesh } from '../vehicles/VehicleSpawner'
-import { soundManager } from '../systems/audio/SoundManager'
 
 const MAX_COPS = 4
 const CHASE_SPEED = 14
-const SIREN_INTERVAL = 3.5
 const RAM_COOLDOWN = 1.5 // seconds between damage hits
 
 function PoliceCar({ spawnX, spawnZ, idx }: { spawnX: number; spawnZ: number; idx: number }) {
@@ -28,10 +26,6 @@ function PoliceCar({ spawnX, spawnZ, idx }: { spawnX: number; spawnZ: number; id
     const dt = Math.min(delta, 0.05)
 
     sirenTimer.current -= dt
-    if (sirenTimer.current <= 0) {
-      sirenTimer.current = SIREN_INTERVAL
-      soundManager.play('car_horn', { volume: 0.35 })
-    }
 
     ramCooldown.current = Math.max(0, ramCooldown.current - dt)
 

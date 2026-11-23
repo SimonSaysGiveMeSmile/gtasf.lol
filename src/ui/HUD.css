@@ -882,3 +882,86 @@
 .face-clear-btn:hover {
   background: rgba(255, 59, 48, 0.25);
 }
+
+/* === WEAPON PANEL === */
+.weapon-panel {
+  position: fixed;
+  top: 64px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  z-index: 100;
+  pointer-events: none;
+  font-family: var(--font-ui, system-ui, sans-serif);
+}
+.weapon-cash {
+  font-size: 20px;
+  font-weight: 700;
+  color: #7ee787;
+  letter-spacing: 0.5px;
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 1px 3px rgba(0,0,0,0.6);
+}
+.weapon-main {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+}
+.weapon-main.fist { opacity: 0.7; }
+.weapon-name {
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+}
+.weapon-ammo {
+  font-size: 16px;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.weapon-ammo b { font-size: 20px; font-weight: 700; }
+.weapon-reload {
+  width: 120px;
+  height: 3px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.weapon-reload-fill { height: 100%; background: #ffd166; }
+.weapon-slots { display: flex; gap: 4px; }
+.weapon-slot {
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: rgba(0,0,0,0.4);
+  color: rgba(255,255,255,0.45);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.weapon-slot.active { color: #fff; border-color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.12); }
+
+/* === CROSSHAIR (dot + reticle) === */
+.crosshair { width: 40px; height: 40px; }
+.crosshair .ch-dot {
+  position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px;
+  background: #fff; border-radius: 50%; box-shadow: 0 0 2px #000, 0 0 4px rgba(0,0,0,0.8);
+}
+.crosshair .ch-arm { position: absolute; background: #fff; box-shadow: 0 0 2px #000; opacity: 0; transition: opacity 0.12s, transform 0.12s; }
+.crosshair .ch-n, .crosshair .ch-s { left: 50%; width: 2px; height: 9px; margin-left: -1px; }
+.crosshair .ch-e, .crosshair .ch-w { top: 50%; height: 2px; width: 9px; margin-top: -1px; }
+.crosshair .ch-n { top: 2px; } .crosshair .ch-s { bottom: 2px; } .crosshair .ch-e { right: 2px; } .crosshair .ch-w { left: 2px; }
+.crosshair.aiming .ch-arm { opacity: 0.95; }
+.crosshair.hit .ch-arm, .crosshair.hit .ch-dot { background: #ff4d4d; }
+.crosshair .ch-hit {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  color: #ff4d4d; font-size: 22px; font-weight: 700; text-shadow: 0 0 3px #000;
+}
+
+@media (max-width: 700px) {
+  .weapon-panel { top: auto; bottom: 150px; right: 16px; }
+}

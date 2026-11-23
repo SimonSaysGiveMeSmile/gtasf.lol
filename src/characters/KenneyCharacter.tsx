@@ -4,7 +4,8 @@
 // We clone per instance with SkeletonUtils so many NPCs can share one
 // decoded asset, and scale so the model stands `height` metres tall with
 // its feet on y=0.
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { createPortal } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGLTF, useAnimations, useTexture } from '@react-three/drei'
 import { SkeletonUtils } from 'three-stdlib'
@@ -21,6 +22,9 @@ export type CharacterModel = (typeof CHARACTER_MODELS)[number] | string
 export type CharacterAnim =
   | 'idle' | 'walk' | 'sprint' | 'jump' | 'fall' | 'crouch' | 'sit' | 'drive'
   | 'die' | 'pick-up' | 'emote-yes' | 'emote-no' | 'static'
+  | 'holding-right' | 'holding-left' | 'holding-both'
+  | 'holding-right-shoot' | 'holding-left-shoot' | 'holding-both-shoot'
+  | 'attack-melee-right'
 
 export const characterUrl = (model: string) => `/models/kenney/chars/${model}.glb`
 
@@ -36,11 +40,13 @@ interface Props {
   timeScale?: number
   /** Optional body tint (multiplies the colormap). */
   tint?: string
+  /** Rendered inside the right-arm bone (weapons). Local units are model units. */
+  handItem?: ReactNode
 }
 
 const PALETTE_URL = '/models/kenney/chars/Textures/colormap.png'
 
-export default function KenneyCharacter({ model, anim, height = 1.83, timeScale = 1, tint }: Props) {
+export default function KenneyCharacter({ model, anim, height = 1.83, timeScale = 1, tint, handItem }: Props) {
   const gltf = useGLTF(characterUrl(model))
   const group = useRef<THREE.Group>(null)
   // Shared palette, assigned explicitly (see GLBVehicle for why).
@@ -51,7 +57,7 @@ export default function KenneyCharacter({ model, anim, height = 1.83, timeScale 
     palette.needsUpdate = true
   }, [palette])
 
-  const { scene, scale, yOffset } = useMemo(() => {
+  const { scene, scale, yOffset, armR } = useMemo(() => {
     const scene = SkeletonUtils.clone(gltf.scene) as THREE.Group
     scene.traverse((o) => {
       const m = o as THREE.Mesh
@@ -76,7 +82,8 @@ export default function KenneyCharacter({ model, anim, height = 1.83, timeScale 
     const box = new THREE.Box3().setFromObject(scene)
     const h = Math.max(0.01, box.max.y - box.min.y)
     const scale = height / h
-    return { scene, scale, yOffset: -box.min.y }
+    const armR = (scene.getObjectByName('arm-right') as THREE.Object3D | undefined) ?? null
+    return { scene, scale, yOffset: -box.min.y, armR }
   }, [gltf.scene, height, tint, palette])
 
   const { actions, mixer } = useAnimations(gltf.animations, group)
@@ -86,7 +93,7 @@ export default function KenneyCharacter({ model, anim, height = 1.83, timeScale 
     const next = actions[anim] ?? actions['idle'] ?? null
     if (!next) return
     if (current.current === next) return
-    if (anim === 'jump' || anim === 'die' || anim === 'pick-up') {
+    if (anim === 'jump' || anim === 'die' || anim === 'pick-up' || anim === 'attack-melee-right' || anim.endsWith('-shoot')) {
       next.setLoop(THREE.LoopOnce, 1)
       // eslint-disable-next-line react-hooks/immutability -- AnimationAction is a three.js object, configured in place by design
       next.clampWhenFinished = true
@@ -107,6 +114,7 @@ export default function KenneyCharacter({ model, anim, height = 1.83, timeScale 
   return (
     <group ref={group} scale={scale} rotation={[0, MODEL_YAW, 0]}>
       <primitive object={scene} position={[0, yOffset, 0]} />
+      {handItem && armR && createPortal(<group scale={1 / scale}>{handItem}</group>, armR)}
     </group>
   )
 }

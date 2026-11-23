@@ -5,7 +5,7 @@ import type { TouchEvent } from 'react'
 // (read by Player.tsx and VehicleSpawner.tsx)
 ;(window as any).__touchInput = {
   forward: false, backward: false, left: false, right: false,
-  jump: false, run: false, brake: false, boost: false, interact: false,
+  jump: false, run: false, brake: false, boost: false, interact: false, fire: false, aim: false,
 }
 ;(window as any).__setTouchInput = (input: Record<string, boolean>) => {
   Object.assign((window as any).__touchInput, input)
@@ -162,6 +162,30 @@ export default function TouchControls() {
         alignItems: 'flex-end',
         zIndex: 200,
       }}>
+        {/* Combat row: Aim + Fire (+ weapon cycle) */}
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+          <ActionButton
+            label="WPN"
+            color="#ffffff"
+            onPress={() => { window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyQ' })) }}
+            onRelease={() => {}}
+            size={48}
+          />
+          <ActionButton
+            label="AIM"
+            color="#ffd166"
+            onPress={() => pressButton('aim', true)}
+            onRelease={() => pressButton('aim', false)}
+            size={58}
+          />
+          <ActionButton
+            label="FIRE"
+            color="#ff5a36"
+            onPress={() => pressButton('fire', true)}
+            onRelease={() => pressButton('fire', false)}
+            size={66}
+          />
+        </div>
         {/* Top row: Brake + Boost (vehicle) */}
         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
           <ActionButton

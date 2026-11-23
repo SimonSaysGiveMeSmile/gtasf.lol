@@ -1,5 +1,5 @@
 // @t1an
-import { useRef, useMemo, useEffect, useState, Suspense } from 'react'
+import { useRef, useMemo, useEffect, useSyncExternalStore, Suspense } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useKeyboardControls, useGLTF, useTexture } from '@react-three/drei'
 import * as THREE from 'three'
@@ -14,7 +14,7 @@ import { vehiclePositions, vehicleRadius, OBSTACLE_RADIUS, knockedLamps, lampSta
 import { getNearbyBuildingsGrid, circleHitsBuilding, meshColliderHitsCircle } from '../world/World'
 import CaltrainAdWrap from '../systems/billboards/CaltrainAdWrap'
 import { pulseCameraShake, applyCameraShake } from '../game/cameraShake'
-import { soundManager } from '../systems/audio/SoundManager'
+import { sfx, rpmFromSpeed } from '../systems/audio/synth'
 import { interactLatched, consumeInteract } from '../game/interactLatch'
 
 let _activeLandscape: LandscapeData = LANDSCAPE_CONFIG
@@ -858,15 +858,20 @@ function Vehicle({ id, type, x, z, rotation, color, modelUrl }: VehicleProps) {
     return () => { pc.fov = 60; pc.updateProjectionMatrix() }
   }, [playerInThis, camera])
 
-  // Engine sound — start looping when player enters, stop on exit.
+  // Engine sound — synthesised voice runs while the player drives this one.
   useEffect(() => {
     if (!playerInThis || isPlane || isBoat || isCaltrain) return
-    engineUid.current = soundManager.play('engine_idle', { volume: 0.4, loop: true })
+    sfx.engine.start(isScooter ? 'scooter' : type === 'semi' || type === 'cybertruck' ? 'truck' : type === 'sports' ? 'sport' : 'car')
+    engineUid.current = 'synth'
+    const onKey = (e: KeyboardEvent) => { if (e.code === 'KeyH' && !e.repeat) sfx.horn() }
+    window.addEventListener('keydown', onKey)
     return () => {
-      soundManager.stop(engineUid.current)
+      window.removeEventListener('keydown', onKey)
+      sfx.engine.stop()
+      sfx.screech.set(0)
       engineUid.current = ''
     }
-  }, [playerInThis, isPlane, isBoat, isCaltrain])
+  }, [playerInThis, isPlane, isBoat, isCaltrain, isScooter, type])
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05)
@@ -1052,10 +1057,8 @@ function Vehicle({ id, type, x, z, rotation, color, modelUrl }: VehicleProps) {
             knockedLamps.add(li)
             lampState.v++
             vel.current.z *= 0.75
-            if (playerInThis) {
-              pulseCameraShake(0.45)
-              soundManager.play('metal_impact', { volume: 0.5 })
-            }
+            if (playerInThis) pulseCameraShake(0.45)
+            sfx.impact(0.55, [pos.current.x, pos.current.z])
           } else {
             const nd = minL - lDist
             pos.current.x -= (lx / lDist) * nd
@@ -1116,7 +1119,7 @@ function Vehicle({ id, type, x, z, rotation, color, modelUrl }: VehicleProps) {
           lastImpactAt.current = now
           const severity = Math.min(1, impact / 0.5) // 0.5 drop = full shake
           pulseCameraShake(0.3 + severity * 0.7)
-          soundManager.play('metal_impact', { volume: 0.4 + severity * 0.5 })
+          sfx.impact(severity, [pos.current.x, pos.current.z])
           // Damage scales with severity; trivial hits (slow bumps) do nothing.
           // Convert from frame-based velocity units into something plausible:
           // 0.5 unit drop ≈ full crash, ~25 damage.
@@ -1132,17 +1135,14 @@ function Vehicle({ id, type, x, z, rotation, color, modelUrl }: VehicleProps) {
       velZRef.current = vel.current.z
       prevVelZ.current = vel.current.z
 
-      // Engine pitch/volume modulation
+      // Engine pitch/volume modulation + tyre squeal
       if (playerInThis && engineUid.current) {
-        const spd = Math.abs(vel.current.z)
-        const maxSpd = spec.maxSpeed * 0.005
-        const t = Math.min(1, spd / Math.max(maxSpd, 0.001))
-        soundManager.setVolume(engineUid.current, 0.25 + t * 0.55)
-        // detune: 0 at idle, +600 cents (~half octave) at top speed
-        const gainNode = (soundManager as any).gainNodes?.get(engineUid.current)
-        const src = (soundManager as any).activeSources?.get(engineUid.current)
-        if (src) src.detune.value = t * 600
-        void gainNode
+        const kmh = Math.abs(vel.current.z) * 216
+        const th = fwd ? 1 : bwd ? 0.5 : 0
+        sfx.engine.update(rpmFromSpeed(kmh, spec.maxSpeed), th)
+        const slip = Math.abs(wv.current.x * Math.cos(angle.current) - wv.current.z * Math.sin(angle.current))
+        const squeal = (brk && kmh > 12 ? 0.6 : 0) + Math.min(1, slip / 6) * (kmh > 15 ? 1 : 0)
+        sfx.screech.set(Math.min(1, squeal))
       }
 
     } else if (isBoat) {
@@ -1389,16 +1389,30 @@ function Vehicle({ id, type, x, z, rotation, color, modelUrl }: VehicleProps) {
   )
 }
 
+// ── On-demand vehicle list (external store) ──────────────────────────────
+let _cheat: CheatVehicle[] = []
+const _cheatSubs = new Set<() => void>()
+function subscribeCheat(cb: () => void) { _cheatSubs.add(cb); return () => { _cheatSubs.delete(cb) } }
+function getCheatVehicles() { return _cheat }
+function pushCheatVehicle(v: CheatVehicle) {
+  if (_cheat.some((c) => c.id === v.id)) return
+  _cheat = [..._cheat, v]
+  _cheatSubs.forEach((cb) => cb())
+}
+
 // Vehicle spawner
 export default function VehicleSpawner() {
-  const [cheatVehicles, setCheatVehicles] = useState<CheatVehicle[]>([])
+  // Spawned-on-demand vehicles (hijacks, story cars, cheats) live in a tiny
+  // external store read through useSyncExternalStore: a plain useState update
+  // from the window event was starved by the per-frame store subscriptions
+  // of the hundred-odd Vehicle children and never re-rendered this list.
+  const cheatVehicles = useSyncExternalStore(subscribeCheat, getCheatVehicles)
   _activeLandscape = useLandscapeData()
-  // Listen for cheat spawn events
   useEffect(() => {
     const handler = (e: Event) => {
       const { id, type, x, z, rotation, modelUrl } = (e as CustomEvent).detail
       const spec = VEHICLES.find(v => v.type === type) || VEHICLES[0]
-      setCheatVehicles(prev => [...prev, { id, type, x, z, rotation, color: spec.color, modelUrl }])
+      pushCheatVehicle({ id, type, x, z, rotation, color: spec.color, modelUrl })
     }
     window.addEventListener('cheat-spawn', handler)
     return () => window.removeEventListener('cheat-spawn', handler)

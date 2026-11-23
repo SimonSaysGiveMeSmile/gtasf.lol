@@ -1,7 +1,9 @@
 // @jt886
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useGameStore } from '../game/store'
 import { CITIES, VEHICLES, MAP_SIZE } from '../game/constants'
+import { WEAPONS, WEAPON_ORDER } from '../combat/weapons'
+import { combatState } from '../combat/targets'
 import type { CityId } from '../game/types'
 import { LANDSCAPE_CONFIG } from '../game/landscape'
 import type { PathPoint } from '../game/landscape.types'
@@ -418,6 +420,26 @@ export default function HUD() {
   const [showCoords, setShowCoords] = useState(true)
   const godMode = useGameStore((s) => s.godMode)
   const setGodMode = useGameStore((s) => s.setGodMode)
+  const weapons = useGameStore((s) => s.weapons)
+  const currentWeapon = useGameStore((s) => s.currentWeapon)
+  const isAiming = useGameStore((s) => s.isAiming)
+  const reloadingUntil = useGameStore((s) => s.reloadingUntil)
+  const isBusted = useGameStore((s) => s.isBusted)
+  const cash = useGameStore((s) => s.cash)
+  const weaponSpec = WEAPONS[currentWeapon]
+  const slot = weapons[currentWeapon]
+  const ownedWeapons = WEAPON_ORDER.filter((w) => weapons[w].owned)
+  // Re-render at 15 Hz while a gun is out so the hit marker / reload bar animate.
+  const [, forceTick] = useState(0)
+  useEffect(() => {
+    if (currentWeapon === 'fist') return
+    const t = setInterval(() => forceTick((n) => n + 1), 66)
+    return () => clearInterval(t)
+  }, [currentWeapon])
+  const nowMs = performance.now()
+  const hitFlash = nowMs - combatState.lastHitAt < 160
+  const reloading = reloadingUntil > Date.now()
+  const reloadFrac = reloading ? 1 - (reloadingUntil - Date.now()) / weaponSpec.reloadMs : 0
   const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
   const speedPercent = Math.min(100, (vehicleSpeed / 200) * 100)
 
@@ -851,6 +873,40 @@ const setPlayerFaceTexture = useGameStore((s) => s.setPlayerFaceTexture)
         </div>
       )}
 
+      {/* Weapon + cash panel (top right, under the radar on touch) */}
+      {!isDead && (
+        <div className="weapon-panel">
+          <div className="weapon-cash">${cash.toLocaleString()}</div>
+          <div className={`weapon-main ${currentWeapon === 'fist' ? 'fist' : ''}`}>
+            <span className="weapon-name">{weaponSpec.name}</span>
+            {currentWeapon !== 'fist' && (
+              <span className="weapon-ammo">
+                <b>{slot.clip}</b> / {slot.ammo}
+              </span>
+            )}
+          </div>
+          {reloading && (
+            <div className="weapon-reload"><div className="weapon-reload-fill" style={{ width: `${Math.round(reloadFrac * 100)}%` }} /></div>
+          )}
+          {ownedWeapons.length > 1 && (
+            <div className="weapon-slots">
+              {ownedWeapons.map((w) => (
+                <span key={w} className={`weapon-slot ${w === currentWeapon ? 'active' : ''}`}>{WEAPONS[w].short}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Crosshair: a dot while a gun is out, a reticle while aiming */}
+      {!isDead && currentWeapon !== 'fist' && !showMenu && (
+        <div className={`crosshair ${isAiming ? 'aiming' : ''} ${hitFlash ? 'hit' : ''}`}>
+          <span className="ch-dot" />
+          <span className="ch-arm ch-n" /><span className="ch-arm ch-s" /><span className="ch-arm ch-e" /><span className="ch-arm ch-w" />
+          {hitFlash && <span className="ch-hit">✕</span>}
+        </div>
+      )}
+
       {/* Wanted level stars */}
       {wantedLevel > 0 && (
         <div className="wanted-stars">
@@ -869,8 +925,8 @@ const setPlayerFaceTexture = useGameStore((s) => s.setPlayerFaceTexture)
           <div className="death-overlay" />
           {!isRespawning ? (
             <div className="death-text">
-              <div className="death-killed">BURNED OUT</div>
-              <div className="death-sub">You took too much damage. Hydrate. Respawning…</div>
+              <div className="death-killed">{isBusted ? 'BUSTED' : 'WASTED'}</div>
+              <div className="death-sub">{isBusted ? 'SFPD took your weapons and your bail money.' : 'You took too much damage. Hospital bill: 10% of your cash.'}</div>
             </div>
           ) : (
             <div className="respawn-text">

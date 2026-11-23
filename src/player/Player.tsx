@@ -7,8 +7,11 @@ import { useGameStore } from '../game/store'
 import { PLAYER_CONFIG, MAP_SIZE } from '../game/constants'
 import { getNearbyBuildingsGrid, collideCircleWithBuilding, meshColliderPushOutCircle } from '../world/World'
 import { useLandscapeData } from '../game/LandscapeContext'
-import { soundManager } from '../systems/audio/SoundManager'
+import { sfx } from '../systems/audio/synth'
 import KenneyCharacter, { type CharacterAnim } from '../characters/KenneyCharacter'
+import { WEAPONS } from '../combat/weapons'
+import WeaponModel from '../combat/WeaponModel'
+import { combatState } from '../combat/targets'
 // @simonsaysgivemesmile
 
 // Module-level refs for gyro (not component state, so they persist)
@@ -46,6 +49,8 @@ export default function Player() {
   const playerFaceTexture = useGameStore((s) => s.playerFaceTexture)
   const playerModel = useGameStore((s) => s.playerModel)
   const godMode = useGameStore((s) => s.godMode)
+  const currentWeapon = useGameStore((s) => s.currentWeapon)
+  const isAiming = useGameStore((s) => s.isAiming)
 
   // Rigged character clip. The legacy primitive avatar is kept only for the
   // selfie-face feature (it maps the photo onto a sphere head).
@@ -91,6 +96,8 @@ export default function Player() {
   const isGrounded = useRef(true)
   const peakHeight = useRef(FOOT_Y)
   const isMouseDown = useRef(false)
+  const isRightDown = useRef(false)
+  const aimBlend = useRef(0)
   const mouseDownTime = useRef(0)
   const autoDragEnabled = useRef(false)
   const lastClickTime = useRef(0)
@@ -104,6 +111,10 @@ export default function Player() {
     const AUTO_HOLD_MS = 1000
 
     const handleMouseDown = (e: MouseEvent) => {
+      if (e.button === 2) { isRightDown.current = true; return }
+      // With a gun drawn the left button fires (see CombatSystem); only the
+      // right button drags the camera then.
+      if (e.button === 0 && useGameStore.getState().currentWeapon !== 'fist') return
       if (e.button === 0) {
         const now = Date.now()
         if (autoDragEnabled.current) {
@@ -120,11 +131,12 @@ export default function Player() {
         mouseDownTime.current = now
       }
     }
-    const handleMouseUp = () => {
-      isMouseDown.current = false
+    const handleMouseUp = (e: MouseEvent) => {
+      if (e.button === 2) isRightDown.current = false
+      else isMouseDown.current = false
     }
     const handleMouseMove = (e: MouseEvent) => {
-      const shouldDrag = isMouseDown.current || autoDragEnabled.current
+      const shouldDrag = isMouseDown.current || autoDragEnabled.current || isRightDown.current
       if (!shouldDrag) return
       if (isMouseDown.current && Date.now() - mouseDownTime.current >= AUTO_HOLD_MS) {
         autoDragEnabled.current = true
@@ -324,7 +336,7 @@ export default function Player() {
         isGrounded.current = false
         peakHeight.current = position.current.y
         lastJumpTime.current = now
-        soundManager.play('jump', { volume: 0.7 })
+        sfx.jump()
       }
       if (!isGrounded.current) {
         velocity.current.y -= 28 * dt
@@ -389,12 +401,8 @@ export default function Player() {
         // > 4 m: a jump off a one-storey ledge is fine, two storeys hurts.
         // (The spawn point sits 3 m up, so a lower threshold docked 12 HP
         // before the player had touched a key.)
-        if (fallDist > 4) {
-          takeDamage(Math.floor(fallDist * 4))
-          soundManager.play('metal_impact', { volume: 0.8 })
-        } else {
-          soundManager.play('land_thud', { volume: fallDist > 1.5 ? 0.6 : 0.35 })
-        }
+        if (fallDist > 4) takeDamage(Math.floor(fallDist * 4))
+        if (fallDist > 0.4) sfx.land(fallDist)
       }
       position.current.y = FOOT_Y
       velocity.current.y = 0
@@ -416,17 +424,35 @@ export default function Player() {
     setPlayerPosition([position.current.x, position.current.y, position.current.z])
     setPlayerRotation(angle)
 
-    // Camera
-    const camDist = PLAYER_CONFIG.cameraDistance
-    const camH = PLAYER_CONFIG.cameraHeight
+    // Camera — third person, blending to an over-the-shoulder aim view.
+    aimBlend.current += ((isAiming ? 1 : 0) - aimBlend.current) * Math.min(1, dt * 9)
+    const ab = aimBlend.current
     const phi = cameraAngle.current.phi
     const camAngle = angle + Math.PI
-    const tx = position.current.x + Math.sin(camAngle) * camDist
-    const ty = position.current.y + camH - phi * camDist * 0.7
-    const tz = position.current.z + Math.cos(camAngle) * camDist
-
-    camera.position.lerp(new THREE.Vector3(tx, ty, tz), 0.12)
-    camera.lookAt(position.current.x, position.current.y + 1.3, position.current.z)
+    const rx = -Math.cos(angle), rz = Math.sin(angle)
+    // Free camera (orbit behind the player)
+    const fDist = PLAYER_CONFIG.cameraDistance
+    const fx = position.current.x + Math.sin(camAngle) * fDist
+    const fy = position.current.y + PLAYER_CONFIG.cameraHeight - phi * fDist * 0.7
+    const fz = position.current.z + Math.cos(camAngle) * fDist
+    // Aim camera: pivot at the right shoulder, pulled back along the view ray.
+    const pitch = phi * 0.8 // phi > 0 looks up
+    const vdx = Math.sin(angle) * Math.cos(pitch), vdy = Math.sin(pitch), vdz = Math.cos(angle) * Math.cos(pitch)
+    const pvx = position.current.x + rx * 0.85, pvy = position.current.y + 1.62, pvz = position.current.z + rz * 0.85
+    const aDist = 2.9
+    const ax = pvx - vdx * aDist, ay = Math.max(0.4, pvy - vdy * aDist), az = pvz - vdz * aDist
+    const tx = THREE.MathUtils.lerp(fx, ax, ab)
+    const ty = THREE.MathUtils.lerp(fy, ay, ab)
+    const tz = THREE.MathUtils.lerp(fz, az, ab)
+    camera.position.lerp(new THREE.Vector3(tx, ty, tz), ab > 0.5 ? 0.3 : 0.12)
+    // Look target: the player's chest when free, far along the aim ray when aiming.
+    const lx = THREE.MathUtils.lerp(position.current.x, pvx + vdx * 40, ab)
+    const ly = THREE.MathUtils.lerp(position.current.y + 1.3, pvy + vdy * 40, ab)
+    const lz = THREE.MathUtils.lerp(position.current.z, pvz + vdz * 40, ab)
+    camera.lookAt(lx, ly, lz)
+    const pc = camera as THREE.PerspectiveCamera
+    const targetFov = THREE.MathUtils.lerp(60, 48, ab)
+    if (Math.abs(pc.fov - targetFov) > 0.05) { pc.fov += (targetFov - pc.fov) * 0.2; pc.updateProjectionMatrix() }
 
     // Animations
     if (isMoving && isGrounded.current) {
@@ -471,14 +497,24 @@ export default function Player() {
     // Rigged-character clip selection
     {
       let next: CharacterAnim
+      const nowMs = performance.now()
+      const hold = WEAPONS[currentWeapon].hold
+      const shooting = nowMs - combatState.lastShotAt < 220
+      const melee = nowMs - combatState.lastMeleeAt < 450
       if (godMode) next = 'fall'
       else if (!isGrounded.current) next = velocity.current.y > 1 ? 'jump' : 'fall'
+      else if (melee) next = 'attack-melee-right'
+      else if (hold !== 'none' && (shooting || isAiming || !isMoving)) {
+        const base = hold === 'both' ? 'holding-both' : 'holding-right'
+        next = shooting ? `${base}-shoot` as CharacterAnim : base
+      }
       else if (isMoving) next = rn ? 'sprint' : 'walk'
       else next = 'idle'
       if (next !== animRef.current) {
         animRef.current = next
         setAnim(next)
       }
+      if (import.meta.env.DEV) (window as unknown as { __playerAnim?: string }).__playerAnim = next
       // Walk/sprint clips are authored for a casual pace; our walk is 8 m/s.
       animSpeed.current = next === 'walk' ? 1.7 : next === 'sprint' ? 1.35 : 1
     }
@@ -488,7 +524,7 @@ export default function Player() {
       const stepInterval = rn ? 280 : 420
       if (now - lastFootstepTime.current >= stepInterval) {
         lastFootstepTime.current = now
-        soundManager.play('footstep_walk', { volume: rn ? 0.7 : 0.45 })
+        sfx.footstep(!!rn)
       }
     }
 
@@ -505,7 +541,17 @@ export default function Player() {
       <group ref={meshRef}>
         <group ref={bodyGroupRef}>
           <Suspense fallback={null}>
-            <KenneyCharacter model={playerModel} anim={anim} height={PLAYER_CONFIG.height} timeScale={animSpeed.current} />
+            <KenneyCharacter
+              model={playerModel}
+              anim={anim}
+              height={PLAYER_CONFIG.height}
+              timeScale={animSpeed.current}
+              handItem={currentWeapon !== 'fist' ? (
+                <group position={[0, -0.52, 0.02]} rotation={[Math.PI / 2, 0, 0]}>
+                  <WeaponModel id={currentWeapon} />
+                </group>
+              ) : undefined}
+            />
           </Suspense>
         </group>
       </group>

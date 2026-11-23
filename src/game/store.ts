@@ -2,6 +2,7 @@
 import { create } from 'zustand'
 import type { CityId, NPC, PlayerMode, VehicleType } from './types'
 import { SPAWN_POINTS } from './loadMapData'
+import { WEAPONS, WEAPON_ORDER, defaultWeapons, type WeaponId, type WeaponSlot } from '../combat/weapons'
 
 interface GameState {
   // Player state
@@ -66,6 +67,13 @@ interface GameState {
   missionCash: number
   wantedLevel: number // 0–5 stars
   lastOffenseAt: number
+  // Combat
+  weapons: Record<WeaponId, WeaponSlot>
+  currentWeapon: WeaponId
+  isAiming: boolean
+  reloadingUntil: number
+  isBusted: boolean
+  cash: number
 
   // Actions
   takeDamage: (amount: number) => void
@@ -111,8 +119,21 @@ interface GameState {
   cancelMission: () => void
   // Wanted
   addWanted: (amount: number) => void
+  setWantedAtLeast: (level: number) => void
   clearWanted: () => void
   tickWantedDecay: () => void
+  // Combat
+  giveWeapon: (id: WeaponId, ammo?: number) => void
+  addAmmo: (id: WeaponId, n: number) => boolean
+  selectWeapon: (id: WeaponId) => void
+  cycleWeapon: (dir: 1 | -1) => void
+  /** Take one round from the clip; returns false if empty. */
+  fireRound: () => boolean
+  startReload: () => boolean
+  finishReload: () => void
+  setAiming: (v: boolean) => void
+  bust: () => void
+  addCash: (n: number) => void
   // Cheat system
   spawnVehicle: (type: VehicleType) => void
 }
@@ -146,6 +167,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   missionCash: 0,
   wantedLevel: 0,
   lastOffenseAt: 0,
+  weapons: defaultWeapons(),
+  currentWeapon: 'fist',
+  isAiming: false,
+  reloadingUntil: 0,
+  isBusted: false,
+  cash: 500,
   qualityPreset: 'high',
   qualityNpcCount: 50,
   qualityVehicleCount: 30,
@@ -217,16 +244,116 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   respawn: () => {
     const { currentMapName } = get()
-    set({
+    const spawn = (SPAWN_POINTS[currentMapName] || [0, 3, 0]) as [number, number, number]
+    // Wasted: hospital bill, keep your weapons but lose the heat.
+    set((s) => ({
       isDead: false,
       isRespawning: false,
+      isBusted: false,
       playerHealth: 100,
       playerMode: 'onfoot',
       inVehicle: null,
       currentVehicleType: null,
-      playerPosition: SPAWN_POINTS[currentMapName] || [0, 3, 0],
-    })
+      vehicleSpeed: 0,
+      wantedLevel: 0,
+      cash: Math.max(0, Math.floor(s.cash * 0.9)),
+      playerPosition: spawn,
+      // The on-foot controller teleports when this changes.
+      exitVehiclePosition: [spawn[0], spawn[1], spawn[2]],
+    }))
   },
+
+  // Busted: arrested by the police. Weapons confiscated, bail paid, respawn
+  // at the station (the map spawn, for now).
+  bust: () => {
+    const s = get()
+    if (s.isDead || s.isBusted) return
+    set({ isBusted: true, isDead: true, isRespawning: false, wantedLevel: 0 })
+    setTimeout(() => set({ isRespawning: true }), 1200)
+    setTimeout(() => {
+      const spawn = (SPAWN_POINTS[get().currentMapName] || [0, 3, 0]) as [number, number, number]
+      set((st) => ({
+        isDead: false,
+        isRespawning: false,
+        isBusted: false,
+        playerHealth: 100,
+        playerMode: 'onfoot',
+        inVehicle: null,
+        currentVehicleType: null,
+        vehicleSpeed: 0,
+        weapons: defaultWeapons(),
+        currentWeapon: 'fist',
+        cash: Math.max(0, st.cash - Math.min(st.cash, 250 + st.wantedLevel * 100)),
+        playerPosition: spawn,
+        exitVehiclePosition: [spawn[0], spawn[1], spawn[2]],
+      }))
+    }, 4200)
+  },
+
+  addCash: (n) => set((s) => ({ cash: Math.max(0, s.cash + n) })),
+
+  giveWeapon: (id, ammo) => set((s) => {
+    const spec = WEAPONS[id]
+    const slot = s.weapons[id]
+    const grant = ammo ?? spec.pickupAmmo
+    const total = Math.min(spec.maxAmmo, slot.clip + slot.ammo + grant)
+    const clip = slot.owned ? slot.clip : Math.min(spec.clip, total)
+    return {
+      weapons: { ...s.weapons, [id]: { owned: true, clip, ammo: Math.max(0, total - clip) } },
+      currentWeapon: slot.owned ? s.currentWeapon : id,
+    }
+  }),
+
+  addAmmo: (id, n) => {
+    const s = get()
+    const slot = s.weapons[id]
+    const spec = WEAPONS[id]
+    if (!slot.owned || slot.clip + slot.ammo >= spec.maxAmmo) return false
+    set({ weapons: { ...s.weapons, [id]: { ...slot, ammo: Math.min(spec.maxAmmo - slot.clip, slot.ammo + n) } } })
+    return true
+  },
+
+  selectWeapon: (id) => set((s) => (s.weapons[id]?.owned && id !== s.currentWeapon ? { currentWeapon: id, reloadingUntil: 0 } : {})),
+
+  cycleWeapon: (dir) => set((s) => {
+    const owned = WEAPON_ORDER.filter((w) => s.weapons[w].owned)
+    if (owned.length < 2) return {}
+    const i = owned.indexOf(s.currentWeapon)
+    const next = owned[(i + dir + owned.length) % owned.length]
+    return { currentWeapon: next, reloadingUntil: 0 }
+  }),
+
+  fireRound: () => {
+    const s = get()
+    const id = s.currentWeapon
+    if (id === 'fist') return true
+    const slot = s.weapons[id]
+    if (slot.clip <= 0) return false
+    set({ weapons: { ...s.weapons, [id]: { ...slot, clip: slot.clip - 1 } } })
+    return true
+  },
+
+  startReload: () => {
+    const s = get()
+    const id = s.currentWeapon
+    const spec = WEAPONS[id]
+    const slot = s.weapons[id]
+    if (id === 'fist' || slot.ammo <= 0 || slot.clip >= spec.clip || s.reloadingUntil > Date.now()) return false
+    set({ reloadingUntil: Date.now() + spec.reloadMs })
+    return true
+  },
+
+  finishReload: () => set((s) => {
+    const id = s.currentWeapon
+    const spec = WEAPONS[id]
+    const slot = s.weapons[id]
+    const need = spec.clip - slot.clip
+    const take = Math.min(need, slot.ammo)
+    if (take <= 0) return { reloadingUntil: 0 }
+    return { reloadingUntil: 0, weapons: { ...s.weapons, [id]: { ...slot, clip: slot.clip + take, ammo: slot.ammo - take } } }
+  }),
+
+  setAiming: (v) => set((s) => (s.isAiming === v ? {} : { isAiming: v })),
 
   setCity: (city) => set({ currentCity: city }),
   setNPCs: (npcs) => set({ npcs }),
@@ -297,10 +424,17 @@ export const useGameStore = create<GameState>((set, get) => ({
     wantedLevel: Math.min(5, s.wantedLevel + amount),
     lastOffenseAt: Date.now(),
   })),
+  setWantedAtLeast: (level) => set((s) => ({
+    wantedLevel: Math.min(5, Math.max(s.wantedLevel, level)),
+    lastOffenseAt: Date.now(),
+  })),
   clearWanted: () => set({ wantedLevel: 0 }),
+  // Decay is driven by the police system (it knows whether the player is
+  // out of sight); this is the slow fallback tick.
   tickWantedDecay: () => set((s) => {
     if (s.wantedLevel === 0) return {}
-    if (Date.now() - s.lastOffenseAt < 8000) return {}
+    const quiet = Date.now() - s.lastOffenseAt
+    if (quiet < 20000 + s.wantedLevel * 8000) return {}
     return { wantedLevel: Math.max(0, s.wantedLevel - 1), lastOffenseAt: Date.now() }
   }),
 
