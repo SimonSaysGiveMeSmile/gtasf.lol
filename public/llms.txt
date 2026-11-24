@@ -1,6 +1,6 @@
 # Founder Simulator — San Francisco
 
-> Founder Simulator is a free, browser-based open-world startup sim set on the real street grid of downtown San Francisco. It is for anyone who wants to drive, explore and play through a founder's journey from a Tenderloin SRO to ringing the bell on Pine Street.
+> Founder Simulator is a browser-based open-world startup sim set on the real street grid of downtown San Francisco. It is for anyone who wants to drive, explore and play through a founder's journey from a Tenderloin SRO to ringing the bell on Pine Street.
 
 Story mode has nine chapters. Every objective is a real building taken from OpenStreetMap (for example Moscone West, Hallidie Plaza, 140 New Montgomery and the Pacific Exchange Building). It includes dialogue with choices, stats (cash, MRR, hype, team and equity), timed drives, deliveries, a guerrilla-marketing collect-a-thon, a rival chase, and an IPO ending ranked by valuation. Progress saves in the browser at chapter boundaries. Free roam mode lets you drive, explore and take side-gig deliveries. It plays in a web browser on desktop (keyboard and mouse) and on touch devices (on-screen controls). It is built with React, TypeScript, Vite, Three.js and React Three Fiber, using Kenney (CC0) characters and vehicles and map data © OpenStreetMap contributors (ODbL).
 
