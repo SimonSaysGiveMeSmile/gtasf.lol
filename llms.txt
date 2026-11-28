@@ -1,0 +1,25 @@
+# Founder Simulator — San Francisco
+
+> Founder Simulator (repo gtasf.lol) is a free browser-based 3D open-world startup game set on the real street grid of downtown San Francisco. Story mode has nine chapters, from a Tenderloin SRO to an IPO on Pine Street, with objectives at real OpenStreetMap buildings; free roam lets you drive, explore and take side-gig deliveries.
+
+- Kind: browser game (3D, open world, GTA-style sandbox), desktop and touch
+- Stack: React 18, TypeScript, Vite, Three.js, React Three Fiber, drei, Zustand
+- Assets: Kenney (CC0) characters and vehicles; map data © OpenStreetMap contributors (ODbL)
+- Live: https://gtasf.lol
+- Run locally: `npm install && npm run dev` (http://127.0.0.1:4001)
+
+## Docs
+
+- [README](https://github.com/SimonSaysGiveMeSmile/gtasf.lol/blob/main/README.md): overview, features, controls, driving model, setup
+- [Technical specification](https://github.com/SimonSaysGiveMeSmile/gtasf.lol/blob/main/SPEC.md): original design spec
+- [App entry point](https://github.com/SimonSaysGiveMeSmile/gtasf.lol/blob/main/src/App.tsx)
+- [Story chapters](https://github.com/SimonSaysGiveMeSmile/gtasf.lol/blob/main/src/story/chapters.ts): campaign content
+- [Story state machine](https://github.com/SimonSaysGiveMeSmile/gtasf.lol/blob/main/src/story/storyStore.ts): story state and save
+- [Vehicles](https://github.com/SimonSaysGiveMeSmile/gtasf.lol/blob/main/src/vehicles/VehicleSpawner.tsx): driving model
+
+## Optional
+
+- [Site llms.txt](https://github.com/SimonSaysGiveMeSmile/gtasf.lol/blob/main/public/llms.txt): the llms.txt served on the live site
+- [Model credits](https://github.com/SimonSaysGiveMeSmile/gtasf.lol/blob/main/public/models/CREDITS.md)
+- [OSM converter](https://github.com/SimonSaysGiveMeSmile/gtasf.lol/blob/main/convert_osm.py): bakes OpenStreetMap data into the map
+- [package.json](https://github.com/SimonSaysGiveMeSmile/gtasf.lol/blob/main/package.json)

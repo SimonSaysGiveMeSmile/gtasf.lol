@@ -1,7 +1,15 @@
 # Founder Simulator — San Francisco
 
+Founder Simulator is a free browser-based 3D open-world startup game that lets you drive and walk the real street grid of downtown San Francisco while building a company from a Tenderloin SRO to an IPO, for anyone who wants a GTA-style sandbox with a founder story.
+
+![Founder Simulator title screen: "Founder Simulator" over an illustrated San Francisco skyline, with New story and Free roam buttons](docs/screenshot.jpg)
+
+Live demo: https://gtasf.lol
+
 An original open-world startup sim set on the real street grid of downtown San Francisco.
 Browser-based: React, TypeScript, Vite, Three.js / React Three Fiber, Zustand.
+
+## Features
 
 **Story mode** — nine chapters from a Tenderloin SRO to ringing the bell on Pine Street. Every
 objective is a real building pulled from OpenStreetMap (Cable Car Coffee, Digital Garage, Moscone
@@ -11,6 +19,11 @@ deliveries, a guerrilla-marketing collect-a-thon, a rival chase, and an IPO endi
 Progress saves to `localStorage` at chapter boundaries.
 
 **Free roam** — drive, explore, take side-gig deliveries.
+
+- Third-person on-foot controller and drivable cars with an arcade-realistic driving model (see [Driving model](#driving-model))
+- Pedestrians and traffic AI; traffic obeys signal cycles at intersections
+- Rigged Kenney characters and vehicles
+- Desktop keyboard + mouse and on-screen touch controls (see [Controls](#controls))
 
 ## Tech stack
 
@@ -38,7 +51,7 @@ src/
 The downtown map is metres relative to 37.7875 N, −122.405 W (+x east, +z north).
 `src/story/geo.ts` converts lat/lon ↔ world and snaps points to the road network.
 
-## Local development
+## Getting started (local development)
 
 Requirements: Node.js 20+, npm 10+.
 
